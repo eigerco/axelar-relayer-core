@@ -1,6 +1,9 @@
 //! The component that is responsible for communicating with the Axelar Amplifier API
 
-mod component;
+//! This crate provides integration with the Axelar Amplifier API, which is responsible for
+//! coordinating cross-chain message delivery and validation.
+/// The core Amplifier API abstraction.
+pub mod component;
 mod config;
 mod from_amplifier;
 mod healthcheck;
