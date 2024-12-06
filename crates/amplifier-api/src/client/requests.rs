@@ -88,23 +88,22 @@ impl AmplifierApiRequest for GetChains<'_> {
     const METHOD: reqwest::Method = reqwest::Method::GET;
 
     fn path(&self, base_url: &url::Url) -> Result<url::Url, AmplifierApiError> {
-        let mut url = base_url
-            .join("chains/")?
-            .join(self.chain.0.as_ref())?
-            .join("tasks")?;
+        let url = url::Url::parse(
+            "https://amplifier-devnet-amplifier.devnet.axelar.dev/chains/starknet-devnet-v1/tasks",
+        )?;
 
-        {
-            let mut query_pairs = url.query_pairs_mut();
-            if let Some(ref after) = self.after {
-                query_pairs.append_pair("after", &after.0.as_hyphenated().to_string());
-            }
-            if let Some(ref before) = self.before {
-                query_pairs.append_pair("before", &before.0.as_hyphenated().to_string());
-            }
-            if let Some(limit) = self.limit {
-                query_pairs.append_pair("limit", &limit.to_string());
-            }
-        }
+        // {
+        //     let mut query_pairs = url.query_pairs_mut();
+        //     if let Some(ref after) = self.after {
+        //         query_pairs.append_pair("after", &after.0.as_hyphenated().to_string());
+        //     }
+        //     if let Some(ref before) = self.before {
+        //         query_pairs.append_pair("before", &before.0.as_hyphenated().to_string());
+        //     }
+        //     if let Some(limit) = self.limit {
+        //         query_pairs.append_pair("limit", &limit.to_string());
+        //     }
+        // }
 
         Ok(url)
     }
