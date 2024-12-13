@@ -27,8 +27,9 @@ pub(crate) async fn process(
                 // spawn the command on the joinset, returning the error
                 tracing::info!(?command, "sending message to amplifier api");
                 let res = internal(command, &chain_with_trailing_slash, &client, &mut join_set);
+
                 cx.waker().wake_by_ref();
-                return Poll::Ready(Some(Ok(res)));
+                return Poll::Ready(Some(Ok(res)))
             }
             Poll::Pending => (),
             Poll::Ready(None) => {

@@ -177,7 +177,11 @@ pub struct MessageExecutedEventMetadata {
     pub child_message_ids: Option<Vec<MessageId>>,
 }
 
-/// Specialized metadata for `CannotExecuteMessageEvent`.
+/// DEPRECATED: Specialized metadata for `CannotExecuteMessageEvent`.
+#[deprecated(
+    since = "0.2.0",
+    note = "please use `CannotExecuteMessageEventV2Metadata` instead"
+)]
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct CannotExecuteMessageEventMetadata {
     /// The initiator of the message
@@ -188,6 +192,22 @@ pub struct CannotExecuteMessageEventMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[builder(default)]
     pub timestamp: Option<DateTime<Utc>>,
+}
+
+/// Specialized metadata for `CannotExecuteMessageEventV2`.
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+pub struct CannotExecuteMessageEventV2Metadata {
+    /// The initiator of the message
+    #[serde(rename = "fromAddress", skip_serializing_if = "Option::is_none")]
+    #[builder(default)]
+    pub from_address: Option<Address>,
+    /// timestamp of the event
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[builder(default)]
+    pub timestamp: Option<DateTime<Utc>>,
+    /// task id
+    #[serde(rename = "taskItemID")]
+    pub task_item_id: TaskItemId,
 }
 
 /// Represents a token amount, possibly with a token ID.
@@ -345,7 +365,11 @@ pub struct MessageExecutedEvent {
     pub cost: Token,
 }
 
-/// Represents a Cannot Execute Message Event.
+/// DEPRECATED: Represents a Cannot Execute Message Event.
+#[deprecated(
+    since = "0.2.0",
+    note = "please use `CannotExecuteMessageEventV2` instead"
+)]
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct CannotExecuteMessageEvent {
     /// Event base
@@ -360,6 +384,23 @@ pub struct CannotExecuteMessageEvent {
     pub details: String,
 }
 
+/// Represents the v2 of Cannot Execute Message Event.
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+pub struct CannotExecuteMessageEventV2 {
+    /// Event base
+    #[serde(flatten)]
+    pub base: EventBase<CannotExecuteMessageEventV2Metadata>,
+    /// the message id of a GMP call
+    #[serde(rename = "messageID")]
+    pub message_id: MessageId,
+    /// source chain
+    #[serde(rename = "sourceChain")]
+    pub source_chain: String,
+    /// failed executioin reason
+    pub reason: CannotExecuteMessageReason,
+    /// details of the error
+    pub details: String,
+}
 /// Represents a generic Event, which can be any of the specific event types.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
@@ -376,6 +417,9 @@ pub enum Event {
     MessageExecuted(MessageExecutedEvent),
     /// cannot execute message event
     CannotExecuteMessage(CannotExecuteMessageEvent),
+    /// v2 of cannot execute message event
+    #[serde(rename = "CANNOT_EXECUTE_MESSAGE/V2")]
+    CannotExecuteMessageV2(CannotExecuteMessageEventV2),
     /// Signers have been rotated
     SignersRotated(SignersRotatedEvent),
 }
@@ -943,6 +987,51 @@ mod tests {
         }))
         .unwrap()
         .into_bytes();
+
+        test_serialization(&type_in_rust, reference_json);
+    }
+
+    #[test]
+    fn test_cannot_execute_message_v2_serialization() {
+        // Setup
+        let reference_json = to_string(&json!({
+            "type":"CANNOT_EXECUTE_MESSAGE/V2",
+            "eventID":"event123",
+            "meta":{
+               "taskItemID":"0193c0ec-20ac-7d8c-8e71-a0b94d1c7a5d"
+            },
+            "messageID":"0x413b6134d65fe844b0d9e541561a5e825240fb4d951e34e5f42806ef9d45c560-0",
+            "sourceChain":"avalanche-fuji",
+            "reason":"ERROR",
+            "details":"some details here"
+        }))
+        .unwrap()
+        .into_bytes();
+
+        let type_in_rust = Event::CannotExecuteMessageV2(CannotExecuteMessageEventV2 {
+            source_chain: "avalanche-fuji".to_owned(),
+            message_id: TxEvent(
+                "0x413b6134d65fe844b0d9e541561a5e825240fb4d951e34e5f42806ef9d45c560-0".to_owned(),
+            ),
+            base: EventBase {
+                event_id: TxEvent("event123".to_owned()),
+                meta: Some(EventMetadata::<CannotExecuteMessageEventV2Metadata> {
+                    extra: CannotExecuteMessageEventV2Metadata {
+                        task_item_id: TaskItemId(
+                            "0193c0ec-20ac-7d8c-8e71-a0b94d1c7a5d".parse().unwrap(),
+                        ),
+                        from_address: None,
+                        timestamp: None,
+                    },
+                    tx_id: None,
+                    timestamp: None,
+                    from_address: None,
+                    finalized: None,
+                }),
+            },
+            reason: CannotExecuteMessageReason::Error,
+            details: "some details here".to_owned(),
+        });
 
         test_serialization(&type_in_rust, reference_json);
     }

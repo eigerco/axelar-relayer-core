@@ -44,6 +44,10 @@ impl AmplifierApiClient {
         let method = T::METHOD;
         let client = self.inner.clone();
         let payload = simd_json::to_vec(&request.payload())?;
+
+        let json = String::from_utf8_lossy(payload.as_slice());
+        tracing::debug!(request_body = %json, "Request JSON");
+
         let reqwest_req = client.request(method, endpoint.as_str()).body(payload);
 
         Ok(AmplifierRequest {
@@ -55,6 +59,7 @@ impl AmplifierApiClient {
 }
 
 /// Encalpsulated HTTP request for the Amplifier API
+#[derive(Debug)]
 pub struct AmplifierRequest<T, E> {
     request: reqwest::RequestBuilder,
     result: PhantomData<T>,
@@ -266,11 +271,9 @@ pub mod identity {
 
             let identity_str = identity_fixture();
 
-            let mut data = simd_json::to_string(&simd_json::json!({
-                "identity": identity_str
-            }))
-            .unwrap()
-            .into_bytes();
+            let mut data = simd_json::to_string(&simd_json::json!({ "identity": identity_str }))
+                .unwrap()
+                .into_bytes();
 
             let _output: DesiredOutput =
                 simd_json::from_slice(data.as_mut()).expect("Failed to deserialize identity");
