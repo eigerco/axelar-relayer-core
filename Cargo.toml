@@ -84,7 +84,7 @@ chrono = { version = "0.4", default-features = false, features = [
 base64 = "0.22"
 bs58 = "0.5"
 redact = { version = "0.1", features = ["serde"] }
-thiserror = "1"
+thiserror = "2"
 uuid = { version = "1.2", features = ["v4", "serde"] }
 typed-builder = "0.18"
 derive_builder = "0.20"
