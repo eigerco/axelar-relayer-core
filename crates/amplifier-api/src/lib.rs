@@ -5,6 +5,5 @@ mod client;
 pub use client::*;
 mod error;
 pub use error::AmplifierApiError;
-#[expect(deprecated, reason = "Deprecated types within the module")]
 pub mod types;
 pub use chrono;

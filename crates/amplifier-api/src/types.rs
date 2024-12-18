@@ -177,23 +177,6 @@ pub struct MessageExecutedEventMetadata {
     pub child_message_ids: Option<Vec<MessageId>>,
 }
 
-/// DEPRECATED: Specialized metadata for `CannotExecuteMessageEvent`.
-#[deprecated(
-    since = "0.2.0",
-    note = "please use `CannotExecuteMessageEventV2Metadata` instead"
-)]
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
-pub struct CannotExecuteMessageEventMetadata {
-    /// The initiator of the message
-    #[serde(rename = "fromAddress", skip_serializing_if = "Option::is_none")]
-    #[builder(default)]
-    pub from_address: Option<Address>,
-    /// timestamp of the event
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[builder(default)]
-    pub timestamp: Option<DateTime<Utc>>,
-}
-
 /// Specialized metadata for `CannotExecuteMessageEventV2`.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct CannotExecuteMessageEventV2Metadata {
@@ -365,25 +348,6 @@ pub struct MessageExecutedEvent {
     pub cost: Token,
 }
 
-/// DEPRECATED: Represents a Cannot Execute Message Event.
-#[deprecated(
-    since = "0.2.0",
-    note = "please use `CannotExecuteMessageEventV2` instead"
-)]
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
-pub struct CannotExecuteMessageEvent {
-    /// Event base
-    #[serde(flatten)]
-    pub base: EventBase<CannotExecuteMessageEventMetadata>,
-    /// task id
-    #[serde(rename = "taskItemID")]
-    pub task_item_id: TaskItemId,
-    /// failed executioin reason
-    pub reason: CannotExecuteMessageReason,
-    /// details of the error
-    pub details: String,
-}
-
 /// Represents the v2 of Cannot Execute Message Event.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct CannotExecuteMessageEventV2 {
@@ -415,8 +379,6 @@ pub enum Event {
     MessageApproved(MessageApprovedEvent),
     /// message executed event
     MessageExecuted(MessageExecutedEvent),
-    /// cannot execute message event
-    CannotExecuteMessage(CannotExecuteMessageEvent),
     /// v2 of cannot execute message event
     #[serde(rename = "CANNOT_EXECUTE_MESSAGE/V2")]
     CannotExecuteMessageV2(CannotExecuteMessageEventV2),
@@ -1031,32 +993,6 @@ mod tests {
             },
             reason: CannotExecuteMessageReason::Error,
             details: "some details here".to_owned(),
-        });
-
-        test_serialization(&type_in_rust, reference_json);
-    }
-
-    #[test]
-    fn test_cannot_execute_message_serialization() {
-        // Setup
-        let reference_json = to_string(&json!({
-            "type": "CANNOT_EXECUTE_MESSAGE",
-            "eventID": "event123",
-            "taskItemID": "550e8400-e29b-41d4-a716-446655440000",
-            "reason": "INSUFFICIENT_GAS",
-            "details": "Not enough gas to execute the message"
-        }))
-        .unwrap()
-        .into_bytes();
-
-        let type_in_rust = Event::CannotExecuteMessage(CannotExecuteMessageEvent {
-            base: EventBase {
-                event_id: TxEvent("event123".to_owned()),
-                meta: None,
-            },
-            task_item_id: TaskItemId("550e8400-e29b-41d4-a716-446655440000".parse().unwrap()),
-            reason: CannotExecuteMessageReason::InsufficientGas,
-            details: "Not enough gas to execute the message".to_owned(),
         });
 
         test_serialization(&type_in_rust, reference_json);
