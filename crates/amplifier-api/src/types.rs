@@ -116,7 +116,7 @@ mod serde_utils {
 }
 
 /// Enumeration of reasons why a message cannot be executed.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CannotExecuteMessageReason {
     /// Not enough gas to execute the message
@@ -126,7 +126,7 @@ pub enum CannotExecuteMessageReason {
 }
 
 /// Enumeration of message execution statuses.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MessageExecutionStatus {
     /// Message executed successfully
@@ -136,7 +136,7 @@ pub enum MessageExecutionStatus {
 }
 
 /// Represents metadata associated with an event.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct EventMetadata<T> {
     /// tx id of the underlying event
     #[serde(rename = "txID", skip_serializing_if = "Option::is_none")]
@@ -160,7 +160,7 @@ pub struct EventMetadata<T> {
 }
 
 /// Specialized metadata for `CallEvent`.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct CallEventMetadata {
     /// the message id that's responsible for the event
     #[serde(rename = "parentMessageID", skip_serializing_if = "Option::is_none")]
@@ -169,7 +169,7 @@ pub struct CallEventMetadata {
 }
 
 /// Specialized metadata for `MessageApprovedEvent`.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct MessageApprovedEventMetadata {
     /// The command id that corresponds to the approved message
     #[serde(rename = "commandID", skip_serializing_if = "Option::is_none")]
@@ -178,7 +178,7 @@ pub struct MessageApprovedEventMetadata {
 }
 
 /// Specialized metadata for `MessageExecutedEvent`.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct MessageExecutedEventMetadata {
     /// The command id that corresponds to the executed message
     #[serde(rename = "commandID", skip_serializing_if = "Option::is_none")]
@@ -191,7 +191,7 @@ pub struct MessageExecutedEventMetadata {
 }
 
 /// Specialized metadata for `CannotExecuteMessageEventV2`.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct CannotExecuteMessageEventV2Metadata {
     /// The initiator of the message
     #[serde(rename = "fromAddress", skip_serializing_if = "Option::is_none")]
@@ -207,7 +207,7 @@ pub struct CannotExecuteMessageEventV2Metadata {
 }
 
 /// Represents a token amount, possibly with a token ID.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct Token {
     /// indicates that amount is in native token if left blank
     #[serde(rename = "tokenID", skip_serializing_if = "Option::is_none")]
@@ -218,7 +218,7 @@ pub struct Token {
 }
 
 /// Represents a cross-chain message.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct GatewayV2Message {
     /// the message id of a GMP call
     #[serde(rename = "messageID")]
@@ -242,7 +242,7 @@ pub struct GatewayV2Message {
 }
 
 /// Base struct for events.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct EventBase<T = ()> {
     /// The event id
     #[serde(rename = "eventID")]
@@ -254,7 +254,7 @@ pub struct EventBase<T = ()> {
 }
 
 /// Represents a Gas Credit Event.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct GasCreditEvent {
     /// Event base
     #[serde(flatten)]
@@ -270,7 +270,7 @@ pub struct GasCreditEvent {
 }
 
 /// Represents a Gas Refunded Event.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct GasRefundedEvent {
     /// Event base
     #[serde(flatten)]
@@ -289,7 +289,7 @@ pub struct GasRefundedEvent {
 }
 
 /// Represents a Call Event.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct CallEvent {
     /// Event base
     #[serde(flatten)]
@@ -308,7 +308,7 @@ pub struct CallEvent {
 }
 
 /// Represents a Message Approved Event.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct MessageApprovedEvent {
     /// Event base
     #[serde(flatten)]
@@ -320,7 +320,7 @@ pub struct MessageApprovedEvent {
 }
 
 /// Event that gets emitted upon signer rotatoin
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct SignersRotatedEvent {
     /// Event base
     #[serde(flatten)]
@@ -330,7 +330,7 @@ pub struct SignersRotatedEvent {
 }
 
 /// Represents extra metadata that can be added to the signers rotated event
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct SignersRotatedMetadata {
     /// The hash of the new signer set
     #[serde(rename = "signerHash")]
@@ -344,7 +344,7 @@ pub struct SignersRotatedMetadata {
 }
 
 /// Represents a Message Executed Event.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct MessageExecutedEvent {
     /// Event base
     #[serde(flatten)]
@@ -362,7 +362,7 @@ pub struct MessageExecutedEvent {
 }
 
 /// Represents the v2 of Cannot Execute Message Event.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct CannotExecuteMessageEventV2 {
     /// Event base
     #[serde(flatten)]
@@ -379,7 +379,7 @@ pub struct CannotExecuteMessageEventV2 {
     pub details: String,
 }
 /// Represents a generic Event, which can be any of the specific event types.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Event {
     /// gas credit event
@@ -400,21 +400,21 @@ pub enum Event {
 }
 
 /// Represents the request payload for posting events.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct PublishEventsRequest {
     /// list of events to publish
     pub events: Vec<Event>,
 }
 
 /// Base struct for publish event result items.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct PublishEventResultItemBase {
     /// index of the event
     pub index: usize,
 }
 
 /// Represents an accepted publish event result.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct PublishEventAcceptedResult {
     /// event base
     #[serde(flatten)]
@@ -422,7 +422,7 @@ pub struct PublishEventAcceptedResult {
 }
 
 /// Represents an error in publishing an event.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct PublishEventErrorResult {
     /// event base
     #[serde(flatten)]
@@ -434,7 +434,7 @@ pub struct PublishEventErrorResult {
 }
 
 /// Represents the result of processing an event.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PublishEventResultItem {
     /// the event was accepted
@@ -444,14 +444,14 @@ pub enum PublishEventResultItem {
 }
 
 /// Represents the response from posting events.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct PublishEventsResult {
     /// The result array
     pub results: Vec<PublishEventResultItem>,
 }
 
 /// Represents a Verify Task.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct VerifyTask {
     /// the cross chain message
     pub message: GatewayV2Message,
@@ -464,7 +464,7 @@ pub struct VerifyTask {
 }
 
 /// Represents a Gateway Transaction Task.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct GatewayTransactionTask {
     /// the execute data for the gateway
     #[serde(
@@ -476,7 +476,7 @@ pub struct GatewayTransactionTask {
 }
 
 /// Represents an Execute Task.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct ExecuteTask {
     /// the cross-chain message
     pub message: GatewayV2Message,
@@ -492,7 +492,7 @@ pub struct ExecuteTask {
 }
 
 /// Represents a Refund Task.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct RefundTask {
     /// the cross-chain message
     pub message: GatewayV2Message,
@@ -505,7 +505,7 @@ pub struct RefundTask {
 }
 
 /// Represents a generic Task, which can be any of the specific task types.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "task", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Task {
     /// Verify task
@@ -519,7 +519,7 @@ pub enum Task {
 }
 
 /// Represents an individual Task Item.
-#[derive(PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct TaskItem {
     /// UUID of current task
     pub id: TaskItemId,
@@ -549,7 +549,7 @@ impl core::fmt::Debug for TaskItem {
 }
 
 /// Represents the response from fetching tasks.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct GetTasksResult {
     /// Array of tasks matching the filters
     pub tasks: Vec<TaskItem>,
@@ -571,7 +571,7 @@ mod big_int {
     use super::*;
 
     /// Represents a big integer as a string matching the pattern `^(0|[1-9]\d*)$`.
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct BigInt(pub bnum::types::I512);
     impl BigInt {
         /// Creates a new [`BigInt`].
