@@ -5,6 +5,7 @@ use std::sync::Arc;
 use eyre::Context as _;
 use futures::StreamExt as _;
 use infrastructure::interfaces::consumer::{AckKind, Consumer, QueueMessage};
+use infrastructure::interfaces::publisher::QueueMsgId as _;
 use relayer_amplifier_api_integration::amplifier_api::requests::{self, WithTrailingSlash};
 use relayer_amplifier_api_integration::amplifier_api::types::{Event, PublishEventsRequest};
 use relayer_amplifier_api_integration::amplifier_api::{self, AmplifierApiClient};
@@ -89,7 +90,7 @@ where
                     tracing::error!(%event, %err, "could not ack message");
                 }
 
-                tracing::info!(event_id = %event.event_id(), "processed");
+                tracing::info!(event_id = %event.id(), "event ack'ed");
             }
             Err(err) => {
                 tracing::error!(%event, %err, "error during task processing");
