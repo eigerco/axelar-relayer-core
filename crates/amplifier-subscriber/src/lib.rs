@@ -79,18 +79,17 @@ where
 
         tracing::debug!(?response, "amplifier response");
 
-        if response.tasks.is_empty() {
+        let mut tasks = response.tasks;
+        tasks.sort_unstable_by_key(|task| task.timestamp);
+
+        if tasks.is_empty() {
             tracing::debug!("no amplifier tasks");
             return Ok(());
         }
 
-        tracing::info!(count = response.tasks.len(), "got amplifier tasks");
+        tracing::info!(count = tasks.len(), "got amplifier tasks");
 
-        let batch = response
-            .tasks
-            .into_iter()
-            .map(PublishMessage::from)
-            .collect();
+        let batch = tasks.into_iter().map(PublishMessage::from).collect();
 
         tracing::debug!("sending to queue");
         self.task_queue_publisher
