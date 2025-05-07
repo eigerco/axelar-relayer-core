@@ -81,7 +81,7 @@ where
 
         if response.tasks.is_empty() {
             tracing::debug!("no amplifier tasks");
-            return Ok(())
+            return Ok(());
         }
 
         tracing::info!(count = response.tasks.len(), "got amplifier tasks");
