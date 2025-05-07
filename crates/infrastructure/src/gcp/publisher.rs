@@ -51,7 +51,7 @@ impl<T> GcpPublisher<T>
 where
     T: BorshSerialize + Debug,
 {
-    async fn publish_core(&self, msg: PublishMessage<T>) -> Result<Awaiter, GcpError> {
+    async fn pubsub_publish(&self, msg: PublishMessage<T>) -> Result<Awaiter, GcpError> {
         let encoded = borsh::to_vec(&msg.data).map_err(GcpError::Serialize)?;
         let mut attributes = HashMap::new();
         attributes.insert(MSG_ID.to_owned(), msg.deduplication_id);
@@ -75,7 +75,7 @@ where
     #[tracing::instrument(skip_all)]
     async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, GcpError> {
         tracing::debug!(?msg.deduplication_id, ?msg.data, "publishing message");
-        let awaiter = self.publish_core(msg).await?;
+        let awaiter = self.pubsub_publish(msg).await?;
 
         // NOTE: await until message is sent
         let result = awaiter
@@ -97,7 +97,7 @@ where
 
         for msg in batch {
             tracing::debug!(?msg.deduplication_id, ?msg.data, "publishing message");
-            let awaiter = self.publish_core(msg).await?;
+            let awaiter = self.pubsub_publish(msg).await?;
             publish_handles.push(awaiter);
             tracing::debug!("message added to publish queue");
         }
