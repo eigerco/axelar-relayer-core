@@ -6,7 +6,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use google_cloud_pubsub::client::Client;
-use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
+use google_cloud_pubsub::publisher::{Awaiter, Publisher, PublisherConfig};
 use interfaces::kv_store::KvStore as _;
 
 use super::kv_store::RedisClient;
@@ -47,6 +47,24 @@ impl<T> GcpPublisher<T> {
     }
 }
 
+impl<T> GcpPublisher<T>
+where
+    T: BorshSerialize + Debug,
+{
+    async fn publish_core(&self, msg: PublishMessage<T>) -> Result<Awaiter, GcpError> {
+        let encoded = borsh::to_vec(&msg.data).map_err(GcpError::Serialize)?;
+        let mut attributes = HashMap::new();
+        attributes.insert(MSG_ID.to_owned(), msg.deduplication_id);
+        let message = PubsubMessage {
+            data: encoded,
+            attributes,
+            ..Default::default()
+        };
+
+        Ok(self.publisher.publish(message.clone()).await)
+    }
+}
+
 impl<T> interfaces::publisher::Publisher<T> for GcpPublisher<T>
 where
     T: BorshSerialize + Debug,
@@ -57,17 +75,9 @@ where
     #[tracing::instrument(skip_all)]
     async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, GcpError> {
         tracing::debug!(?msg.deduplication_id, ?msg.data, "publishing message");
-        let encoded = borsh::to_vec(&msg.data).map_err(GcpError::Serialize)?;
-        let mut attributes = HashMap::new();
-        attributes.insert(MSG_ID.to_owned(), msg.deduplication_id);
-        let message = PubsubMessage {
-            data: encoded,
-            attributes,
-            ..Default::default()
-        };
-        let awaiter = self.publisher.publish(message.clone()).await;
+        let awaiter = self.publish_core(msg).await?;
 
-        // NOTE: await until messages is sent
+        // NOTE: await until message is sent
         let result = awaiter
             .get()
             .await
@@ -87,15 +97,7 @@ where
 
         for msg in batch {
             tracing::debug!(?msg.deduplication_id, ?msg.data, "publishing message");
-            let encoded = borsh::to_vec(&msg.data).map_err(GcpError::Serialize)?;
-            let mut attributes = HashMap::new();
-            attributes.insert(MSG_ID.to_owned(), msg.deduplication_id);
-            let message = PubsubMessage {
-                data: encoded,
-                attributes,
-                ..Default::default()
-            };
-            let awaiter = self.publisher.publish(message.clone()).await;
+            let awaiter = self.publish_core(msg).await?;
             publish_handles.push(awaiter);
             tracing::debug!("message added to publish queue");
         }
