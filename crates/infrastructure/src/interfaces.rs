@@ -10,7 +10,7 @@ pub mod consumer {
         fn decoded(&self) -> &T;
         /// Ack response
         fn ack(
-            &self,
+            &mut self,
             ack_kind: AckKind,
         ) -> impl Future<Output = Result<(), impl Error + Send + Sync + 'static>>;
     }

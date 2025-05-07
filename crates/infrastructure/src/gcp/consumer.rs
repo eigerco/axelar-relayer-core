@@ -5,6 +5,7 @@ use borsh::BorshDeserialize;
 use google_cloud_pubsub::client::Client;
 use google_cloud_pubsub::subscriber::{ReceivedMessage, SubscriberConfig};
 use google_cloud_pubsub::subscription::{ReceiveConfig, Subscription};
+use redis::AsyncCommands;
 use redis::aio::MultiplexedConnection;
 use tokio_util::sync::CancellationToken;
 
@@ -17,13 +18,26 @@ use crate::interfaces;
 #[derive(Debug)]
 pub struct GcpMessage<T> {
     id: String,
+    subscription_name: String,
     msg: ReceivedMessage,
+    redis_connection: MultiplexedConnection,
     decoded: T,
     ack_deadline_secs: i32,
 }
 
+impl<T> GcpMessage<T> {
+    fn redis_id_key(&self) -> String {
+        format!("dedup:{}:id:{}", self.subscription_name, self.id)
+    }
+}
+
 impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
-    fn decode(msg: ReceivedMessage, ack_deadline_secs: i32) -> Result<Self, GcpError> {
+    fn decode(
+        subscription_name: String,
+        msg: ReceivedMessage,
+        redis_connection: MultiplexedConnection,
+        ack_deadline_secs: i32,
+    ) -> Result<Self, GcpError> {
         tracing::debug!(?msg, "decoding msg");
         let decoded =
             T::deserialize(&mut msg.message.data.as_ref()).map_err(GcpError::Deserialize)?;
@@ -38,10 +52,17 @@ impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
 
         Ok(Self {
             id,
+            subscription_name,
             msg,
+            redis_connection,
             decoded,
             ack_deadline_secs,
         })
+    }
+
+    async fn is_processed(&mut self) -> Result<bool, GcpError> {
+        let exists: bool = self.redis_connection.exists(&self.redis_id_key()).await?;
+        Ok(exists)
     }
 }
 
@@ -52,7 +73,7 @@ impl<T: Debug> interfaces::consumer::QueueMessage<T> for GcpMessage<T> {
 
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
-    async fn ack(&self, ack_kind: interfaces::consumer::AckKind) -> Result<(), GcpError> {
+    async fn ack(&mut self, ack_kind: interfaces::consumer::AckKind) -> Result<(), GcpError> {
         tracing::debug!(?ack_kind, "sending ack");
 
         match ack_kind {
@@ -61,11 +82,17 @@ impl<T: Debug> interfaces::consumer::QueueMessage<T> for GcpMessage<T> {
                 .ack()
                 .await
                 .map_err(|err| GcpError::Ack(Box::new(err)))?,
-            interfaces::consumer::AckKind::Nak => self
-                .msg
-                .nack()
-                .await
-                .map_err(|err| GcpError::Nak(Box::new(err)))?,
+            interfaces::consumer::AckKind::Nak => {
+                self.msg
+                    .nack()
+                    .await
+                    .map_err(|err| GcpError::Nak(Box::new(err)))?;
+
+                let _: String = self
+                    .redis_connection
+                    .set_ex(self.redis_id_key(), "1", 60 * 10)
+                    .await?;
+            }
             interfaces::consumer::AckKind::Progress => self
                 .msg
                 .modify_ack_deadline(self.ack_deadline_secs)
@@ -180,43 +207,35 @@ where
                 move |message, cancel| {
                     let sender = sender.clone();
                     let subscription_name = subscription_name.clone();
-                    let mut redis_connection = redis_connection.clone();
+                    let redis_connection = redis_connection.clone();
                     async move {
                         tracing::debug!(?message, "got message");
-                        match GcpMessage::decode(message, ack_deadline_secs) {
-                            Ok(message) => {
-                                let dedup_key = format!(
-                                    "dedup:{}:id:{}",
-                                    subscription_name,
-                                    message.id
-                                );
-
-                                // NOTE: Expiration 10 min as recommended by gcp
-                                let exists =
-                                    set_nx_ex(&mut redis_connection, &dedup_key, 60 * 10).await;
-
-                                match exists {
-                                    Ok(exists) => {
-                                        if exists {
-                                            tracing::debug!("message with id {dedup_key} already processed, skipping");
-                                            return
-                                        }
-
-                                        if let Err(err) = sender.send_async(Ok(message)).await {
-                                            tracing::info!(?err, "shutting down");
-                                            cancel.cancel();
-                                        }
-                                    },
-                                    Err(err) => {
-                                        tracing::error!(?err, "error setting nx ex key");
-                                        if let Err(err) = sender.send_async(Err(err)).await {
-                                            tracing::error!(?err, "could not send err");
-                                            cancel.cancel();
-                                        }
+                        match GcpMessage::decode(
+                            subscription_name,
+                            message,
+                            redis_connection,
+                            ack_deadline_secs,
+                        ) {
+                            Ok(mut message) => match message.is_processed().await {
+                                Ok(true) => {
+                                    tracing::debug!(
+                                        "message with id {} already processed, skipping",
+                                        message.id
+                                    );
+                                    return;
+                                }
+                                Ok(false) => {
+                                    if let Err(err) = sender.send_async(Ok(message)).await {
+                                        tracing::info!(?err, "shutting down");
+                                        cancel.cancel();
                                     }
                                 }
-
-                            }
+                                Err(err) => {
+                                    if let Err(err) = sender.send_async(Err(err)).await {
+                                        tracing::error!(?err, "message exist check error");
+                                    }
+                                }
+                            },
                             Err(err) => {
                                 if let Err(err) = sender.send_async(Err(err)).await {
                                     tracing::info!(?err, "shutting down");
@@ -232,23 +251,6 @@ where
             .await
             .map_err(|err| GcpError::ReceiverTaskCrash(Box::new(err)))
     })
-}
-
-async fn set_nx_ex(
-    connection: &mut MultiplexedConnection,
-    key: &str,
-    expiration_secs: u8,
-) -> Result<bool, GcpError> {
-    let set_key: Option<String> = redis::cmd("SET")
-        .arg(key)
-        .arg("1")
-        .arg("NX")
-        .arg("EX")
-        .arg(expiration_secs)
-        .query_async(connection)
-        .await
-        .map_err(GcpError::NxEx)?;
-    Ok(set_key.is_some())
 }
 
 impl<T> Drop for GcpConsumer<T> {

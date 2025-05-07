@@ -62,8 +62,8 @@ pub enum GcpError {
     ConsumerReadTaskExited,
     #[error("no messages to publish")]
     NoMsgToPublish,
-    #[error("could not set nx ex error {0}")]
-    NxEx(RedisError),
+    #[error("redis err {0}")]
+    GenericRedis(#[from] RedisError),
     #[error("message has no Msg-Id set")]
     MsgIdNotSet,
 }
