@@ -100,6 +100,7 @@ where
             .publish_batch(batch)
             .await
             .wrap_err("could not publish tasks to queue")?;
+        tracing::debug!("sent to queue");
         Ok(())
     }
 }
