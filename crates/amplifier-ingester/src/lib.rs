@@ -1,5 +1,4 @@
 //! Crate with amplifier ingester component
-use core::pin::Pin;
 use std::sync::Arc;
 
 use eyre::Context as _;
@@ -131,7 +130,9 @@ impl<EventQueueConsumer> supervisor::Worker for Ingester<EventQueueConsumer>
 where
     EventQueueConsumer: Consumer<amplifier_api::types::Event> + Send + Sync,
 {
-    fn do_work<'s>(&'s mut self) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 's>> {
+    fn do_work<'s>(
+        &'s mut self,
+    ) -> core::pin::Pin<Box<dyn Future<Output = eyre::Result<()>> + 's>> {
         Box::pin(async { self.ingest().await })
     }
 }

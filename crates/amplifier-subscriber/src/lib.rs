@@ -1,6 +1,4 @@
 //! Crate with amplifier subscriber component
-use core::pin::Pin;
-
 use amplifier_api::requests::WithTrailingSlash;
 use amplifier_api::{AmplifierApiClient, requests};
 use eyre::Context as _;
@@ -109,7 +107,9 @@ where
         + Send
         + Sync,
 {
-    fn do_work<'s>(&'s mut self) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 's>> {
+    fn do_work<'s>(
+        &'s mut self,
+    ) -> core::pin::Pin<Box<dyn Future<Output = eyre::Result<()>> + 's>> {
         Box::pin(async { self.subscribe().await })
     }
 }
