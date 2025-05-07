@@ -89,10 +89,7 @@ where
         let batch = response
             .tasks
             .into_iter()
-            .map(|task| PublishMessage {
-                deduplication_id: task.id.0.to_string(),
-                data: task,
-            })
+            .map(PublishMessage::from)
             .collect();
 
         tracing::debug!("sending to queue");

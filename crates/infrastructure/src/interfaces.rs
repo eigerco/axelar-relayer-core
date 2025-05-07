@@ -50,11 +50,12 @@ pub mod consumer {
 #[cfg(feature = "publisher-interfaces")]
 pub mod publisher {
     use core::error::Error;
+    use core::fmt::Display;
 
     /// Generic trait for Id on a type
     pub trait QueueMsgId {
         /// type of message id
-        type MessageId;
+        type MessageId: Display;
         /// return id
         fn id(&self) -> Self::MessageId;
     }
@@ -73,6 +74,15 @@ pub mod publisher {
         pub deduplication_id: String,
         /// Data
         pub data: T,
+    }
+
+    impl<T: QueueMsgId> From<T> for PublishMessage<T> {
+        fn from(value: T) -> Self {
+            Self {
+                deduplication_id: value.id().to_string(),
+                data: value,
+            }
+        }
     }
 
     /// publisher
