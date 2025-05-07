@@ -1539,6 +1539,7 @@ dependencies = [
  "borsh",
  "flume",
  "futures",
+ "gcloud-gax",
  "gcloud-googleapis",
  "gcloud-pubsub",
  "hex",

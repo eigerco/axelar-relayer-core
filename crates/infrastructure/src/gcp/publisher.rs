@@ -1,8 +1,10 @@
 use core::fmt::{Debug, Display};
 use core::marker::PhantomData;
 use std::collections::HashMap;
+use std::time::Duration;
 
 use borsh::{BorshDeserialize, BorshSerialize};
+use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use google_cloud_pubsub::client::Client;
 use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
@@ -33,7 +35,8 @@ impl<T> GcpPublisher<T> {
             workers: num_cpu.checked_mul(2).unwrap_or(num_cpu),
             // TODO: move to config
             bundle_size: 100,
-            ..Default::default()
+            retry_setting: Some(RetrySetting::default()),
+            flush_interval: Duration::from_millis(100),
         };
 
         let publisher = topic.new_publisher(Some(config));
@@ -148,6 +151,9 @@ where
         Ok(res)
     }
 
+    // NOTE: We send all messages via multiple workers, msgs are sent indepentently
+    // On any failure this entire batch will be re-send which is trade-off
+    // since with gcp uptime of 99.9% this should always succeed and we only update redis once
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
     async fn publish_batch(

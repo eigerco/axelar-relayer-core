@@ -14,6 +14,7 @@ redis = { workspace = true, optional = true }
 google-cloud-googleapis = { workspace = true, optional = true, features = [
   "pubsub",
 ] }
+google-cloud-gax = { workspace = true, optional = true }
 tonic = { workspace = true, optional = true }
 flume = { workspace = true, optional = true, features = ["async"] }
 url.workspace = true
@@ -32,7 +33,7 @@ uuid.workspace = true
 workspace = true
 
 [features]
-default = ["nats"]
+default = ["gcp"]
 nats = [
   "dep:async-nats",
   "dep:borsh",
@@ -50,6 +51,7 @@ gcp = [
   "dep:tokio-util",
   "dep:flume",
   "dep:num_cpus",
+  "dep:google-cloud-gax",
   "consumer-interfaces",
   "publisher-interfaces",
   "storage-interfaces",
