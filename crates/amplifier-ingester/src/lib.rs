@@ -38,7 +38,7 @@ where
     }
 
     /// process queue message
-    pub async fn process_queue_msg<Msg: QueueMessage<Event>>(&self, queue_msg: Msg) {
+    pub async fn process_queue_msg<Msg: QueueMessage<Event>>(&self, mut queue_msg: Msg) {
         let chain_with_trailing_slash = WithTrailingSlash::new(self.chain.clone());
 
         let event = queue_msg.decoded().clone();

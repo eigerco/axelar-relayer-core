@@ -1,7 +1,7 @@
 use core::fmt::{Debug, Display};
 use core::marker::PhantomData;
+use core::time::Duration;
 use std::collections::HashMap;
-use std::time::Duration;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use google_cloud_gax::retry::RetrySetting;
@@ -58,6 +58,7 @@ where
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
     async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, GcpError> {
+        tracing::debug!(?msg.deduplication_id, ?msg.data, "publishing message");
         let encoded = borsh::to_vec(&msg.data).map_err(GcpError::Serialize)?;
         let mut attributes = HashMap::new();
         attributes.insert(MSG_ID.to_owned(), msg.deduplication_id);
@@ -68,11 +69,13 @@ where
         };
         let awaiter = self.publisher.publish(message.clone()).await;
 
-        // NOTE: We always await for message to be sent
+        // NOTE: await until messages is sent
         let result = awaiter
             .get()
             .await
             .map_err(|err| GcpError::Publish(Box::new(err)))?;
+
+        tracing::debug!("message published");
         Ok(result)
     }
 
@@ -85,6 +88,7 @@ where
         let mut publish_handles = Vec::with_capacity(batch.len());
 
         for msg in batch {
+            tracing::debug!(?msg.deduplication_id, ?msg.data, "publishing message");
             let encoded = borsh::to_vec(&msg.data).map_err(GcpError::Serialize)?;
             let mut attributes = HashMap::new();
             attributes.insert(MSG_ID.to_owned(), msg.deduplication_id);
@@ -95,8 +99,10 @@ where
             };
             let awaiter = self.publisher.publish(message.clone()).await;
             publish_handles.push(awaiter);
+            tracing::debug!("message added to publish queue");
         }
 
+        // NOTE: await until all messages are sent
         let mut output = Vec::new();
         for handle in publish_handles {
             let res = handle
@@ -105,6 +111,7 @@ where
                 .map_err(|err| GcpError::Publish(Box::new(err)))?;
             output.push(res);
         }
+        tracing::debug!("batch published");
 
         Ok(output)
     }
@@ -152,9 +159,10 @@ where
         Ok(res)
     }
 
-    // NOTE: We send all messages via multiple workers, msgs are sent indepentently
-    // On any failure this entire batch will be re-send which is trade-off
-    // since with gcp uptime of 99.9% this should always succeed and we only update redis once
+    // NOTE: all messages are batched and send independently via workers, on success last message
+    // task id is saved as last processed in redis. If any of them fail
+    // entire batch is regarded failed and will be retried. Deduplication happens on consumers side
+    // per gcp recommendation
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
     async fn publish_batch(

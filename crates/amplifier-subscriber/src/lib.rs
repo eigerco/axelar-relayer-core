@@ -76,11 +76,15 @@ where
             },
             Err(err) => return Err(eyre::Report::new(err).wrap_err("amplifier api failed")),
         };
+
         tracing::debug!(?response, "amplifier response");
 
-        if !response.tasks.is_empty() {
-            tracing::info!(count = response.tasks.len(), "got amplifier tasks");
+        if response.tasks.is_empty() {
+            tracing::debug!("no amplifier tasks");
+            return Ok(())
         }
+
+        tracing::info!(count = response.tasks.len(), "got amplifier tasks");
 
         let batch = response
             .tasks

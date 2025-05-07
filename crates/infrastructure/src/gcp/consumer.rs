@@ -87,6 +87,7 @@ impl<T: Debug> interfaces::consumer::QueueMessage<T> for GcpMessage<T> {
 
                 tracing::debug!("acknowledged, updating redis...");
 
+                // NOTE: regard this message with its id to be processed for the next 10 minutes
                 let _: String = self
                     .redis_connection
                     .set_ex(self.redis_id_key(), "1", TEN_MINUTES_IN_SECS)
@@ -229,25 +230,25 @@ where
                                         "message with id {} already processed, skipping",
                                         message.id
                                     );
-                                    return;
+                                    if let Err(err) = message
+                                        .msg
+                                        .ack()
+                                        .await
+                                        .map_err(|err| GcpError::Ack(Box::new(err)))
+                                    {
+                                        tracing::error!(?err, "failed to ack duplicate message");
+                                        forward_message(Err(err), sender, cancel).await;
+                                    }
                                 }
                                 Ok(false) => {
-                                    if let Err(err) = sender.send_async(Ok(message)).await {
-                                        tracing::info!(?err, "shutting down");
-                                        cancel.cancel();
-                                    }
+                                    forward_message(Ok(message), sender, cancel).await;
                                 }
                                 Err(err) => {
-                                    if let Err(err) = sender.send_async(Err(err)).await {
-                                        tracing::error!(?err, "message exist check error");
-                                    }
+                                    forward_message(Err(err), sender, cancel).await;
                                 }
                             },
                             Err(err) => {
-                                if let Err(err) = sender.send_async(Err(err)).await {
-                                    tracing::info!(?err, "shutting down");
-                                    cancel.cancel();
-                                }
+                                forward_message(Err(err), sender, cancel).await;
                             }
                         }
                     }
@@ -258,6 +259,19 @@ where
             .await
             .map_err(|err| GcpError::ReceiverTaskCrash(Box::new(err)))
     })
+}
+
+async fn forward_message<T>(
+    message_result: Result<GcpMessage<T>, GcpError>,
+    sender: flume::Sender<Result<GcpMessage<T>, GcpError>>,
+    cancel: CancellationToken,
+) where
+    T: BorshDeserialize + Send + Sync + Debug + 'static,
+{
+    if let Err(err) = sender.send_async(message_result).await {
+        tracing::info!(?err, "shutting down");
+        cancel.cancel();
+    }
 }
 
 impl<T> Drop for GcpConsumer<T> {
