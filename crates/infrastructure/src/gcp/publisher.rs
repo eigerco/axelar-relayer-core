@@ -93,6 +93,8 @@ where
         &self,
         batch: Vec<PublishMessage<T>>,
     ) -> Result<Vec<Self::Return>, GcpError> {
+        tracing::debug!("publishing {} count of messages as a batch", batch.len());
+
         let mut publish_handles = Vec::with_capacity(batch.len());
 
         for msg in batch {
@@ -156,6 +158,7 @@ where
         let id = msg.data.id();
         let res = self.publisher.publish(msg).await?;
         self.last_message_id_store.upsert(&id).await?;
+        tracing::info!("sent of messages to queue. Last message id is set to {id}");
         Ok(res)
     }
 
@@ -173,10 +176,14 @@ where
             return Err(GcpError::NoMsgToPublish);
         };
 
+        let count = batch.len();
+
         let id = last_msg.data.id();
         let res = self.publisher.publish_batch(batch).await?;
 
         self.last_message_id_store.upsert(&id).await?;
+
+        tracing::info!("sent {count} of messages to queue. Last message id is set to {id}");
 
         Ok(res)
     }
