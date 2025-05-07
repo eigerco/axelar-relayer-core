@@ -155,10 +155,10 @@ where
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
     async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, GcpError> {
-        let id = msg.data.id();
+        let last_msg_id = msg.data.id();
         let res = self.publisher.publish(msg).await?;
-        self.last_message_id_store.upsert(&id).await?;
-        tracing::info!("sent of messages to queue. Last message id is set to {id}");
+        self.last_message_id_store.upsert(&last_msg_id).await?;
+        tracing::info!("sent of messages to queue. Last message id is set to {last_msg_id}");
         Ok(res)
     }
 
@@ -178,12 +178,14 @@ where
 
         let count = batch.len();
 
-        let id = last_msg.data.id();
+        let last_msg_id = last_msg.data.id();
         let res = self.publisher.publish_batch(batch).await?;
 
-        self.last_message_id_store.upsert(&id).await?;
+        self.last_message_id_store.upsert(&last_msg_id).await?;
 
-        tracing::info!("sent {count} of messages to queue. Last message id is set to {id}");
+        tracing::info!(
+            "sent {count} of messages to queue. Last message id is set to {last_msg_id}"
+        );
 
         Ok(res)
     }
