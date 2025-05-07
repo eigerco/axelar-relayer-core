@@ -16,6 +16,8 @@ pub mod kv_store;
 pub mod publisher;
 pub(crate) mod util;
 
+/// Channel capacity for gcp publisher/consumer
+pub const MESSAGE_CAPACITY: usize = 100;
 /// Errors
 #[allow(clippy::module_name_repetitions, reason = "Descriptive name")]
 #[derive(Debug, thiserror::Error)]
