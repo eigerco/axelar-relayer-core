@@ -26,9 +26,10 @@ use crate::interfaces::publisher::QueueMsgId;
 ///
 /// * `subscription` - The GCP Pub/Sub subscription path to consume from, typically in the format
 ///   `projects/{project}/subscriptions/{subscription}`.
+/// * `redis_connection` - Connection string for the Redis instance
 /// * `message_buffer_size` - The size of the internal message buffer. Controls how many message
 ///   will be in buffer to process.
-/// * `nak_deadline_secs` - The deadline (in seconds) for message processing. If a message isn't
+/// * `ack_deadline_secs` - The deadline (in seconds) for message processing. If a message isn't
 ///   acknowledged within this deadline, GCP will attempt to redeliver it.
 /// * `cancel_token` - A [`CancellationToken`] used to gracefully shut down the consumer when
 ///   needed.
@@ -74,6 +75,7 @@ use crate::interfaces::publisher::QueueMsgId;
 ///     // Set up the consumer with a 30-second NAK deadline
 ///     let consumer = connect_consumer::<EventMessage>(
 ///         "projects/my-project/subscriptions/my-events",
+///         "redis://redis-server:6379".to_owned(),
 ///         100, // buffer size
 ///         30,  // NAK deadline in seconds
 ///         cancel_token.clone(),
@@ -86,7 +88,7 @@ use crate::interfaces::publisher::QueueMsgId;
 ///       .await
 ///       .expect("could not retrieve messages")
 ///        .for_each_concurrent(10, move |queue_msg| async move {
-///             let queue_msg = match queue_msg {
+///             let mut queue_msg = match queue_msg {
 ///                 Ok(queue_msg) => queue_msg,
 ///                 Err(err) => {
 ///                     tracing::error!(?err, "could not receive queue msg");
@@ -161,7 +163,7 @@ where
 /// use infrastructure::gcp::connectors::connect_publisher;
 /// use infrastructure::gcp::publisher::GcpPublisher;
 /// use infrastructure::gcp::GcpError;
-/// use crate::infrastructure::interfaces::publisher::Publisher;
+/// use crate::infrastructure::interfaces::publisher::{Publisher, PublishMessage};
 ///
 ///
 /// #[derive(Debug, borsh::BorshSerialize)]
@@ -181,8 +183,13 @@ where
 ///       payload: Vec::<_>::default()
 ///     };
 ///
+///     let publish_message = PublishMessage {
+///         deduplication_id: "".to_owned(),
+///         data: msg
+///     };
+///
 ///     // Create and publish
-///     publisher.publish("".to_owned(), &msg).await?;
+///     publisher.publish(publish_message).await?;
 ///
 ///     Ok(())
 /// }
@@ -238,7 +245,7 @@ pub async fn connect_publisher<T>(topic: &str) -> Result<GcpPublisher<T>, GcpErr
 /// use infrastructure::gcp::connectors::connect_publisher;
 /// use infrastructure::gcp::publisher::GcpPublisher;
 /// use infrastructure::gcp::GcpError;
-/// use crate::infrastructure::interfaces::publisher::Publisher;
+/// use crate::infrastructure::interfaces::publisher::{Publisher, PublishMessage};
 /// use infrastructure::gcp::connectors::connect_peekable_publisher;
 /// use infrastructure::gcp::publisher::PeekableGcpPublisher;
 /// use crate::infrastructure::interfaces::publisher::PeekMessage;
@@ -271,8 +278,13 @@ pub async fn connect_publisher<T>(topic: &str) -> Result<GcpPublisher<T>, GcpErr
 ///       payload: Vec::<_>::default()
 ///     };
 ///
+///     let publish_message = PublishMessage {
+///         deduplication_id: "".to_owned(),
+///         data: msg
+///     };
+///
 ///     // Create and publish
-///     publisher.publish("".to_owned(), &msg).await?;
+///     publisher.publish(publish_message).await?;
 ///
 ///     // Later, we can peek at the transaction status
 ///     let msg_id = publisher.peek_last().await?;
