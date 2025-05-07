@@ -63,6 +63,7 @@ resource "google_pubsub_subscription" "amplifier_events_sub" {
   name  = local.amplifier_events_sub
   topic = google_pubsub_topic.amplifier_events.name
 
+  enable_exactly_once_delivery = true
   ack_deadline_seconds = var.ack_deadline_seconds
 
   retry_policy {
@@ -88,6 +89,7 @@ resource "google_pubsub_subscription" "amplifier_tasks_sub" {
   name  = local.amplifier_tasks_sub
   topic = google_pubsub_topic.amplifier_tasks.name
 
+  enable_exactly_once_delivery = true
   ack_deadline_seconds = var.ack_deadline_seconds
 
   retry_policy {
