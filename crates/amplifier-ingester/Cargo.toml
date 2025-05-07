@@ -9,7 +9,7 @@ license.workspace = true
 
 [dependencies]
 relayer-amplifier-api-integration.workspace = true
-supervisor.workspace = true
+supervisor = { workspace = true, optional = true }
 tracing.workspace = true
 eyre.workspace = true
 infrastructure = { workspace = true, features = ["consumer-interfaces"] }
@@ -17,3 +17,6 @@ futures.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+supervisor = ["dep:supervisor"]

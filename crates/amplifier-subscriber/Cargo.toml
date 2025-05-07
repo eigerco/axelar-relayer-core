@@ -9,10 +9,13 @@ license.workspace = true
 
 [dependencies]
 amplifier-api.workspace = true
-supervisor.workspace = true
+supervisor = { workspace = true, optional = true }
 tracing.workspace = true
 eyre.workspace = true
 infrastructure = { workspace = true, features = ["publisher-interfaces"] }
 
 [lints]
 workspace = true
+
+[features]
+supervisor = ["dep:supervisor"]

@@ -126,6 +126,7 @@ where
     }
 }
 
+#[cfg(feature = "supervisor")]
 impl<EventQueueConsumer> supervisor::Worker for Ingester<EventQueueConsumer>
 where
     EventQueueConsumer: Consumer<amplifier_api::types::Event> + Send + Sync,

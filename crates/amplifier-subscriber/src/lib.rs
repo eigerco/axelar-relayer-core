@@ -101,6 +101,7 @@ where
     }
 }
 
+#[cfg(feature = "supervisor")]
 impl<TaskQueuePublisher> supervisor::Worker for Subscriber<TaskQueuePublisher>
 where
     TaskQueuePublisher: Publisher<amplifier_api::types::TaskItem>
