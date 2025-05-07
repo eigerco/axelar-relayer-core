@@ -5,7 +5,7 @@ use borsh::BorshDeserialize;
 use google_cloud_pubsub::client::Client;
 use google_cloud_pubsub::subscriber::{ReceivedMessage, SubscriberConfig};
 use google_cloud_pubsub::subscription::{ReceiveConfig, Subscription};
-use redis::AsyncCommands;
+use redis::AsyncCommands as _;
 use redis::aio::MultiplexedConnection;
 use tokio_util::sync::CancellationToken;
 
@@ -13,6 +13,8 @@ use super::GcpError;
 use super::util::get_subscription;
 use crate::gcp::publisher::MSG_ID;
 use crate::interfaces;
+
+const TEN_MINUTES_IN_SECS: u64 = 60 * 10;
 
 /// Decoded queue message
 #[derive(Debug)]
@@ -61,7 +63,7 @@ impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
     }
 
     async fn is_processed(&mut self) -> Result<bool, GcpError> {
-        let exists: bool = self.redis_connection.exists(&self.redis_id_key()).await?;
+        let exists: bool = self.redis_connection.exists(self.redis_id_key()).await?;
         Ok(exists)
     }
 }
@@ -77,21 +79,26 @@ impl<T: Debug> interfaces::consumer::QueueMessage<T> for GcpMessage<T> {
         tracing::debug!(?ack_kind, "sending ack");
 
         match ack_kind {
-            interfaces::consumer::AckKind::Ack => self
-                .msg
-                .ack()
-                .await
-                .map_err(|err| GcpError::Ack(Box::new(err)))?,
+            interfaces::consumer::AckKind::Ack => {
+                self.msg
+                    .ack()
+                    .await
+                    .map_err(|err| GcpError::Ack(Box::new(err)))?;
+
+                tracing::debug!("acknowledged, updating redis...");
+
+                let _: String = self
+                    .redis_connection
+                    .set_ex(self.redis_id_key(), "1", TEN_MINUTES_IN_SECS)
+                    .await?;
+
+                tracing::debug!("redis updated");
+            }
             interfaces::consumer::AckKind::Nak => {
                 self.msg
                     .nack()
                     .await
                     .map_err(|err| GcpError::Nak(Box::new(err)))?;
-
-                let _: String = self
-                    .redis_connection
-                    .set_ex(self.redis_id_key(), "1", 60 * 10)
-                    .await?;
             }
             interfaces::consumer::AckKind::Progress => self
                 .msg
