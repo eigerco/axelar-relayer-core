@@ -3,8 +3,8 @@ use core::marker::PhantomData;
 
 use borsh::BorshDeserialize;
 use google_cloud_pubsub::client::Client;
-use google_cloud_pubsub::subscriber::ReceivedMessage;
-use google_cloud_pubsub::subscription::Subscription;
+use google_cloud_pubsub::subscriber::{ReceivedMessage, SubscriberConfig};
+use google_cloud_pubsub::subscription::{ReceiveConfig, Subscription};
 use tokio_util::sync::CancellationToken;
 
 use super::GcpError;
@@ -16,11 +16,11 @@ use crate::interfaces;
 pub struct GcpMessage<T> {
     msg: ReceivedMessage,
     decoded: T,
-    nak_deadline_secs: i32,
+    ack_deadline_secs: i32,
 }
 
 impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
-    fn decode(msg: ReceivedMessage, nak_deadline_secs: i32) -> Result<Self, GcpError> {
+    fn decode(msg: ReceivedMessage, ack_deadline_secs: i32) -> Result<Self, GcpError> {
         tracing::debug!(?msg, "decoding msg");
         let decoded =
             T::deserialize(&mut msg.message.data.as_ref()).map_err(GcpError::Deserialize)?;
@@ -28,7 +28,7 @@ impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
         Ok(Self {
             msg,
             decoded,
-            nak_deadline_secs,
+            ack_deadline_secs,
         })
     }
 }
@@ -56,7 +56,7 @@ impl<T: Debug> interfaces::consumer::QueueMessage<T> for GcpMessage<T> {
                 .map_err(|err| GcpError::Nak(Box::new(err)))?,
             interfaces::consumer::AckKind::Progress => self
                 .msg
-                .modify_ack_deadline(self.nak_deadline_secs)
+                .modify_ack_deadline(self.ack_deadline_secs)
                 .await
                 .map_err(|err| GcpError::ModifyAckDeadline(Box::new(err)))?,
         }
@@ -82,7 +82,7 @@ where
         client: &Client,
         subscription: &str,
         message_buffer_size: usize,
-        nak_deadline_secs: i32,
+        ack_deadline_secs: i32,
         cancel_token: CancellationToken,
     ) -> Result<Self, GcpError> {
         let subscription = get_subscription(client, subscription).await?;
@@ -95,7 +95,7 @@ where
         let read_messages_handle = start_read_messages_task(
             subscription,
             sender,
-            nak_deadline_secs,
+            ack_deadline_secs,
             cancel_token.clone(),
         );
         Ok(Self {
@@ -133,12 +133,22 @@ where
 fn start_read_messages_task<T>(
     subscription: Subscription,
     sender: flume::Sender<Result<GcpMessage<T>, GcpError>>,
-    nak_deadline_secs: i32,
+    ack_deadline_secs: i32,
     cancel_token: CancellationToken,
 ) -> tokio::task::JoinHandle<Result<(), GcpError>>
 where
     T: BorshDeserialize + Send + Sync + Debug + 'static,
 {
+    let num_cpu = num_cpus::get();
+    // TODO: Move to config
+    let receive_config = ReceiveConfig {
+        channel_capacity: Some(100),
+        worker_count: num_cpu.checked_mul(2).unwrap_or(num_cpu),
+        subscriber_config: Some(SubscriberConfig {
+            stream_ack_deadline_seconds: ack_deadline_secs,
+            ..Default::default()
+        }),
+    };
     tokio::spawn(async move {
         subscription
             .receive(
@@ -146,7 +156,7 @@ where
                     let sender = sender.clone();
                     async move {
                         tracing::debug!(?message, "got message");
-                        match GcpMessage::decode(message, nak_deadline_secs) {
+                        match GcpMessage::decode(message, ack_deadline_secs) {
                             Ok(decoded_message) => {
                                 if let Err(err) = sender.send_async(Ok(decoded_message)).await {
                                     tracing::info!(?err, "shutting down");
@@ -163,7 +173,7 @@ where
                     }
                 },
                 cancel_token.clone(),
-                None,
+                Some(receive_config),
             )
             .await
             .map_err(|err| GcpError::ReceiverTaskCrash(Box::new(err)))
