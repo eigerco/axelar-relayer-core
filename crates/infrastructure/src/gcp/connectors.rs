@@ -106,6 +106,7 @@ use crate::interfaces::publisher::QueueMsgId;
 #[tracing::instrument]
 pub async fn connect_consumer<T>(
     subscription: &str,
+    redis_connection: String,
     message_buffer_size: usize,
     nak_deadline_secs: i32,
     cancel_token: CancellationToken,
@@ -117,6 +118,7 @@ where
     let consumer = GcpConsumer::new(
         &client,
         subscription,
+        redis_connection,
         message_buffer_size,
         nak_deadline_secs,
         cancel_token,

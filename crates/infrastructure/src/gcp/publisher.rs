@@ -16,7 +16,8 @@ use super::util::get_topic;
 use crate::interfaces;
 use crate::interfaces::publisher::{PublishMessage, QueueMsgId};
 
-const MSG_ID: &str = "Msg-Id";
+/// Deduplication Id
+pub const MSG_ID: &str = "Msg-Id";
 
 /// Queue publisher
 #[allow(clippy::module_name_repetitions, reason = "Descriptive name")]

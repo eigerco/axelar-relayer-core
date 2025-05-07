@@ -5,15 +5,18 @@ use borsh::BorshDeserialize;
 use google_cloud_pubsub::client::Client;
 use google_cloud_pubsub::subscriber::{ReceivedMessage, SubscriberConfig};
 use google_cloud_pubsub::subscription::{ReceiveConfig, Subscription};
+use redis::aio::MultiplexedConnection;
 use tokio_util::sync::CancellationToken;
 
 use super::GcpError;
 use super::util::get_subscription;
+use crate::gcp::publisher::MSG_ID;
 use crate::interfaces;
 
 /// Decoded queue message
 #[derive(Debug)]
 pub struct GcpMessage<T> {
+    id: String,
     msg: ReceivedMessage,
     decoded: T,
     ack_deadline_secs: i32,
@@ -25,7 +28,16 @@ impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
         let decoded =
             T::deserialize(&mut msg.message.data.as_ref()).map_err(GcpError::Deserialize)?;
         tracing::debug!(?decoded, "decoded msg");
+
+        let id = msg
+            .message
+            .attributes
+            .get(MSG_ID)
+            .ok_or(GcpError::MsgIdNotSet)?
+            .clone();
+
         Ok(Self {
+            id,
             msg,
             decoded,
             ack_deadline_secs,
@@ -81,6 +93,7 @@ where
     pub(crate) async fn new(
         client: &Client,
         subscription: &str,
+        redis_connection: String,
         message_buffer_size: usize,
         ack_deadline_secs: i32,
         cancel_token: CancellationToken,
@@ -92,12 +105,21 @@ where
         // NOTE: clone for supervised monolithic binary
         let cancel_token = cancel_token.child_token();
 
+        let redis_client = redis::Client::open(redis_connection).map_err(GcpError::Connection)?;
+
+        let redis_connection = redis_client
+            .get_multiplexed_async_connection()
+            .await
+            .map_err(GcpError::Connection)?;
+
         let read_messages_handle = start_read_messages_task(
+            redis_connection,
             subscription,
             sender,
             ack_deadline_secs,
             cancel_token.clone(),
         );
+
         Ok(Self {
             receiver,
             cancel_token,
@@ -131,6 +153,7 @@ where
 /// Starts tokio task to read from subscription to relay (messages) to
 /// receiver channel
 fn start_read_messages_task<T>(
+    redis_connection: MultiplexedConnection,
     subscription: Subscription,
     sender: flume::Sender<Result<GcpMessage<T>, GcpError>>,
     ack_deadline_secs: i32,
@@ -149,19 +172,50 @@ where
             ..Default::default()
         }),
     };
+
+    let subscription_name = subscription.fully_qualified_name().to_owned();
     tokio::spawn(async move {
         subscription
             .receive(
                 move |message, cancel| {
                     let sender = sender.clone();
+                    let subscription_name = subscription_name.clone();
+                    let mut redis_connection = redis_connection.clone();
                     async move {
                         tracing::debug!(?message, "got message");
                         match GcpMessage::decode(message, ack_deadline_secs) {
-                            Ok(decoded_message) => {
-                                if let Err(err) = sender.send_async(Ok(decoded_message)).await {
-                                    tracing::info!(?err, "shutting down");
-                                    cancel.cancel();
+                            Ok(message) => {
+                                let dedup_key = format!(
+                                    "dedup:{}:id:{}",
+                                    subscription_name,
+                                    message.id
+                                );
+
+                                // NOTE: Expiration 10 min as recommended by gcp
+                                let exists =
+                                    set_nx_ex(&mut redis_connection, &dedup_key, 60 * 10).await;
+
+                                match exists {
+                                    Ok(exists) => {
+                                        if exists {
+                                            tracing::debug!("message with id {dedup_key} already processed, skipping");
+                                            return
+                                        }
+
+                                        if let Err(err) = sender.send_async(Ok(message)).await {
+                                            tracing::info!(?err, "shutting down");
+                                            cancel.cancel();
+                                        }
+                                    },
+                                    Err(err) => {
+                                        tracing::error!(?err, "error setting nx ex key");
+                                        if let Err(err) = sender.send_async(Err(err)).await {
+                                            tracing::error!(?err, "could not send err");
+                                            cancel.cancel();
+                                        }
+                                    }
                                 }
+
                             }
                             Err(err) => {
                                 if let Err(err) = sender.send_async(Err(err)).await {
@@ -178,6 +232,23 @@ where
             .await
             .map_err(|err| GcpError::ReceiverTaskCrash(Box::new(err)))
     })
+}
+
+async fn set_nx_ex(
+    connection: &mut MultiplexedConnection,
+    key: &str,
+    expiration_secs: u8,
+) -> Result<bool, GcpError> {
+    let set_key: Option<String> = redis::cmd("SET")
+        .arg(key)
+        .arg("1")
+        .arg("NX")
+        .arg("EX")
+        .arg(expiration_secs)
+        .query_async(connection)
+        .await
+        .map_err(GcpError::NxEx)?;
+    Ok(set_key.is_some())
 }
 
 impl<T> Drop for GcpConsumer<T> {
