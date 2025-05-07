@@ -60,4 +60,6 @@ pub enum GcpError {
     ConsumerReadTaskJoin(JoinError),
     #[error("consumer read task exited without error")]
     ConsumerReadTaskExited,
+    #[error("no messages to publish")]
+    NoMsgToPublish,
 }

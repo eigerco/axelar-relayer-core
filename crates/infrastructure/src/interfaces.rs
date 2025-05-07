@@ -67,6 +67,14 @@ pub mod publisher {
         ) -> impl Future<Output = Result<Option<T::MessageId>, impl Error + Send + Sync + 'static>>;
     }
 
+    /// Publish Messsage
+    pub struct PublishMessage<T> {
+        /// Deduplication id
+        pub deduplication_id: String,
+        /// Data
+        pub data: T,
+    }
+
     /// publisher
     #[allow(clippy::impl_trait_in_params, reason = "improves readability")]
     pub trait Publisher<T> {
@@ -75,9 +83,13 @@ pub mod publisher {
         /// Publish message to queue
         fn publish(
             &self,
-            deduplication_id: impl Into<String>,
-            data: &T,
+            msg: PublishMessage<T>,
         ) -> impl Future<Output = Result<Self::Return, impl Error + Send + Sync + 'static>>;
+        /// Publish batch to queue
+        fn publish_batch(
+            &self,
+            msg: Vec<PublishMessage<T>>,
+        ) -> impl Future<Output = Result<Vec<Self::Return>, impl Error + Send + Sync + 'static>>;
     }
 }
 

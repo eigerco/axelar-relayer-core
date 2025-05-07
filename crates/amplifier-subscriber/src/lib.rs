@@ -4,7 +4,7 @@ use core::pin::Pin;
 use amplifier_api::requests::WithTrailingSlash;
 use amplifier_api::{AmplifierApiClient, requests};
 use eyre::Context as _;
-use infrastructure::interfaces::publisher::{PeekMessage, Publisher};
+use infrastructure::interfaces::publisher::{PeekMessage, PublishMessage, Publisher};
 
 /// subscribes to tasks from amplifier and sends them to queue
 pub struct Subscriber<TaskQueuePublisher> {
@@ -82,13 +82,20 @@ where
             tracing::info!(count = response.tasks.len(), "got amplifier tasks");
         }
 
-        for task in response.tasks {
-            tracing::debug!(?task, "sending to queue");
-            self.task_queue_publisher
-                .publish(task.id.0, &task)
-                .await
-                .wrap_err("could not publish task to queue")?;
-        }
+        let batch = response
+            .tasks
+            .into_iter()
+            .map(|task| PublishMessage {
+                deduplication_id: task.id.0.to_string(),
+                data: task,
+            })
+            .collect();
+
+        tracing::debug!("sending to queue");
+        self.task_queue_publisher
+            .publish_batch(batch)
+            .await
+            .wrap_err("could not publish tasks to queue")?;
         Ok(())
     }
 }

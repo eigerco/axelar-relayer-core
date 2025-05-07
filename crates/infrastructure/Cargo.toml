@@ -32,7 +32,7 @@ uuid.workspace = true
 workspace = true
 
 [features]
-default = ["gcp"]
+default = ["nats"]
 nats = [
   "dep:async-nats",
   "dep:borsh",

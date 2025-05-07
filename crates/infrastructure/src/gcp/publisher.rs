@@ -12,7 +12,7 @@ use super::GcpError;
 use super::kv_store::RedisClient;
 use super::util::get_topic;
 use crate::interfaces;
-use crate::interfaces::publisher::QueueMsgId;
+use crate::interfaces::publisher::{PublishMessage, QueueMsgId};
 
 const MSG_ID: &str = "Msg-Id";
 
@@ -53,15 +53,10 @@ where
 
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
-    async fn publish(
-        &self,
-        // Deduplication is automatic
-        deduplication_id: impl Into<String>,
-        data: &T,
-    ) -> Result<Self::Return, GcpError> {
-        let encoded = borsh::to_vec(&data).map_err(GcpError::Serialize)?;
+    async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, GcpError> {
+        let encoded = borsh::to_vec(&msg.data).map_err(GcpError::Serialize)?;
         let mut attributes = HashMap::new();
-        attributes.insert(MSG_ID.to_owned(), deduplication_id.into());
+        attributes.insert(MSG_ID.to_owned(), msg.deduplication_id);
         let message = PubsubMessage {
             data: encoded,
             attributes,
@@ -69,12 +64,45 @@ where
         };
         let awaiter = self.publisher.publish(message.clone()).await;
 
-        // NOTE: We always await since messages should be sent sequentially
+        // NOTE: We always await for message to be sent
         let result = awaiter
             .get()
             .await
             .map_err(|err| GcpError::Publish(Box::new(err)))?;
         Ok(result)
+    }
+
+    #[allow(refining_impl_trait, reason = "simplification")]
+    #[tracing::instrument(skip_all)]
+    async fn publish_batch(
+        &self,
+        batch: Vec<PublishMessage<T>>,
+    ) -> Result<Vec<Self::Return>, GcpError> {
+        let mut publish_handles = Vec::with_capacity(batch.len());
+
+        for msg in batch {
+            let encoded = borsh::to_vec(&msg.data).map_err(GcpError::Serialize)?;
+            let mut attributes = HashMap::new();
+            attributes.insert(MSG_ID.to_owned(), msg.deduplication_id);
+            let message = PubsubMessage {
+                data: encoded,
+                attributes,
+                ..Default::default()
+            };
+            let awaiter = self.publisher.publish(message.clone()).await;
+            publish_handles.push(awaiter);
+        }
+
+        let mut output = Vec::new();
+        for handle in publish_handles {
+            let res = handle
+                .get()
+                .await
+                .map_err(|err| GcpError::Publish(Box::new(err)))?;
+            output.push(res);
+        }
+
+        Ok(output)
     }
 }
 
@@ -110,15 +138,31 @@ where
     T::MessageId: BorshSerialize + BorshDeserialize + Debug + Display,
 {
     type Return = String;
+
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
-    async fn publish(
+    async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, GcpError> {
+        let id = msg.data.id();
+        let res = self.publisher.publish(msg).await?;
+        self.last_message_id_store.upsert(&id).await?;
+        Ok(res)
+    }
+
+    #[allow(refining_impl_trait, reason = "simplification")]
+    #[tracing::instrument(skip_all)]
+    async fn publish_batch(
         &self,
-        deduplication_id: impl Into<String>,
-        data: &T,
-    ) -> Result<Self::Return, GcpError> {
-        let res = self.publisher.publish(deduplication_id, data).await?;
-        self.last_message_id_store.upsert(&data.id()).await?;
+        batch: Vec<PublishMessage<T>>,
+    ) -> Result<Vec<Self::Return>, GcpError> {
+        let Some(last_msg) = batch.last() else {
+            return Err(GcpError::NoMsgToPublish);
+        };
+
+        let id = last_msg.data.id();
+        let res = self.publisher.publish_batch(batch).await?;
+
+        self.last_message_id_store.upsert(&id).await?;
+
         Ok(res)
     }
 }
