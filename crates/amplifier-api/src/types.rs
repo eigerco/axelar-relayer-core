@@ -782,23 +782,6 @@ impl QueueMsgId for Event {
     }
 }
 
-impl Event {
-    /// Returns event id
-    #[allow(clippy::missing_const_for_fn, reason = "not applicable")]
-    #[must_use]
-    pub fn event_id(&self) -> &str {
-        match self {
-            Self::GasCredit(event) => &event.base.event_id.0,
-            Self::GasRefunded(event) => &event.base.event_id.0,
-            Self::Call(event) => &event.base.event_id.0,
-            Self::MessageApproved(event) => &event.base.event_id.0,
-            Self::MessageExecuted(event) => &event.base.event_id.0,
-            Self::CannotExecuteMessageV2(event) => &event.base.event_id.0,
-            Self::SignersRotated(event) => &event.base.event_id.0,
-        }
-    }
-}
-
 impl Display for Event {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
@@ -1110,6 +1093,7 @@ pub struct TaskItem {
 
 impl QueueMsgId for TaskItem {
     type MessageId = TaskItemId;
+
     fn id(&self) -> Self::MessageId {
         self.id.clone()
     }
