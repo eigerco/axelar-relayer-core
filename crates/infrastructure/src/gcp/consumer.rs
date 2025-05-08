@@ -113,7 +113,7 @@ impl<T: Debug> interfaces::consumer::QueueMessage<T> for GcpMessage<T> {
                     .map_err(|err| GcpError::ModifyAckDeadline(Box::new(err)))?;
             }
         }
-        tracing::debug!("ack sent");
+        tracing::debug!("operation completed");
         Ok(())
     }
 }
