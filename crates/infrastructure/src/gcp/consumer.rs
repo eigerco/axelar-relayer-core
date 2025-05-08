@@ -146,9 +146,8 @@ where
         // NOTE: clone for supervised monolithic binary
         let cancel_token = cancel_token.child_token();
 
-        let redis_client = redis::Client::open(redis_connection).map_err(GcpError::Connection)?;
-
-        let redis_connection = redis_client
+        let redis_connection = redis::Client::open(redis_connection)
+            .map_err(GcpError::Connection)?
             .get_multiplexed_async_connection()
             .await
             .map_err(GcpError::Connection)?;
