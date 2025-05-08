@@ -9,8 +9,8 @@ use redis::AsyncCommands as _;
 use redis::aio::MultiplexedConnection;
 use tokio_util::sync::CancellationToken;
 
+use super::GcpError;
 use super::util::get_subscription;
-use super::{GcpError, MESSAGE_CAPACITY};
 use crate::gcp::publisher::MSG_ID;
 use crate::interfaces;
 
@@ -204,7 +204,7 @@ where
 {
     let num_cpu = num_cpus::get();
     let receive_config = ReceiveConfig {
-        channel_capacity: Some(MESSAGE_CAPACITY),
+        channel_capacity: Some(num_cpu.checked_mul(10).unwrap_or(num_cpu)),
         worker_count: num_cpu.checked_mul(2).unwrap_or(num_cpu),
         subscriber_config: Some(SubscriberConfig {
             stream_ack_deadline_seconds: ack_deadline_secs,

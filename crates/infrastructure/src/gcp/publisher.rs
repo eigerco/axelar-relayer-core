@@ -11,7 +11,7 @@ use interfaces::kv_store::KvStore as _;
 
 use super::kv_store::RedisClient;
 use super::util::get_topic;
-use super::{GcpError, MESSAGE_CAPACITY};
+use super::{GcpError, MAX_BUNDLE_SIZE};
 use crate::interfaces;
 use crate::interfaces::publisher::{PublishMessage, QueueMsgId};
 
@@ -33,7 +33,7 @@ impl<T> GcpPublisher<T> {
         let config = PublisherConfig {
             // NOTE: scaling factor of 2-4 is recommended for io-bound work
             workers: num_cpu.checked_mul(2).unwrap_or(num_cpu),
-            bundle_size: MESSAGE_CAPACITY,
+            bundle_size: MAX_BUNDLE_SIZE,
             retry_setting: Some(RetrySetting::default()),
             ..Default::default()
         };
