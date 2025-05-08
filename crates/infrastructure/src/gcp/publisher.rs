@@ -6,7 +6,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use google_cloud_pubsub::client::Client;
-use google_cloud_pubsub::publisher::{Awaiter, Publisher, PublisherConfig};
+use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
 use interfaces::kv_store::KvStore as _;
 
 use super::kv_store::RedisClient;
@@ -47,22 +47,20 @@ impl<T> GcpPublisher<T> {
     }
 }
 
-impl<T> GcpPublisher<T>
+fn to_pubsub_message<T>(msg: PublishMessage<T>) -> Result<PubsubMessage, GcpError>
 where
     T: BorshSerialize + Debug,
 {
-    async fn pubsub_publish(&self, msg: PublishMessage<T>) -> Result<Awaiter, GcpError> {
-        let encoded = borsh::to_vec(&msg.data).map_err(GcpError::Serialize)?;
-        let mut attributes = HashMap::new();
-        attributes.insert(MSG_ID.to_owned(), msg.deduplication_id);
-        let message = PubsubMessage {
-            data: encoded,
-            attributes,
-            ..Default::default()
-        };
+    let encoded = borsh::to_vec(&msg.data).map_err(GcpError::Serialize)?;
+    let mut attributes = HashMap::new();
+    attributes.insert(MSG_ID.to_owned(), msg.deduplication_id);
+    let message = PubsubMessage {
+        data: encoded,
+        attributes,
+        ..Default::default()
+    };
 
-        Ok(self.publisher.publish(message.clone()).await)
-    }
+    Ok(message)
 }
 
 impl<T> interfaces::publisher::Publisher<T> for GcpPublisher<T>
@@ -75,7 +73,8 @@ where
     #[tracing::instrument(skip_all)]
     async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, GcpError> {
         tracing::debug!(?msg.deduplication_id, ?msg.data, "publishing message");
-        let awaiter = self.pubsub_publish(msg).await?;
+        let msg = to_pubsub_message(msg)?;
+        let awaiter = self.publisher.publish(msg).await;
 
         // NOTE: await until message is sent
         let result = awaiter
@@ -95,14 +94,12 @@ where
     ) -> Result<Vec<Self::Return>, GcpError> {
         tracing::debug!("publishing {} count of messages as a batch", batch.len());
 
-        let mut publish_handles = Vec::with_capacity(batch.len());
-
-        for msg in batch {
-            tracing::debug!(?msg.deduplication_id, ?msg.data, "publishing message");
-            let awaiter = self.pubsub_publish(msg).await?;
-            publish_handles.push(awaiter);
-            tracing::debug!("message added to publish queue");
-        }
+        let bulk = batch
+            .into_iter()
+            .map(to_pubsub_message)
+            .collect::<Result<Vec<PubsubMessage>, GcpError>>()?;
+        let publish_handles = self.publisher.publish_bulk(bulk).await;
+        tracing::debug!("message added to publish queue");
 
         // NOTE: await until all messages are sent
         let mut output = Vec::new();
