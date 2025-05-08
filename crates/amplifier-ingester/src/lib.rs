@@ -106,14 +106,10 @@ where
             .await
             .wrap_err("could not retrieve messages from queue")?
             .for_each_concurrent(self.concurrent_queue_items, |queue_msg| async {
-                let queue_msg = match queue_msg {
-                    Ok(queue_msg) => queue_msg,
-                    Err(err) => {
-                        tracing::error!(?err, "could not receive queue msg");
-                        return;
-                    }
-                };
-                self.process_queue_msg(queue_msg).await;
+                match queue_msg {
+                    Ok(msg) => self.process_queue_msg(msg).await,
+                    Err(err) => tracing::error!(?err, "could not receive queue msg"),
+                }
             })
             .await;
 
