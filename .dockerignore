@@ -1,0 +1,44 @@
+# Rust specific
+/target/
+**/*.rs.bk
+*.pdb
+
+# Development/IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+_typos.toml
+clippy.toml
+deny.toml
+rustfmt.toml
+
+# Git
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+docs/
+
+# Testing
+/tests/
+test_data/
+
+# Continuous Integration
+/.travis.yml
+/.github/workflows
+
+# Misc
+.dockerignore
+Dockerfile*
+docker-compose*
+*.log
+tmp/
