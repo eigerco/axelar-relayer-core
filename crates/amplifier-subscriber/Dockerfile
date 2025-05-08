@@ -1,16 +1,23 @@
 # ---- Build Stage ----
-FROM rust:1.86-slim-bookworm AS builder
+FROM rust:1.86-alpine AS builder
 
 WORKDIR /app
 
 # Install build dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    pkg-config \
-    libssl-dev \
+RUN apk add --no-cache \
+    pkgconfig \
+    openssl-dev \
+    openssl-libs-static \
+    build-base \
     ca-certificates \
-    build-essential && \
-    rm -rf /var/lib/apt/lists/*
+    musl-dev \
+    perl \
+    make
+
+# Set environment variables for static linking
+ENV OPENSSL_STATIC=1
+ENV OPENSSL_LIB_DIR=/usr/lib
+ENV OPENSSL_INCLUDE_DIR=/usr/include
 
 # Copy project files
 COPY . .
@@ -21,16 +28,13 @@ RUN cargo build --release --bin amplifier-subscriber --no-default-features --fea
     strip target/release/amplifier-subscriber
 
 # ---- Runtime Stage ----
-FROM debian:bookworm-slim
+FROM alpine:latest
 
 WORKDIR /app
 
 # Install minimal runtime dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    libssl3 \
-    ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache \
+    ca-certificates
 
 # Copy built binary
 COPY --from=builder /app/target/release/amplifier-subscriber /app/amplifier-subscriber
@@ -39,7 +43,7 @@ COPY --from=builder /app/target/release/amplifier-subscriber /app/amplifier-subs
 EXPOSE 8080
 
 # Create non-root user
-RUN useradd --no-log-init --create-home relayer
+RUN adduser -D relayer
 USER relayer
 
 # Entrypoint and default command
