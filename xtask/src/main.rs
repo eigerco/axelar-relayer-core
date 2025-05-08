@@ -87,7 +87,7 @@ fn main() -> eyre::Result<()> {
             .run()?;
             cmd!(
                 sh,
-                "cargo clippy -p amplifier-ingestor --features=nats --no-default-features --locked -- -D warnings"
+                "cargo clippy -p amplifier-ingester --features=nats --no-default-features --locked -- -D warnings"
             )
             .run()?;
             cmd!(sh, "cargo fmt --all --check").run()?;

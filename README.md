@@ -75,7 +75,7 @@ The relayer establishes bidirectional communication between an Amplifier API and
 
 ## Internal Relayer Architecture
 
-The relayer is designed as 4 components: 2 ingestors & 2 subscribers - 1 for each chain (Axelar/amplifier API and the connecting chain)
+The relayer is designed as 4 components: 2 ingesters & 2 subscribers - 1 for each chain (Axelar/amplifier API and the connecting chain)
 
 1. **Supervisor**(optional):
 

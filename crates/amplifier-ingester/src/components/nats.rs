@@ -1,7 +1,7 @@
 use core::time::Duration;
 use std::path::PathBuf;
 
-use eyre::{Context, ensure, eyre};
+use eyre::{Context as _, ensure, eyre};
 use infrastructure::nats::consumer::NatsConsumer;
 use infrastructure::nats::{self, StreamArgs};
 use relayer_amplifier_api_integration::amplifier_api::{self, AmplifierApiClient};

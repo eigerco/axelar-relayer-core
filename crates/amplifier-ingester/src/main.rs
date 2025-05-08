@@ -130,6 +130,7 @@ fn spawn_health_check_server(
         health_check::new(port)
             .add_health_check(move || {
                 let config_path = config_path.clone();
+                #[allow(unused_variables, reason = "weird bug as cancel token IS USED")]
                 let cancel_token = cancel_token.clone();
                 async move {
                     #[cfg(feature = "nats")]
@@ -139,7 +140,7 @@ fn spawn_health_check_server(
 
                     #[cfg(feature = "gcp")]
                     let ingester =
-                        components::gcp::new_amplifier_ingester(config_path, cancel_token.clone())
+                        components::gcp::new_amplifier_ingester(config_path, cancel_token)
                             .await
                             .expect("ingester is created");
                     ingester.check_health().await
