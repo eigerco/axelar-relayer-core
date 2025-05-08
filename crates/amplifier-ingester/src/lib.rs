@@ -105,7 +105,7 @@ where
             .messages()
             .await
             .wrap_err("could not retrieve messages from queue")?
-            .for_each_concurrent(self.concurrent_queue_items, move |queue_msg| async move {
+            .for_each_concurrent(self.concurrent_queue_items, |queue_msg| async {
                 let queue_msg = match queue_msg {
                     Ok(queue_msg) => queue_msg,
                     Err(err) => {
