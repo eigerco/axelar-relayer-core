@@ -1,4 +1,6 @@
 //! Binary utils
+
+pub mod health_check;
 use tokio_util::sync::CancellationToken;
 
 /// Ensures backtrace is enabled

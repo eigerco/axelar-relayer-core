@@ -33,7 +33,7 @@ impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
     }
 }
 
-impl<T: Debug> interfaces::consumer::QueueMessage<T> for GcpMessage<T> {
+impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for GcpMessage<T> {
     fn decoded(&self) -> &T {
         &self.decoded
     }
@@ -109,7 +109,7 @@ where
 
 impl<T> interfaces::consumer::Consumer<T> for GcpConsumer<T>
 where
-    T: BorshDeserialize + Debug,
+    T: BorshDeserialize + Debug + Send + Sync,
 {
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
@@ -125,6 +125,23 @@ where
         tracing::debug!("getting message stream");
 
         Ok(self.receiver.stream())
+    }
+
+    #[allow(refining_impl_trait, reason = "simplification")]
+    async fn check_health(&self) -> Result<(), GcpError> {
+        tracing::debug!("checking health for GCP consumer");
+
+        // Check if the read_messages_handle is still running
+        if self.read_messages_handle.is_finished() {
+            // The task has completed, which means the consumer is not healthy
+            // We can't await the handle directly since we only have a shared reference
+            tracing::error!("GCP consumer task has exited unexpectedly");
+            return Err(GcpError::ConsumerReadTaskExited);
+        }
+
+        // If the join handle is still running, the consumer is healthy
+        tracing::debug!("GCP consumer health check successful");
+        Ok(())
     }
 }
 

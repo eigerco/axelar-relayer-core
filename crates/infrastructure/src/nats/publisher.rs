@@ -35,7 +35,9 @@ impl<T> NatsPublisher<T> {
     }
 }
 
-impl<T: BorshSerialize + Debug> interfaces::publisher::Publisher<T> for NatsPublisher<T> {
+impl<T: BorshSerialize + Debug + Send + Sync> interfaces::publisher::Publisher<T>
+    for NatsPublisher<T>
+{
     type Return = PublishAck;
 
     #[allow(refining_impl_trait, reason = "simplify")]
@@ -61,6 +63,13 @@ impl<T: BorshSerialize + Debug> interfaces::publisher::Publisher<T> for NatsPubl
         tracing::debug!("message published");
 
         Ok(publish_ack)
+    }
+
+    #[allow(refining_impl_trait, reason = "simplification")]
+    async fn check_health(&self) -> Result<(), NatsError> {
+        tracing::debug!("checking health");
+        self.stream.get_info().await?;
+        Ok(())
     }
 }
 

@@ -34,7 +34,7 @@ impl<T: BorshDeserialize + Debug> NatsMessage<T> {
     }
 }
 
-impl<T: Debug> interfaces::consumer::QueueMessage<T> for NatsMessage<T> {
+impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for NatsMessage<T> {
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
     async fn ack(&self, ack_kind: interfaces::consumer::AckKind) -> Result<(), NatsError> {
@@ -72,7 +72,7 @@ impl<T> NatsConsumer<T> {
 
 impl<T> interfaces::consumer::Consumer<T> for NatsConsumer<T>
 where
-    T: BorshDeserialize + Debug,
+    T: BorshDeserialize + Debug + Send + Sync,
 {
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
@@ -97,5 +97,15 @@ where
         });
 
         Ok(decoded_stream)
+    }
+
+    #[allow(refining_impl_trait, reason = "simplification")]
+    async fn check_health(&self) -> Result<(), NatsError> {
+        tracing::debug!("checking health");
+
+        // We have to clone the consumer because `info` mutates its state
+        self.consumer_inner.clone().info().await?;
+
+        Ok(())
     }
 }

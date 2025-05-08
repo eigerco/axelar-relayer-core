@@ -1,0 +1,40 @@
+tickrate_secs = 5
+concurrent_queue_items = 50
+
+[nats]
+urls = ["nats://localhost:4222"]
+connection_timeout_secs = 30
+
+stream_name = "events"
+stream_subject = "events.>"
+stream_description = "Stream for all system events"
+
+consumer_description = "Event processor"
+deliver_group = "event-processors"
+
+[gcp]
+redis_connection = "redis://127.0.0.1/"
+tasks_topic = "amplifier-tasks"
+tasks_subscription = "amplifier-tasks-sub"
+events_topic = "amplifier-events"
+events_subscription = "amplifier-events-sub"
+nak_deadline_secs = 10
+message_buffer_size = 1000
+
+[amplifier_component]
+# pem format cert
+identity = '''
+-----BEGIN CERTIFICATE-----
+...
+-----END CERTIFICATE-----
+-----BEGIN PRIVATE KEY-----
+...
+-----END PRIVATE KEY-----
+'''
+url = "https://amplifier-devnet-amplifier.devnet.axelar.dev/"
+chain = "starknet-devnet-v1"
+get_chains_limit = 100
+invalid_healthchecks_before_shutdown = 100
+
+[health_check_server]
+port = 8080
