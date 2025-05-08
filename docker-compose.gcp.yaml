@@ -1,0 +1,50 @@
+version: "3"
+
+services:
+  ingester:
+    build:
+      context: .
+      dockerfile: crates/amplifier-ingester/Dockerfile
+      args:
+        FEATURES: gcp
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./relayer-config.toml:/app/relayer-config.toml
+      # Optional: Mount GCP credentials if needed
+      # - ~/.config/gcloud:/home/relayer/.config/gcloud:ro
+    environment:
+      - TICKRATE_SECS=5
+      # Optional: GCP-specific environment variables
+      # - GOOGLE_APPLICATION_CREDENTIALS=/home/relayer/.config/gcloud/application_default_credentials.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  subscriber:
+    build:
+      context: .
+      dockerfile: crates/amplifier-subscriber/Dockerfile
+      args:
+        FEATURES: gcp
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./relayer-config.toml:/app/relayer-config.toml
+      # Optional: Mount GCP credentials if needed
+      # - ~/.config/gcloud:/home/relayer/.config/gcloud:ro
+    environment:
+      - TICKRATE_SECS=5
+      # Optional: GCP-specific environment variables
+      # - GOOGLE_APPLICATION_CREDENTIALS=/home/relayer/.config/gcloud/application_default_credentials.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s

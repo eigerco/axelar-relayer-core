@@ -173,3 +173,131 @@ curl http://localhost:8080/healthz
 # Check readiness of a component
 curl http://localhost:8080/readyz
 ```
+
+## Docker Deployment
+
+The Axelar Relayer Core components can be containerized using Docker. Dockerfiles are provided for both the amplifier-ingester and amplifier-subscriber components.
+
+### Building Docker Images
+
+To build the Docker images:
+
+```bash
+# For the ingester with default backend (GCP)
+docker build -t axelar-amplifier-ingester -f crates/amplifier-ingester/Dockerfile .
+
+# For the subscriber with default backend (GCP)
+docker build -t axelar-amplifier-subscriber -f crates/amplifier-subscriber/Dockerfile .
+```
+
+### Using NATS Instead of GCP
+
+You can build with NATS support instead of the default GCP by using build arguments:
+
+```bash
+# Build with NATS backend
+docker build -t axelar-amplifier-ingester-nats \
+  --build-arg FEATURES=nats \
+  -f crates/amplifier-ingester/Dockerfile .
+
+docker build -t axelar-amplifier-subscriber-nats \
+  --build-arg FEATURES=nats \
+  -f crates/amplifier-subscriber/Dockerfile .
+```
+
+### Running Docker Containers
+
+To run the containers, you'll need to provide your configuration file:
+
+```bash
+# Run the ingester
+docker run -p 8080:8080 -v /path/to/your/relayer-config.toml:/app/relayer-config.toml axelar-amplifier-ingester
+
+# Run the subscriber
+docker run -p 8081:8080 -v /path/to/your/relayer-config.toml:/app/relayer-config.toml axelar-amplifier-subscriber
+```
+
+By default, the health check endpoints will be available at:
+
+- http://localhost:8080/healthz and http://localhost:8080/readyz for the ingester
+- http://localhost:8081/healthz and http://localhost:8081/readyz for the subscriber (mapped to a different host port to avoid conflicts)
+
+### Environment Variables
+
+You can override configuration options using environment variables when running Docker containers:
+
+```bash
+docker run -p 8080:8080 \
+  -v /path/to/your/relayer-config.toml:/app/relayer-config.toml \
+  -e "TICKRATE_SECS=10" \
+  -e "NATS_URLS=nats://nats-server:4222" \
+  axelar-amplifier-ingester
+```
+
+### Docker Compose
+
+The project includes dedicated Docker Compose files for both GCP and NATS backends:
+
+- `docker-compose.gcp.yaml` - For running with GCP (default) backend
+- `docker-compose.nats.yaml` - For running with NATS backend
+
+#### Using the GCP Backend
+
+To run the components with GCP as the backend:
+
+```bash
+# First ensure you have a configuration file
+cp relayer-config-example.toml relayer-config.toml
+
+# Edit the relayer-config.toml to configure your GCP settings
+# Make sure your GCP configuration is properly set in the [gcp] section
+
+# Start all services using the GCP compose file
+docker compose -f docker-compose.gcp.yaml up -d
+
+# Check the status of the services
+docker compose -f docker-compose.gcp.yaml ps
+
+# View the logs
+docker compose -f docker-compose.gcp.yaml logs -f
+```
+
+For GCP, you may need to provide authentication credentials by uncommenting the relevant volume mounts and environment variables in the Docker Compose file.
+
+#### Using the NATS Backend
+
+To run the components with NATS as the backend:
+
+```bash
+# First ensure you have a configuration file
+cp relayer-config-example.toml relayer-config.toml
+
+# Edit the relayer-config.toml to configure your NATS settings
+# Make sure your NATS configuration is properly set in the [nats] section
+
+# Start all services using the NATS compose file
+docker compose -f docker-compose.nats.yaml up -d
+
+# Check the status of the services
+docker compose -f docker-compose.nats.yaml ps
+
+# View the logs
+docker compose -f docker-compose.nats.yaml logs -f
+```
+
+The NATS server exposes:
+
+- Port 4222 for client connections
+- Port 8222 for HTTP monitoring
+
+The ingester and subscriber configuration automatically connects to the NATS server using the internal Docker network.
+
+#### Stopping Services
+
+To stop the services:
+
+```bash
+docker compose -f docker-compose.<backend>.yaml down
+```
+
+Where `<backend>` is either `gcp` or `nats`.

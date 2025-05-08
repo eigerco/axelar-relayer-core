@@ -1,0 +1,65 @@
+version: '3'
+
+services:
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: 
+      - "-js"
+      - "-m=8222"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8222/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  ingester:
+    build:
+      context: .
+      dockerfile: crates/amplifier-ingester/Dockerfile
+      args:
+        FEATURES: nats
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./relayer-config.toml:/app/relayer-config.toml
+    environment:
+      - TICKRATE_SECS=5
+      - NATS_URLS=nats://nats:4222
+    depends_on:
+      nats:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  subscriber:
+    build:
+      context: .
+      dockerfile: crates/amplifier-subscriber/Dockerfile
+      args:
+        FEATURES: nats
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./relayer-config.toml:/app/relayer-config.toml
+    environment:
+      - TICKRATE_SECS=5
+      - NATS_URLS=nats://nats:4222
+    depends_on:
+      nats:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
