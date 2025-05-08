@@ -37,7 +37,7 @@ use config::Config;
 use tokio_util::sync::CancellationToken;
 
 // TODO: Move this to config
-const MAX_ERRORS: i32 = 5;
+const MAX_ERRORS: i32 = 20;
 #[derive(Parser, Debug)]
 #[command(author = "Eiger", name = "Axelar<>Blockchain Relayer")]
 pub(crate) struct Cli {

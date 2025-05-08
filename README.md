@@ -154,12 +154,12 @@ cargo build --bin amplifier-subscriber
 
 ### Running with Specific Backend
 
-By default, both components are built with NATS support. To use GCP as the backend, compile with the `gcp` feature:
+By default, both components are built with GCP support. To use NATS as the backend, compile with the `nats` feature:
 
 ```bash
-# Build with GCP backend support
-cargo build --bin amplifier-ingester --features gcp --no-default-features
-cargo build --bin amplifier-subscriber --features gcp --no-default-features
+# Build with nats backend support
+cargo build --bin amplifier-ingester --features nats --no-default-features
+cargo build --bin amplifier-subscriber --features nats --no-default-features
 ```
 
 ### Health Checks
