@@ -105,7 +105,7 @@ impl<T: Debug> interfaces::consumer::QueueMessage<T> for GcpMessage<T> {
             interfaces::consumer::AckKind::Progress => {
                 self.ack_deadline_secs = self
                     .ack_deadline_secs
-                    .checked_add(self.ack_deadline_secs)
+                    .checked_mul(2)
                     .unwrap_or(self.ack_deadline_secs);
                 self.msg
                     .modify_ack_deadline(self.ack_deadline_secs)
