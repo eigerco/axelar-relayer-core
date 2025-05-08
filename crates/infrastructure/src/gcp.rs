@@ -16,8 +16,6 @@ pub mod kv_store;
 pub mod publisher;
 pub(crate) mod util;
 
-/// Max bundle size for gcp publisher/consumer
-pub const MAX_BUNDLE_SIZE: usize = 100;
 /// Errors
 #[allow(clippy::module_name_repetitions, reason = "Descriptive name")]
 #[derive(Debug, thiserror::Error)]

@@ -1,5 +1,4 @@
 tickrate_secs = 5
-concurrent_queue_items = 50
 
 [nats]
 urls = ["nats://localhost:4222"]

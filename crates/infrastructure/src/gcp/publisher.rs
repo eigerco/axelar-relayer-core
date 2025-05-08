@@ -9,14 +9,20 @@ use google_cloud_pubsub::client::Client;
 use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
 use interfaces::kv_store::KvStore as _;
 
+use super::GcpError;
 use super::kv_store::RedisClient;
 use super::util::get_topic;
-use super::{GcpError, MAX_BUNDLE_SIZE};
 use crate::interfaces;
 use crate::interfaces::publisher::{PublishMessage, QueueMsgId};
 
 /// Deduplication Id
 pub const MSG_ID: &str = "Msg-Id";
+
+// TODO: Adsjust based on metrics
+const WORKERS_SCALE_FACTOR: usize = 4;
+
+// TODO: Adsjust based on metrics
+const MAX_BUNDLE_SIZE: usize = 100;
 
 /// Queue publisher
 #[allow(clippy::module_name_repetitions, reason = "Descriptive name")]
@@ -32,7 +38,7 @@ impl<T> GcpPublisher<T> {
 
         let config = PublisherConfig {
             // NOTE: scaling factor of 2-4 is recommended for io-bound work
-            workers: num_cpu.checked_mul(2).unwrap_or(num_cpu),
+            workers: num_cpu.checked_mul(WORKERS_SCALE_FACTOR).unwrap_or(num_cpu),
             bundle_size: MAX_BUNDLE_SIZE,
             retry_setting: Some(RetrySetting::default()),
             ..Default::default()

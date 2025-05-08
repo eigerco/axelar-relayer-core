@@ -9,6 +9,9 @@ use relayer_amplifier_api_integration::amplifier_api::requests::{self, WithTrail
 use relayer_amplifier_api_integration::amplifier_api::types::{Event, PublishEventsRequest};
 use relayer_amplifier_api_integration::amplifier_api::{self, AmplifierApiClient};
 
+// TODO: adjust based on metrics
+const CONCURRENCY_SCALE_FACTOR: usize = 4;
+
 /// Consumes events queue and sends it to include to amplifier api
 pub struct Ingester<EventQueueConsumer> {
     ampf_client: AmplifierApiClient,
@@ -26,9 +29,12 @@ where
         amplifier_client: AmplifierApiClient,
         event_queue_consumer: EventQueueConsumer,
         chain: String,
-        concurrent_queue_items: usize,
     ) -> Self {
         let event_queue_consumer = Arc::new(event_queue_consumer);
+        let num_cpus = num_cpus::get();
+        let concurrent_queue_items = num_cpus
+            .checked_mul(CONCURRENCY_SCALE_FACTOR)
+            .unwrap_or(num_cpus);
         Self {
             ampf_client: amplifier_client,
             event_queue_consumer,

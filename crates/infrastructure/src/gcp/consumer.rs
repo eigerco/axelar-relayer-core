@@ -17,6 +17,11 @@ use crate::interfaces;
 // NOTE: common max value in gcp pub/sub for apache beam & dataflow
 const TEN_MINUTES_IN_SECS: u64 = 60 * 10;
 
+// TODO: Adsjust based on metrics
+const WORKERS_SCALE_FACTOR: usize = 4;
+
+// TODO: Adsjust based on metrics
+const CHANNEL_SIZE_SCALE_FACTOR: usize = 4;
 /// Decoded queue message
 #[derive(Debug)]
 pub struct GcpMessage<T> {
@@ -221,8 +226,12 @@ where
 {
     let num_cpu = num_cpus::get();
     let receive_config = ReceiveConfig {
-        channel_capacity: Some(num_cpu.checked_mul(10).unwrap_or(num_cpu)),
-        worker_count: num_cpu.checked_mul(2).unwrap_or(num_cpu),
+        channel_capacity: Some(
+            num_cpu
+                .checked_mul(CHANNEL_SIZE_SCALE_FACTOR)
+                .unwrap_or(num_cpu),
+        ),
+        worker_count: num_cpu.checked_mul(WORKERS_SCALE_FACTOR).unwrap_or(num_cpu),
         subscriber_config: Some(SubscriberConfig {
             stream_ack_deadline_seconds: ack_deadline_secs,
             ..Default::default()

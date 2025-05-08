@@ -65,6 +65,7 @@ dependencies = [
  "eyre",
  "futures",
  "infrastructure",
+ "num_cpus",
  "relayer-amplifier-api-integration",
  "serde",
  "supervisor",

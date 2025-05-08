@@ -14,8 +14,6 @@ pub(crate) trait Validate {
 pub(crate) struct Config {
     /// Configuration for the Amplifier API processor
     pub amplifier_component: relayer_amplifier_api_integration::Config,
-
-    pub concurrent_queue_items: usize,
     /// Duration (in seconds) to wait between consecutive polling
     /// operations Used to prevent overwhelming the network with requests
     #[serde(rename = "tickrate_secs")]
