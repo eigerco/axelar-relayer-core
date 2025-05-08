@@ -65,15 +65,11 @@ where
 
         tracing::debug!("sent");
 
-        let response = match response.json().await {
-            Ok(response) => match response {
-                Ok(response) => response,
-                Err(err) => {
-                    return Err(eyre::Report::new(err).wrap_err("failed to decode response"));
-                }
-            },
-            Err(err) => return Err(eyre::Report::new(err).wrap_err("amplifier api failed")),
-        };
+        let response = response
+            .json()
+            .await
+            .map_err(|err| eyre::Report::new(err).wrap_err("amplifier api failed"))?
+            .map_err(|err| eyre::Report::new(err).wrap_err("failed to decode response"))?;
 
         tracing::debug!(?response, "amplifier response");
 
