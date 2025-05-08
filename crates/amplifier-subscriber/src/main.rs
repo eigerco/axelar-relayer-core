@@ -23,7 +23,6 @@
 //! - Health check server port
 //! - Event processing tickrate
 //! - Backend-specific configuration (NATS or GCP)
-//!
 mod components;
 mod config;
 
@@ -53,13 +52,8 @@ pub(crate) struct Cli {
 
 #[tokio::main]
 async fn main() {
-    #[cfg(debug_assertions)]
-    {
-        // Safety: Setting an environment variable is safe in this context because it only affects the current process.
-        unsafe {
-            std::env::set_var("RUST_BACKTRACE", "full");
-        }
-    }
+    bin_util::ensure_backtrace_set();
+
     let cli = Cli::parse();
 
     let config: Config = config::try_deserialize(&cli.config_path).expect("generic config");

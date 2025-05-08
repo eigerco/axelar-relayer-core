@@ -38,9 +38,7 @@ gcp = [
 consumer-interfaces = []
 publisher-interfaces = []
 storage-interfaces = []
+supervisor = ["dep:supervisor"]
 
 [lints]
 workspace = true
-
-[features]
-supervisor = ["dep:supervisor"]
