@@ -270,9 +270,7 @@ async fn forward_message<T>(
     message_result: Result<GcpMessage<T>, GcpError>,
     sender: flume::Sender<Result<GcpMessage<T>, GcpError>>,
     cancel: CancellationToken,
-) where
-    T: BorshDeserialize + Send + Sync + Debug + 'static,
-{
+) {
     if let Err(err) = sender.send_async(message_result).await {
         tracing::info!(?err, "shutting down");
         cancel.cancel();
