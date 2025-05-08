@@ -43,6 +43,7 @@ where
 
         tracing::debug!(?last_task_id, "last retrieved task");
 
+        // TODO: paging
         let request = requests::GetChains::builder()
             .chain(&chain_with_trailing_slash)
             .limit(100_u8)
