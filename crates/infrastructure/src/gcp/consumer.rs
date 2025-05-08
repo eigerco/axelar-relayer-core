@@ -102,11 +102,16 @@ impl<T: Debug> interfaces::consumer::QueueMessage<T> for GcpMessage<T> {
                     .await
                     .map_err(|err| GcpError::Nak(Box::new(err)))?;
             }
-            interfaces::consumer::AckKind::Progress => self
-                .msg
-                .modify_ack_deadline(self.ack_deadline_secs)
-                .await
-                .map_err(|err| GcpError::ModifyAckDeadline(Box::new(err)))?,
+            interfaces::consumer::AckKind::Progress => {
+                self.ack_deadline_secs = self
+                    .ack_deadline_secs
+                    .checked_add(self.ack_deadline_secs)
+                    .unwrap_or(self.ack_deadline_secs);
+                self.msg
+                    .modify_ack_deadline(self.ack_deadline_secs)
+                    .await
+                    .map_err(|err| GcpError::ModifyAckDeadline(Box::new(err)))?;
+            }
         }
         tracing::debug!("ack sent");
         Ok(())
