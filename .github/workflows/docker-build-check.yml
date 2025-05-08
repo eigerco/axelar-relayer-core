@@ -1,0 +1,26 @@
+name: Docker Build Check
+
+on:
+  workflow_run:
+    workflows: ["check", "test"]
+    types:
+      - completed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build amplifier-ingester Dockerfile
+      run: |
+        docker build -t axelar-amplifier-ingester -f crates/amplifier-ingester/Dockerfile .
+
+    - name: Build amplifier-subscriber Dockerfile
+      run: |
+        docker build -t axelar-amplifier-subscriber -f crates/amplifier-subscriber/Dockerfile .
