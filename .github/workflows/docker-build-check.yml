@@ -2,12 +2,10 @@ name: Docker Build Check
 
 permissions:
   contents: read
-
 on:
-  workflow_run:
-    workflows: ["check", "test"]
-    types:
-      - completed
+  push:
+    branches: [main]
+  pull_request:
 
 jobs:
   build:
