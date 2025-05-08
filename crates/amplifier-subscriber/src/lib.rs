@@ -93,6 +93,47 @@ where
         tracing::info!("sent to queue");
         Ok(())
     }
+
+    /// Checks the health of the subscriber.
+    ///
+    /// This function performs various health checks to ensure the subscriber is operational.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if any of the health checks fail.
+    pub async fn check_health(&self) -> eyre::Result<()> {
+        tracing::debug!("checking health");
+
+        // Check if the task queue publisher is healthy
+        match self.task_queue_publisher.check_health().await {
+            Ok(()) => {
+                tracing::debug!("task queue publisher is healthy");
+            }
+            Err(err) => {
+                tracing::warn!(%err, "task queue publisher health check failed");
+                return Err(err.into());
+            }
+        }
+
+        // Check if the amplifier client is healthy
+        match self
+            .amplifier_client
+            .build_request(&requests::HealthCheck)
+            .wrap_err("could not build health check request")?
+            .execute()
+            .await
+        {
+            Ok(_) => {
+                tracing::debug!("amplifier client is healthy");
+            }
+            Err(err) => {
+                tracing::warn!(%err, "amplifier client health check failed");
+                return Err(err.into());
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(feature = "supervisor")]

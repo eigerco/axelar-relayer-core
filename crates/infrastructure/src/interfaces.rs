@@ -12,7 +12,7 @@ pub mod consumer {
         fn ack(
             &mut self,
             ack_kind: AckKind,
-        ) -> impl Future<Output = Result<(), impl Error + Send + Sync + 'static>>;
+        ) -> impl Future<Output = Result<(), impl Error + Send + Sync + 'static>> + Send;
     }
 
     /// consumer
@@ -28,6 +28,19 @@ pub mod consumer {
                 impl Error + Send + Sync + 'static,
             >,
         >;
+
+        /// Checks the health status of the consumer connection.
+        ///
+        /// This method verifies the consumer's ability to connect to the underlying service
+        /// and returns an error if the health check fails.
+        ///
+        /// # Returns
+        ///
+        /// * `Ok(())` - If the consumer is healthy and can connect to the service
+        /// * `Err(...)` - If there are any issues with the consumer's health or connectivity
+        fn check_health(
+            &self,
+        ) -> impl Future<Output = Result<(), impl Error + Send + Sync + 'static>> + Send;
     }
 
     /// Ack responses
@@ -95,11 +108,25 @@ pub mod publisher {
             &self,
             msg: PublishMessage<T>,
         ) -> impl Future<Output = Result<Self::Return, impl Error + Send + Sync + 'static>>;
+
         /// Publish batch to queue
         fn publish_batch(
             &self,
             msg: Vec<PublishMessage<T>>,
         ) -> impl Future<Output = Result<Vec<Self::Return>, impl Error + Send + Sync + 'static>>;
+
+        /// Checks the health status of the publisher connection.
+        ///
+        /// This method verifies the publisher's ability to connect to the underlying service
+        /// and returns an error if the health check fails.
+        ///
+        /// # Returns
+        ///
+        /// * `Ok(())` - If the publisher is healthy and can connect to the service
+        /// * `Err(...)` - If there are any issues with the publisher's health or connectivity
+        fn check_health(
+            &self,
+        ) -> impl Future<Output = Result<(), impl Error + Send + Sync + 'static>> + Send;
     }
 }
 

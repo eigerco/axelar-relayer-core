@@ -65,7 +65,7 @@ where
 
 impl<T> interfaces::publisher::Publisher<T> for GcpPublisher<T>
 where
-    T: BorshSerialize + Debug,
+    T: BorshSerialize + Debug + Send + Sync,
 {
     type Return = String;
 
@@ -113,6 +113,33 @@ where
         tracing::debug!("batch published");
 
         Ok(output)
+
+    async fn check_health(&self) -> Result<(), GcpError> {
+        tracing::debug!("checking health for GCP publisher");
+
+        // Create a small health check message
+        let health_attributes = HashMap::from([("health_check".to_owned(), "true".to_owned())]);
+
+        let health_message = PubsubMessage {
+            data: Vec::from("health_check"),
+            attributes: health_attributes,
+            ..Default::default()
+        };
+
+        // Try to publish the message and await the result
+        let awaiter = self.publisher.publish(health_message).await;
+
+        // Check if we can get a result from the awaiter
+        match awaiter.get().await {
+            Ok(_) => {
+                tracing::debug!("GCP publisher health check successful");
+                Ok(())
+            }
+            Err(err) => {
+                tracing::error!("GCP publisher health check failed: {}", err);
+                Err(GcpError::Publish(Box::new(err)))
+            }
+        }
     }
 }
 
@@ -144,8 +171,8 @@ where
 
 impl<T> interfaces::publisher::Publisher<T> for PeekableGcpPublisher<T>
 where
-    T: QueueMsgId + BorshSerialize + Debug + Clone,
-    T::MessageId: BorshSerialize + BorshDeserialize + Debug + Display,
+    T: QueueMsgId + BorshSerialize + Debug + Clone + Send + Sync,
+    T::MessageId: BorshSerialize + BorshDeserialize + Debug + Display + Send + Sync,
 {
     type Return = String;
 
@@ -185,6 +212,26 @@ where
         );
 
         Ok(res)
+    }
+
+    #[allow(refining_impl_trait, reason = "simplification")]
+    async fn check_health(&self) -> Result<(), GcpError> {
+        tracing::debug!("checking health for PeekableGcpPublisher");
+
+        // Check the GCP publisher health first
+        self.publisher.check_health().await?;
+
+        // Check Redis client health by performing a simple operation
+        match self.last_message_id_store.ping().await {
+            Ok(()) => {
+                tracing::debug!("Redis client health check successful");
+                Ok(())
+            }
+            Err(err) => {
+                tracing::error!("Redis client health check failed: {}", err);
+                Err(GcpError::Redis(err))
+            }
+        }
     }
 }
 

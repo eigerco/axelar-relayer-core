@@ -16,3 +16,4 @@ target/
 config.toml
 store
 
+relayer-config.toml

@@ -13,7 +13,33 @@ supervisor = { workspace = true, optional = true }
 tracing.workspace = true
 eyre.workspace = true
 infrastructure = { workspace = true, features = ["consumer-interfaces"] }
+tokio.workspace = true
+tokio-util.workspace = true
+serde.workspace = true
+clap.workspace = true
+ctrlc.workspace = true
+toml.workspace = true
+url.workspace = true
+bin-util.workspace = true
+
+
 futures.workspace = true
+
+[features]
+default = ["gcp"]
+nats = [
+  "consumer-interfaces",
+  "publisher-interfaces",
+  "storage-interfaces",
+]
+gcp = [
+  "consumer-interfaces",
+  "publisher-interfaces",
+  "storage-interfaces",
+]
+consumer-interfaces = []
+publisher-interfaces = []
+storage-interfaces = []
 
 [lints]
 workspace = true

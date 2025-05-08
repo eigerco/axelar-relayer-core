@@ -198,6 +198,9 @@ opentelemetry-semantic-conventions = "0.25"
 opentelemetry_sdk = { version = "0.25", features = ["rt-tokio"] }
 opentelemetry-appender-tracing = { version = "0.25" }
 
+# health-check server
+axum = "0.8"
+
 [profile.release]
 lto = true
 codegen-units = 1
