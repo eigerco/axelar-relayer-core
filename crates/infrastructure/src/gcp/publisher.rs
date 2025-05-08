@@ -18,12 +18,6 @@ use crate::interfaces::publisher::{PublishMessage, QueueMsgId};
 /// Deduplication Id
 pub const MSG_ID: &str = "Msg-Id";
 
-// TODO: Adsjust based on metrics
-const WORKERS_SCALE_FACTOR: usize = 4;
-
-// TODO: Adsjust based on metrics
-const MAX_BUNDLE_SIZE: usize = 100;
-
 /// Queue publisher
 #[allow(clippy::module_name_repetitions, reason = "Descriptive name")]
 pub struct GcpPublisher<T> {
@@ -32,14 +26,17 @@ pub struct GcpPublisher<T> {
 }
 
 impl<T> GcpPublisher<T> {
-    pub(crate) async fn new(client: &Client, topic: &str) -> Result<Self, GcpError> {
+    pub(crate) async fn new(
+        client: &Client,
+        topic: &str,
+        worker_count: usize,
+        max_bundle_size: usize,
+    ) -> Result<Self, GcpError> {
         let topic = get_topic(client, topic).await?;
-        let num_cpu = num_cpus::get();
 
         let config = PublisherConfig {
-            // NOTE: scaling factor of 2-4 is recommended for io-bound work
-            workers: num_cpu.checked_mul(WORKERS_SCALE_FACTOR).unwrap_or(num_cpu),
-            bundle_size: MAX_BUNDLE_SIZE,
+            workers: worker_count,
+            bundle_size: max_bundle_size,
             retry_setting: Some(RetrySetting::default()),
             ..Default::default()
         };
@@ -168,8 +165,10 @@ where
         client: &Client,
         topic: &str,
         kv_store: RedisClient<T::MessageId>,
+        worker_count: usize,
+        max_bundle_size: usize,
     ) -> Result<Self, GcpError> {
-        let publisher = GcpPublisher::new(client, topic).await?;
+        let publisher = GcpPublisher::new(client, topic, worker_count, max_bundle_size).await?;
 
         Ok(Self {
             publisher,

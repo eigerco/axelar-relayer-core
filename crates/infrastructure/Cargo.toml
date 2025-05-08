@@ -25,7 +25,6 @@ futures.workspace = true
 tracing.workspace = true
 borsh = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
-num_cpus = { workspace = true, optional = true }
 
 uuid.workspace = true
 
@@ -33,6 +32,7 @@ uuid.workspace = true
 workspace = true
 
 [features]
+default = ["gcp"]
 nats = [
   "dep:async-nats",
   "dep:borsh",
@@ -49,7 +49,6 @@ gcp = [
   "dep:borsh",
   "dep:tokio-util",
   "dep:flume",
-  "dep:num_cpus",
   "dep:google-cloud-gax",
   "consumer-interfaces",
   "publisher-interfaces",

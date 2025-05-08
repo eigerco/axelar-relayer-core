@@ -15,6 +15,7 @@ eyre.workspace = true
 infrastructure = { workspace = true, features = ["publisher-interfaces", "consumer-interfaces", "storage-interfaces"] }
 tokio.workspace = true
 tokio-util.workspace = true
+num_cpus.workspace = true
 serde.workspace = true
 clap.workspace = true
 relayer-amplifier-api-integration.workspace = true

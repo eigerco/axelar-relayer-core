@@ -17,11 +17,6 @@ use crate::interfaces;
 // NOTE: common max value in gcp pub/sub for apache beam & dataflow
 const TEN_MINUTES_IN_SECS: u64 = 60 * 10;
 
-// TODO: Adsjust based on metrics
-const WORKERS_SCALE_FACTOR: usize = 4;
-
-// TODO: Adsjust based on metrics
-const CHANNEL_SIZE_SCALE_FACTOR: usize = 4;
 /// Decoded queue message
 #[derive(Debug)]
 pub struct GcpMessage<T> {
@@ -132,6 +127,21 @@ pub struct GcpConsumer<T> {
     _phantom: PhantomData<T>,
 }
 
+/// Consumer config
+#[derive(Debug)]
+pub struct GcpConsumerConfig {
+    /// Redis connection to store processed msg id for deduplication
+    pub redis_connection: String,
+    /// Deadline to ack message
+    pub ack_deadline_secs: i32,
+    /// Capacity of underlyng flume channel holding messages to consume
+    pub channel_capacity: Option<usize>,
+    /// Capacity of buffer to hold read messages from underlyng GCP provider
+    pub message_buffer_size: usize,
+    /// Underlying count of workers reading from GCP pubsub provider subscription
+    pub worker_count: usize,
+}
+
 impl<T> GcpConsumer<T>
 where
     T: BorshDeserialize + Send + Sync + Debug + 'static,
@@ -139,19 +149,17 @@ where
     pub(crate) async fn new(
         client: &Client,
         subscription: &str,
-        redis_connection: String,
-        message_buffer_size: usize,
-        ack_deadline_secs: i32,
+        config: GcpConsumerConfig,
         cancel_token: CancellationToken,
     ) -> Result<Self, GcpError> {
         let subscription = get_subscription(client, subscription).await?;
 
-        let (sender, receiver) = flume::bounded(message_buffer_size);
+        let (sender, receiver) = flume::bounded(config.message_buffer_size);
 
         // NOTE: clone for supervised monolithic binary
         let cancel_token = cancel_token.child_token();
 
-        let redis_connection = redis::Client::open(redis_connection)
+        let redis_connection = redis::Client::open(config.redis_connection)
             .map_err(GcpError::Connection)?
             .get_multiplexed_async_connection()
             .await
@@ -161,7 +169,9 @@ where
             redis_connection,
             subscription,
             sender,
-            ack_deadline_secs,
+            config.ack_deadline_secs,
+            config.channel_capacity,
+            config.worker_count,
             cancel_token.clone(),
         );
 
@@ -219,19 +229,16 @@ fn start_read_messages_task<T>(
     subscription: Subscription,
     sender: flume::Sender<Result<GcpMessage<T>, GcpError>>,
     ack_deadline_secs: i32,
+    channel_capacity: Option<usize>,
+    worker_count: usize,
     cancel_token: CancellationToken,
 ) -> tokio::task::JoinHandle<Result<(), GcpError>>
 where
     T: BorshDeserialize + Send + Sync + Debug + 'static,
 {
-    let num_cpu = num_cpus::get();
     let receive_config = ReceiveConfig {
-        channel_capacity: Some(
-            num_cpu
-                .checked_mul(CHANNEL_SIZE_SCALE_FACTOR)
-                .unwrap_or(num_cpu),
-        ),
-        worker_count: num_cpu.checked_mul(WORKERS_SCALE_FACTOR).unwrap_or(num_cpu),
+        channel_capacity,
+        worker_count,
         subscriber_config: Some(SubscriberConfig {
             stream_ack_deadline_seconds: ack_deadline_secs,
             ..Default::default()

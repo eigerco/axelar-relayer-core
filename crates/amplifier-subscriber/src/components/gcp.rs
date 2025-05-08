@@ -9,6 +9,8 @@ use serde::Deserialize;
 use crate::config::{self, Config, Validate};
 
 const TASK_KEY: &str = "last-task";
+const WORKERS_SCALE_FACTOR: usize = 4;
+const BUNDLE_SIZE_SCALE_FACTOR: usize = 4;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub(crate) struct GcpSectionConfig {
@@ -73,11 +75,18 @@ pub(crate) async fn new_amplifier_subscriber(
     let queue_config: GcpSectionConfig =
         config::try_deserialize(&config_path).wrap_err("gcp pubsub config issues")?;
     let amplifier_client = amplifier_client(&config)?;
+    let num_cpus = num_cpus::get();
 
     let task_queue_publisher = gcp::connectors::connect_peekable_publisher(
         &queue_config.gcp.tasks_topic,
         queue_config.gcp.redis_connection,
         TASK_KEY.to_owned(),
+        num_cpus
+            .checked_mul(WORKERS_SCALE_FACTOR)
+            .unwrap_or(num_cpus),
+        num_cpus
+            .checked_mul(BUNDLE_SIZE_SCALE_FACTOR)
+            .unwrap_or(num_cpus),
     )
     .await
     .wrap_err("task queue publisher connect err")?;

@@ -17,7 +17,7 @@ tasks_topic = "amplifier-tasks"
 tasks_subscription = "amplifier-tasks-sub"
 events_topic = "amplifier-events"
 events_subscription = "amplifier-events-sub"
-nak_deadline_secs = 10
+ack_deadline_secs = 10
 message_buffer_size = 1000
 
 [amplifier_component]

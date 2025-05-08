@@ -10,7 +10,7 @@
 //! ## Example
 //!
 //! ```rust
-//! use health_check::Server;
+//! use bin_util::health_check::Server;
 //! use tokio_util::sync::CancellationToken;
 //! use eyre::Result;
 //!
