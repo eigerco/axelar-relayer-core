@@ -1,5 +1,8 @@
 name: Docker Build Check
 
+permissions:
+  contents: read
+
 on:
   workflow_run:
     workflows: ["check", "test"]
