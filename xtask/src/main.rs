@@ -80,6 +80,16 @@ fn main() -> eyre::Result<()> {
                 "cargo clippy -p infrastructure --features=gcp,nats --locked -- -D warnings"
             )
             .run()?;
+            cmd!(
+                sh,
+                "cargo clippy -p amplifier-subscriber --features=nats --no-default-features --locked -- -D warnings"
+            )
+            .run()?;
+            cmd!(
+                sh,
+                "cargo clippy -p amplifier-ingester --features=nats --no-default-features --locked -- -D warnings"
+            )
+            .run()?;
             cmd!(sh, "cargo fmt --all --check").run()?;
         }
         Commands::Fmt => {

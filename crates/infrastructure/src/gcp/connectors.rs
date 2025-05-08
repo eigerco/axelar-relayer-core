@@ -6,6 +6,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::GcpError;
 use super::consumer::GcpConsumer;
+pub use super::consumer::GcpConsumerConfig;
 use super::kv_store::RedisClient;
 use super::publisher::{GcpPublisher, PeekableGcpPublisher};
 use crate::interfaces::publisher::QueueMsgId;
@@ -26,10 +27,7 @@ use crate::interfaces::publisher::QueueMsgId;
 ///
 /// * `subscription` - The GCP Pub/Sub subscription path to consume from, typically in the format
 ///   `projects/{project}/subscriptions/{subscription}`.
-/// * `message_buffer_size` - The size of the internal message buffer. Controls how many message
-///   will be in buffer to process.
-/// * `nak_deadline_secs` - The deadline (in seconds) for message processing. If a message isn't
-///   acknowledged within this deadline, GCP will attempt to redeliver it.
+/// * `config` - Consumer configuration
 /// * `cancel_token` - A [`CancellationToken`] used to gracefully shut down the consumer when
 ///   needed.
 ///
@@ -55,6 +53,7 @@ use crate::interfaces::publisher::QueueMsgId;
 /// use tokio_util::sync::CancellationToken;
 /// use infrastructure::gcp::connectors::connect_consumer;
 /// use infrastructure::gcp::GcpError;
+/// use infrastructure::gcp::consumer::GcpConsumerConfig;
 /// use crate::infrastructure::interfaces::consumer::Consumer;
 /// use futures::StreamExt as _;
 /// use infrastructure::interfaces::consumer::AckKind;
@@ -71,11 +70,18 @@ use crate::interfaces::publisher::QueueMsgId;
 ///     // Create a cancellation token for graceful shutdown
 ///     let cancel_token = CancellationToken::new();
 ///
+///     let config = GcpConsumerConfig {
+///         redis_connection: "redis://redis-server:6379".to_owned(),
+///         ack_deadline_secs: 10,
+///         channel_capacity: Some(50),
+///         message_buffer_size: 50,
+///         worker_count: 5,
+///     };
+///
 ///     // Set up the consumer with a 30-second NAK deadline
 ///     let consumer = connect_consumer::<EventMessage>(
 ///         "projects/my-project/subscriptions/my-events",
-///         100, // buffer size
-///         30,  // NAK deadline in seconds
+///         config,
 ///         cancel_token.clone(),
 ///     ).await?;
 ///
@@ -86,7 +92,7 @@ use crate::interfaces::publisher::QueueMsgId;
 ///       .await
 ///       .expect("could not retrieve messages")
 ///        .for_each_concurrent(10, move |queue_msg| async move {
-///             let queue_msg = match queue_msg {
+///             let mut queue_msg = match queue_msg {
 ///                 Ok(queue_msg) => queue_msg,
 ///                 Err(err) => {
 ///                     tracing::error!(?err, "could not receive queue msg");
@@ -106,22 +112,14 @@ use crate::interfaces::publisher::QueueMsgId;
 #[tracing::instrument]
 pub async fn connect_consumer<T>(
     subscription: &str,
-    message_buffer_size: usize,
-    nak_deadline_secs: i32,
+    config: GcpConsumerConfig,
     cancel_token: CancellationToken,
 ) -> Result<GcpConsumer<T>, GcpError>
 where
     T: BorshDeserialize + Send + Sync + Debug + 'static,
 {
     let client = connect_client().await?;
-    let consumer = GcpConsumer::new(
-        &client,
-        subscription,
-        message_buffer_size,
-        nak_deadline_secs,
-        cancel_token,
-    )
-    .await?;
+    let consumer = GcpConsumer::new(&client, subscription, config, cancel_token).await?;
 
     Ok(consumer)
 }
@@ -159,7 +157,7 @@ where
 /// use infrastructure::gcp::connectors::connect_publisher;
 /// use infrastructure::gcp::publisher::GcpPublisher;
 /// use infrastructure::gcp::GcpError;
-/// use crate::infrastructure::interfaces::publisher::Publisher;
+/// use crate::infrastructure::interfaces::publisher::{Publisher, PublishMessage};
 ///
 ///
 /// #[derive(Debug, borsh::BorshSerialize)]
@@ -171,7 +169,7 @@ where
 ///
 /// async fn publish_example() -> Result<(), GcpError> {
 ///     // Connect to the "blockchain-transactions" topic
-///     let publisher: GcpPublisher<EventMessage> = connect_publisher("events").await?;
+///     let publisher: GcpPublisher<EventMessage> = connect_publisher("events", 10, 10).await?;
 ///
 ///     let msg = EventMessage {
 ///       id: "something".to_owned(),
@@ -179,16 +177,25 @@ where
 ///       payload: Vec::<_>::default()
 ///     };
 ///
+///     let publish_message = PublishMessage {
+///         deduplication_id: "".to_owned(),
+///         data: msg
+///     };
+///
 ///     // Create and publish
-///     publisher.publish("".to_owned(), &msg).await?;
+///     publisher.publish(publish_message).await?;
 ///
 ///     Ok(())
 /// }
 /// ```
 #[tracing::instrument]
-pub async fn connect_publisher<T>(topic: &str) -> Result<GcpPublisher<T>, GcpError> {
+pub async fn connect_publisher<T>(
+    topic: &str,
+    worker_count: usize,
+    max_bundle_size: usize,
+) -> Result<GcpPublisher<T>, GcpError> {
     let client = connect_client().await?;
-    let publisher = GcpPublisher::new(&client, topic).await?;
+    let publisher = GcpPublisher::new(&client, topic, worker_count, max_bundle_size).await?;
     Ok(publisher)
 }
 
@@ -213,6 +220,8 @@ pub async fn connect_publisher<T>(topic: &str) -> Result<GcpPublisher<T>, GcpErr
 /// * `topic` - The name of the Pub/Sub topic to connect to
 /// * `redis_connection` - Connection string for the Redis instance
 /// * `redis_key` - Key prefix to use for storing message data in Redis
+/// * `worker_count` - count of workers publishing in parallel to pubsub
+/// * `max_bundle_size` - max bundle size to be sent
 ///
 /// # Returns
 ///
@@ -236,7 +245,7 @@ pub async fn connect_publisher<T>(topic: &str) -> Result<GcpPublisher<T>, GcpErr
 /// use infrastructure::gcp::connectors::connect_publisher;
 /// use infrastructure::gcp::publisher::GcpPublisher;
 /// use infrastructure::gcp::GcpError;
-/// use crate::infrastructure::interfaces::publisher::Publisher;
+/// use crate::infrastructure::interfaces::publisher::{Publisher, PublishMessage};
 /// use infrastructure::gcp::connectors::connect_peekable_publisher;
 /// use infrastructure::gcp::publisher::PeekableGcpPublisher;
 /// use crate::infrastructure::interfaces::publisher::PeekMessage;
@@ -260,7 +269,9 @@ pub async fn connect_publisher<T>(topic: &str) -> Result<GcpPublisher<T>, GcpErr
 ///     let mut publisher: PeekableGcpPublisher<EventMessage> = connect_peekable_publisher(
 ///         "events-topic",
 ///         "redis://redis-server:6379".to_owned(),
-///         "my-events".to_owned()
+///         "my-events".to_owned(),
+///         10,
+///         10
 ///     ).await?;
 ///
 ///     let msg = EventMessage {
@@ -269,8 +280,13 @@ pub async fn connect_publisher<T>(topic: &str) -> Result<GcpPublisher<T>, GcpErr
 ///       payload: Vec::<_>::default()
 ///     };
 ///
+///     let publish_message = PublishMessage {
+///         deduplication_id: "".to_owned(),
+///         data: msg
+///     };
+///
 ///     // Create and publish
-///     publisher.publish("".to_owned(), &msg).await?;
+///     publisher.publish(publish_message).await?;
 ///
 ///     // Later, we can peek at the transaction status
 ///     let msg_id = publisher.peek_last().await?;
@@ -287,6 +303,8 @@ pub async fn connect_peekable_publisher<T>(
     topic: &str,
     redis_connection: String,
     redis_key: String,
+    worker_count: usize,
+    max_bundle_size: usize,
 ) -> Result<PeekableGcpPublisher<T>, GcpError>
 where
     T: QueueMsgId,
@@ -294,7 +312,8 @@ where
 {
     let kv_store = RedisClient::connect(redis_key, redis_connection).await?;
     let client = connect_client().await?;
-    let publisher = PeekableGcpPublisher::new(&client, topic, kv_store).await?;
+    let publisher =
+        PeekableGcpPublisher::new(&client, topic, kv_store, worker_count, max_bundle_size).await?;
     Ok(publisher)
 }
 

@@ -1,7 +1,7 @@
+use core::time::Duration;
 use std::path::PathBuf;
-use std::time::Duration;
 
-use eyre::{Context, ensure, eyre};
+use eyre::{Context as _, ensure, eyre};
 use infrastructure::nats::consumer::NatsConsumer;
 use infrastructure::nats::{self, StreamArgs};
 use relayer_amplifier_api_integration::amplifier_api::{self, AmplifierApiClient};
@@ -51,9 +51,9 @@ pub(crate) async fn new_amplifier_ingester(
     let amplifier_client = amplifier_client(&config)?;
 
     let stream = StreamArgs {
-        name: nats_config.nats.stream_name.to_owned(),
-        subject: nats_config.nats.stream_subject.to_owned(),
-        description: nats_config.nats.stream_description.to_owned(),
+        name: nats_config.nats.stream_name.clone(),
+        subject: nats_config.nats.stream_subject.clone(),
+        description: nats_config.nats.stream_description.clone(),
     };
 
     let event_queue_consumer = nats::connectors::connect_consumer(
@@ -69,7 +69,6 @@ pub(crate) async fn new_amplifier_ingester(
         amplifier_client,
         event_queue_consumer,
         config.amplifier_component.chain.clone(),
-        config.concurrent_queue_items,
     ))
 }
 

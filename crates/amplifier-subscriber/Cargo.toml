@@ -9,15 +9,15 @@ license.workspace = true
 
 [dependencies]
 amplifier-api.workspace = true
-supervisor.workspace = true
+supervisor = { workspace = true, optional = true }
 tracing.workspace = true
 eyre.workspace = true
-infrastructure = { workspace = true, features = ["publisher-interfaces"] }
+infrastructure = { workspace = true, features = ["publisher-interfaces", "consumer-interfaces", "storage-interfaces"] }
 tokio.workspace = true
 tokio-util.workspace = true
+num_cpus.workspace = true
 serde.workspace = true
 clap.workspace = true
-ctrlc.workspace = true
 relayer-amplifier-api-integration.workspace = true
 toml.workspace = true
 url.workspace = true
@@ -26,18 +26,15 @@ bin-util.workspace = true
 [features]
 default = ["gcp"]
 nats = [
-  "consumer-interfaces",
-  "publisher-interfaces",
-  "storage-interfaces",
+  "infrastructure/nats",
 ]
 gcp = [
-  "consumer-interfaces",
-  "publisher-interfaces",
-  "storage-interfaces",
+  "infrastructure/gcp",
 ]
 consumer-interfaces = []
 publisher-interfaces = []
 storage-interfaces = []
+supervisor = ["dep:supervisor"]
 
 [lints]
 workspace = true

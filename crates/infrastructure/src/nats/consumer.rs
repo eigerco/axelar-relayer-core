@@ -37,7 +37,7 @@ impl<T: BorshDeserialize + Debug> NatsMessage<T> {
 impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for NatsMessage<T> {
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
-    async fn ack(&self, ack_kind: interfaces::consumer::AckKind) -> Result<(), NatsError> {
+    async fn ack(&mut self, ack_kind: interfaces::consumer::AckKind) -> Result<(), NatsError> {
         tracing::debug!(?ack_kind, "sending ack");
         self.msg
             .ack_with(ack_kind.into())

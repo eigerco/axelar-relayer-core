@@ -1,8 +1,7 @@
+use core::time::Duration;
 use std::path::PathBuf;
-use std::time::Duration;
 
-use crate::config::{self, Validate, deserialize_duration_from_secs};
-use eyre::{Context, ensure, eyre};
+use eyre::{Context as _, ensure, eyre};
 use infrastructure::nats::publisher::NatsPublisher;
 use infrastructure::nats::{self, StreamArgs};
 use relayer_amplifier_api_integration::amplifier_api::{self, AmplifierApiClient};
@@ -10,6 +9,7 @@ use serde::Deserialize;
 use url::Url;
 
 use crate::Config;
+use crate::config::{self, Validate, deserialize_duration_from_secs};
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub(crate) struct NatsSectionConfig {
@@ -48,9 +48,9 @@ pub(crate) async fn new_amplifier_subscriber(
     let amplifier_client = amplifier_client(&config)?;
 
     let stream = StreamArgs {
-        name: nats_config.nats.stream_name.to_owned(),
-        subject: nats_config.nats.stream_subject.to_owned(),
-        description: nats_config.nats.stream_description.to_owned(),
+        name: nats_config.nats.stream_name.clone(),
+        subject: nats_config.nats.stream_subject.clone(),
+        description: nats_config.nats.stream_description.clone(),
     };
 
     let task_queue_publisher = nats::connectors::connect_publisher(

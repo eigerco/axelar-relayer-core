@@ -75,7 +75,7 @@ The relayer establishes bidirectional communication between an Amplifier API and
 
 ## Internal Relayer Architecture
 
-The relayer is designed as 4 components: 2 ingestors & 2 subscribers - 1 for each chain (Axelar/amplifier API and the connecting chain)
+The relayer is designed as 4 components: 2 ingesters & 2 subscribers - 1 for each chain (Axelar/amplifier API and the connecting chain)
 
 1. **Supervisor**(optional):
 
@@ -107,7 +107,7 @@ The relayer is designed as 4 components: 2 ingestors & 2 subscribers - 1 for eac
    - Components interact with queues only through trait interfaces, maintaining loose coupling
    - Supports horizontal scaling by allowing multiple instances to consume from the same queue
 
-The supervisor is optional, and each component can be started as a separate binary.RetryClaude can make mistakes. Please double-check responses.
+The supervisor is optional, and each component can be started as a separate binary.
 
 ## Running the Components
 

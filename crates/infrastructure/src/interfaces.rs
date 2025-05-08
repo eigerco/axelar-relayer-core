@@ -10,7 +10,7 @@ pub mod consumer {
         fn decoded(&self) -> &T;
         /// Ack response
         fn ack(
-            &self,
+            &mut self,
             ack_kind: AckKind,
         ) -> impl Future<Output = Result<(), impl Error + Send + Sync + 'static>> + Send;
     }
@@ -63,11 +63,12 @@ pub mod consumer {
 #[cfg(feature = "publisher-interfaces")]
 pub mod publisher {
     use core::error::Error;
+    use core::fmt::Display;
 
     /// Generic trait for Id on a type
     pub trait QueueMsgId {
         /// type of message id
-        type MessageId;
+        type MessageId: Display;
         /// return id
         fn id(&self) -> Self::MessageId;
     }
@@ -80,6 +81,23 @@ pub mod publisher {
         ) -> impl Future<Output = Result<Option<T::MessageId>, impl Error + Send + Sync + 'static>>;
     }
 
+    /// Publish Messsage
+    pub struct PublishMessage<T> {
+        /// Deduplication id
+        pub deduplication_id: String,
+        /// Data
+        pub data: T,
+    }
+
+    impl<T: QueueMsgId> From<T> for PublishMessage<T> {
+        fn from(value: T) -> Self {
+            Self {
+                deduplication_id: value.id().to_string(),
+                data: value,
+            }
+        }
+    }
+
     /// publisher
     #[allow(clippy::impl_trait_in_params, reason = "improves readability")]
     pub trait Publisher<T> {
@@ -88,9 +106,14 @@ pub mod publisher {
         /// Publish message to queue
         fn publish(
             &self,
-            deduplication_id: impl Into<String>,
-            data: &T,
+            msg: PublishMessage<T>,
         ) -> impl Future<Output = Result<Self::Return, impl Error + Send + Sync + 'static>>;
+
+        /// Publish batch to queue
+        fn publish_batch(
+            &self,
+            msg: Vec<PublishMessage<T>>,
+        ) -> impl Future<Output = Result<Vec<Self::Return>, impl Error + Send + Sync + 'static>>;
 
         /// Checks the health status of the publisher connection.
         ///

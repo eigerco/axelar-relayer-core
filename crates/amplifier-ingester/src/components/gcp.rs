@@ -2,12 +2,17 @@ use std::path::PathBuf;
 
 use eyre::{Context as _, ensure, eyre};
 use infrastructure::gcp;
-use infrastructure::gcp::consumer::GcpConsumer;
+use infrastructure::gcp::consumer::{GcpConsumer, GcpConsumerConfig};
 use relayer_amplifier_api_integration::amplifier_api::{self, AmplifierApiClient};
 use serde::Deserialize;
 use tokio_util::sync::CancellationToken;
 
 use crate::config::{self, Config, Validate};
+
+// TODO: Adsjust based on metrics
+const WORKERS_SCALE_FACTOR: usize = 4;
+const BUFFER_SCALE_FACTOR: usize = 4;
+const CHANNEL_CAPACITY_SCALE_FACTOR: usize = 4;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub(crate) struct GcpSectionConfig {
@@ -24,7 +29,7 @@ pub(crate) struct GcpConfig {
     events_topic: String,
     events_subscription: String,
 
-    nak_deadline_secs: i32,
+    ack_deadline_secs: i32,
 
     message_buffer_size: usize,
 }
@@ -52,7 +57,7 @@ impl Validate for GcpSectionConfig {
             eyre!("gcp events_subscription should be set")
         );
         ensure!(
-            self.gcp.nak_deadline_secs > 0_i32,
+            self.gcp.ack_deadline_secs > 0_i32,
             eyre!("gcp nak_deadline_secs should be positive set")
         );
         ensure!(
@@ -72,10 +77,23 @@ pub(crate) async fn new_amplifier_ingester(
         config::try_deserialize(&config_path).wrap_err("gcp pubsub config issues")?;
     let amplifier_client = amplifier_client(&config)?;
 
+    let num_cpus = num_cpus::get();
+
+    let consumer_cfg = GcpConsumerConfig {
+        redis_connection: queue_config.gcp.redis_connection,
+        ack_deadline_secs: queue_config.gcp.ack_deadline_secs,
+        channel_capacity: num_cpus.checked_mul(CHANNEL_CAPACITY_SCALE_FACTOR),
+        message_buffer_size: num_cpus
+            .checked_mul(BUFFER_SCALE_FACTOR)
+            .unwrap_or(num_cpus),
+        worker_count: num_cpus
+            .checked_mul(WORKERS_SCALE_FACTOR)
+            .unwrap_or(num_cpus),
+    };
+
     let event_queue_consumer = gcp::connectors::connect_consumer(
         &queue_config.gcp.events_subscription,
-        queue_config.gcp.message_buffer_size,
-        queue_config.gcp.nak_deadline_secs,
+        consumer_cfg,
         cancellation_token,
     )
     .await
@@ -85,7 +103,6 @@ pub(crate) async fn new_amplifier_ingester(
         amplifier_client,
         event_queue_consumer,
         config.amplifier_component.chain.clone(),
-        config.concurrent_queue_items,
     ))
 }
 

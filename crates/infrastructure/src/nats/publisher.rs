@@ -7,7 +7,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 use super::NatsError;
 use crate::interfaces;
-use crate::interfaces::publisher::QueueMsgId;
+use crate::interfaces::publisher::{PublishMessage, QueueMsgId};
 
 const NATS_MSG_ID: &str = "Nats-Msg-Id";
 
@@ -42,16 +42,11 @@ impl<T: BorshSerialize + Debug + Send + Sync> interfaces::publisher::Publisher<T
 
     #[allow(refining_impl_trait, reason = "simplify")]
     #[tracing::instrument(skip_all)]
-    async fn publish(
-        &self,
-        deduplication_id: impl Into<String>,
-        data: &T,
-    ) -> Result<Self::Return, NatsError> {
+    async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, NatsError> {
         let mut headers = async_nats::HeaderMap::new();
-        let deduplication_id: String = deduplication_id.into();
-        tracing::debug!(?deduplication_id, ?data, "got message");
-        headers.append(NATS_MSG_ID.to_owned(), deduplication_id);
-        let data = borsh::to_vec(&data).map_err(NatsError::Serialize)?;
+        tracing::debug!(?msg.deduplication_id, ?msg.data, "got message");
+        headers.append(NATS_MSG_ID.to_owned(), msg.deduplication_id);
+        let data = borsh::to_vec(&msg.data).map_err(NatsError::Serialize)?;
         tracing::debug!("message encoded");
         // NOTE: We always await since messages should be sent sequentially
         let publish_ack = self
@@ -65,6 +60,24 @@ impl<T: BorshSerialize + Debug + Send + Sync> interfaces::publisher::Publisher<T
         Ok(publish_ack)
     }
 
+    // NOTE: not implemented https://github.com/nats-io/nats-server/issues/3971
+    #[allow(refining_impl_trait, reason = "simplification")]
+    #[tracing::instrument(skip_all)]
+    async fn publish_batch(
+        &self,
+        batch: Vec<PublishMessage<T>>,
+    ) -> Result<Vec<Self::Return>, NatsError> {
+        let mut output = Vec::with_capacity(batch.len());
+        for msg in batch {
+            let res = self.publish(msg).await?;
+            output.push(res);
+        }
+
+        Ok(output)
+    }
+
+    #[allow(refining_impl_trait, reason = "simplification")]
+    #[tracing::instrument(skip_all)]
     #[allow(refining_impl_trait, reason = "simplification")]
     async fn check_health(&self) -> Result<(), NatsError> {
         tracing::debug!("checking health");

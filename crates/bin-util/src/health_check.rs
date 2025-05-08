@@ -10,7 +10,7 @@
 //! ## Example
 //!
 //! ```rust
-//! use health_check::Server;
+//! use bin_util::health_check::Server;
 //! use tokio_util::sync::CancellationToken;
 //! use eyre::Result;
 //!
@@ -34,18 +34,17 @@
 //!     Ok(())
 //! }
 //! ```
-use axum::{
-    Router,
-    extract::Extension,
-    http::StatusCode,
-    response::{IntoResponse, Json},
-    routing::get,
-};
 use core::future::Future;
 use core::pin::Pin;
+use std::sync::Arc;
+
+use axum::Router;
+use axum::extract::Extension;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Json};
+use axum::routing::get;
 use eyre::Result;
 use serde_json::json;
-use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
 /// A type alias representing a health check function.
@@ -110,9 +109,8 @@ impl Server {
     ///
     /// # Arguments
     ///
-    /// * `f` - A function that returns a future resolving to a `Result<()>`.
-    ///   An `Ok(())` result indicates the health check passed, while
-    ///   an `Err(_)` indicates it failed.
+    /// * `f` - A function that returns a future resolving to a `Result<()>`. An `Ok(())` result
+    ///   indicates the health check passed, while an `Err(_)` indicates it failed.
     ///
     /// # Returns
     ///
@@ -215,12 +213,12 @@ async fn check_and_respond(
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use core::{
-        sync::atomic::{AtomicBool, Ordering},
-        time::Duration,
-    };
+    use core::sync::atomic::{AtomicBool, Ordering};
+    use core::time::Duration;
+
     use tokio::time::sleep;
+
+    use super::*;
 
     async fn run_server<F, Fut>(port: u16, health_check: F) -> CancellationToken
     where

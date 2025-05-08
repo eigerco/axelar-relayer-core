@@ -62,4 +62,10 @@ pub enum GcpError {
     ConsumerReadTaskJoin(JoinError),
     #[error("consumer read task exited without error")]
     ConsumerReadTaskExited,
+    #[error("no messages to publish")]
+    NoMsgToPublish,
+    #[error("redis err {0}")]
+    GenericRedis(#[from] RedisError),
+    #[error("message has no Msg-Id set")]
+    MsgIdNotSet,
 }

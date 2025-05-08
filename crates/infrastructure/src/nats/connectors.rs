@@ -134,7 +134,7 @@ pub async fn connect_consumer<Message: Debug>(
 /// use infrastructure::nats::connectors::connect_publisher;
 /// use infrastructure::nats::StreamArgs;
 /// use infrastructure::nats::NatsError;
-/// use infrastructure::interfaces::publisher::Publisher;
+/// use infrastructure::interfaces::publisher::{Publisher, PublishMessage};
 /// use infrastructure::interfaces::publisher::QueueMsgId;
 ///
 /// // Define a type that implements the required traits
@@ -176,8 +176,13 @@ pub async fn connect_consumer<Message: Debug>(
 ///         // set other fields...
 ///     };
 ///
+///     let publish_message = PublishMessage {
+///         deduplication_id: "unique_id".to_owned(),
+///         data: event
+///     };
+///
 ///     // Publish the event
-///     publisher.publish("unique_id", &event).await?;
+///     publisher.publish(publish_message).await?;
 ///
 ///     Ok(())
 /// }

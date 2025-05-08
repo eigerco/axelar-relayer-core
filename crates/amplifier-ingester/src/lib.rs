@@ -1,13 +1,16 @@
 //! Crate with amplifier ingester component
-use core::pin::Pin;
 use std::sync::Arc;
 
 use eyre::Context as _;
 use futures::StreamExt as _;
 use infrastructure::interfaces::consumer::{AckKind, Consumer, QueueMessage};
+use infrastructure::interfaces::publisher::QueueMsgId as _;
 use relayer_amplifier_api_integration::amplifier_api::requests::{self, WithTrailingSlash};
 use relayer_amplifier_api_integration::amplifier_api::types::{Event, PublishEventsRequest};
 use relayer_amplifier_api_integration::amplifier_api::{self, AmplifierApiClient};
+
+// TODO: adjust based on metrics
+const CONCURRENCY_SCALE_FACTOR: usize = 4;
 
 /// Consumes events queue and sends it to include to amplifier api
 pub struct Ingester<EventQueueConsumer> {
@@ -26,9 +29,12 @@ where
         amplifier_client: AmplifierApiClient,
         event_queue_consumer: EventQueueConsumer,
         chain: String,
-        concurrent_queue_items: usize,
     ) -> Self {
         let event_queue_consumer = Arc::new(event_queue_consumer);
+        let num_cpus = num_cpus::get();
+        let concurrent_queue_items = num_cpus
+            .checked_mul(CONCURRENCY_SCALE_FACTOR)
+            .unwrap_or(num_cpus);
         Self {
             ampf_client: amplifier_client,
             event_queue_consumer,
@@ -38,7 +44,7 @@ where
     }
 
     /// process queue message
-    pub async fn process_queue_msg<Msg: QueueMessage<Event>>(&self, queue_msg: Msg) {
+    pub async fn process_queue_msg<Msg: QueueMessage<Event>>(&self, mut queue_msg: Msg) {
         let chain_with_trailing_slash = WithTrailingSlash::new(self.chain.clone());
 
         let event = queue_msg.decoded().clone();
@@ -67,15 +73,11 @@ where
 
             tracing::debug!("reading response");
 
-            let response = match response.json().await {
-                Ok(response) => match response {
-                    Ok(response) => response,
-                    Err(err) => {
-                        return Err(eyre::Report::new(err).wrap_err("failed to decode response"));
-                    }
-                },
-                Err(err) => return Err(eyre::Report::new(err).wrap_err("amplifier api failed")),
-            };
+            let response = response
+                .json()
+                .await
+                .map_err(|err| eyre::Report::new(err).wrap_err("amplifier api failed"))?
+                .map_err(|err| eyre::Report::new(err).wrap_err("failed to decode response"))?;
 
             tracing::debug!(?response, "response from amplifier api");
 
@@ -89,7 +91,7 @@ where
                     tracing::error!(%event, %err, "could not ack message");
                 }
 
-                tracing::info!(event_id = %event.event_id(), "processed");
+                tracing::info!(event_id = %event.id(), "event ack'ed");
             }
             Err(err) => {
                 tracing::error!(%event, %err, "error during task processing");
@@ -109,15 +111,11 @@ where
             .messages()
             .await
             .wrap_err("could not retrieve messages from queue")?
-            .for_each_concurrent(self.concurrent_queue_items, move |queue_msg| async move {
-                let queue_msg = match queue_msg {
-                    Ok(queue_msg) => queue_msg,
-                    Err(err) => {
-                        tracing::error!(?err, "could not receive queue msg");
-                        return;
-                    }
-                };
-                self.process_queue_msg(queue_msg).await;
+            .for_each_concurrent(self.concurrent_queue_items, |queue_msg| async {
+                match queue_msg {
+                    Ok(msg) => self.process_queue_msg(msg).await,
+                    Err(err) => tracing::error!(?err, "could not receive queue msg"),
+                }
             })
             .await;
 
@@ -166,11 +164,14 @@ where
     }
 }
 
+#[cfg(feature = "supervisor")]
 impl<EventQueueConsumer> supervisor::Worker for Ingester<EventQueueConsumer>
 where
     EventQueueConsumer: Consumer<amplifier_api::types::Event> + Send + Sync,
 {
-    fn do_work<'s>(&'s mut self) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 's>> {
+    fn do_work<'s>(
+        &'s mut self,
+    ) -> core::pin::Pin<Box<dyn Future<Output = eyre::Result<()>> + 's>> {
         Box::pin(async { self.ingest().await })
     }
 }

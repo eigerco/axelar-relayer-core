@@ -1,10 +1,8 @@
 //! Crate with amplifier subscriber component
-use core::pin::Pin;
-
 use amplifier_api::requests::WithTrailingSlash;
 use amplifier_api::{AmplifierApiClient, requests};
 use eyre::Context as _;
-use infrastructure::interfaces::publisher::{PeekMessage, Publisher};
+use infrastructure::interfaces::publisher::{PeekMessage, PublishMessage, Publisher};
 
 /// subscribes to tasks from amplifier and sends them to queue
 pub struct Subscriber<TaskQueuePublisher> {
@@ -67,28 +65,32 @@ where
 
         tracing::debug!("sent");
 
-        let response = match response.json().await {
-            Ok(response) => match response {
-                Ok(response) => response,
-                Err(err) => {
-                    return Err(eyre::Report::new(err).wrap_err("failed to decode response"));
-                }
-            },
-            Err(err) => return Err(eyre::Report::new(err).wrap_err("amplifier api failed")),
-        };
+        let response = response
+            .json()
+            .await
+            .map_err(|err| eyre::Report::new(err).wrap_err("amplifier api failed"))?
+            .map_err(|err| eyre::Report::new(err).wrap_err("failed to decode response"))?;
+
         tracing::debug!(?response, "amplifier response");
 
-        if !response.tasks.is_empty() {
-            tracing::info!(count = response.tasks.len(), "got amplifier tasks");
+        let mut tasks = response.tasks;
+        tasks.sort_unstable_by_key(|task| task.timestamp);
+
+        if tasks.is_empty() {
+            tracing::debug!("no amplifier tasks");
+            return Ok(());
         }
 
-        for task in response.tasks {
-            tracing::debug!(?task, "sending to queue");
-            self.task_queue_publisher
-                .publish(task.id.0, &task)
-                .await
-                .wrap_err("could not publish task to queue")?;
-        }
+        tracing::info!(count = tasks.len(), "got amplifier tasks");
+
+        let batch = tasks.into_iter().map(PublishMessage::from).collect();
+
+        tracing::debug!("sending to queue");
+        self.task_queue_publisher
+            .publish_batch(batch)
+            .await
+            .wrap_err("could not publish tasks to queue")?;
+        tracing::info!("sent to queue");
         Ok(())
     }
 
@@ -134,6 +136,7 @@ where
     }
 }
 
+#[cfg(feature = "supervisor")]
 impl<TaskQueuePublisher> supervisor::Worker for Subscriber<TaskQueuePublisher>
 where
     TaskQueuePublisher: Publisher<amplifier_api::types::TaskItem>
@@ -141,7 +144,9 @@ where
         + Send
         + Sync,
 {
-    fn do_work<'s>(&'s mut self) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 's>> {
+    fn do_work<'s>(
+        &'s mut self,
+    ) -> core::pin::Pin<Box<dyn Future<Output = eyre::Result<()>> + 's>> {
         Box::pin(async { self.subscribe().await })
     }
 }

@@ -24,9 +24,8 @@ where
     /// # Errors
     ///  on connection issues
     pub async fn connect(key: String, connection: String) -> Result<Self, GcpError> {
-        let client = Client::open(connection).map_err(GcpError::Connection)?;
-
-        let connection = client
+        let connection = Client::open(connection)
+            .map_err(GcpError::Connection)?
             .get_multiplexed_async_connection()
             .await
             .map_err(GcpError::Connection)?;

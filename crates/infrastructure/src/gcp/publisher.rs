@@ -3,6 +3,7 @@ use core::marker::PhantomData;
 use std::collections::HashMap;
 
 use borsh::{BorshDeserialize, BorshSerialize};
+use google_cloud_gax::retry::RetrySetting;
 use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use google_cloud_pubsub::client::Client;
 use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
@@ -12,9 +13,10 @@ use super::GcpError;
 use super::kv_store::RedisClient;
 use super::util::get_topic;
 use crate::interfaces;
-use crate::interfaces::publisher::QueueMsgId;
+use crate::interfaces::publisher::{PublishMessage, QueueMsgId};
 
-const MSG_ID: &str = "Msg-Id";
+/// Deduplication Id
+pub const MSG_ID: &str = "Msg-Id";
 
 /// Queue publisher
 #[allow(clippy::module_name_repetitions, reason = "Descriptive name")]
@@ -24,15 +26,18 @@ pub struct GcpPublisher<T> {
 }
 
 impl<T> GcpPublisher<T> {
-    pub(crate) async fn new(client: &Client, topic: &str) -> Result<Self, GcpError> {
+    pub(crate) async fn new(
+        client: &Client,
+        topic: &str,
+        worker_count: usize,
+        max_bundle_size: usize,
+    ) -> Result<Self, GcpError> {
         let topic = get_topic(client, topic).await?;
-        let num_cpu = num_cpus::get();
 
         let config = PublisherConfig {
-            // NOTE: scaling factor of 2-4 is recommended for io-bound work
-            workers: num_cpu.checked_mul(2).unwrap_or(num_cpu),
-            // TODO: move to config
-            bundle_size: 100,
+            workers: worker_count,
+            bundle_size: max_bundle_size,
+            retry_setting: Some(RetrySetting::default()),
             ..Default::default()
         };
 
@@ -45,6 +50,22 @@ impl<T> GcpPublisher<T> {
     }
 }
 
+fn to_pubsub_message<T>(msg: PublishMessage<T>) -> Result<PubsubMessage, GcpError>
+where
+    T: BorshSerialize + Debug,
+{
+    let encoded = borsh::to_vec(&msg.data).map_err(GcpError::Serialize)?;
+    let mut attributes = HashMap::new();
+    attributes.insert(MSG_ID.to_owned(), msg.deduplication_id);
+    let message = PubsubMessage {
+        data: encoded,
+        attributes,
+        ..Default::default()
+    };
+
+    Ok(message)
+}
+
 impl<T> interfaces::publisher::Publisher<T> for GcpPublisher<T>
 where
     T: BorshSerialize + Debug + Send + Sync,
@@ -53,31 +74,52 @@ where
 
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
-    async fn publish(
-        &self,
-        // Deduplication is automatic
-        deduplication_id: impl Into<String>,
-        data: &T,
-    ) -> Result<Self::Return, GcpError> {
-        let encoded = borsh::to_vec(&data).map_err(GcpError::Serialize)?;
-        let mut attributes = HashMap::new();
-        attributes.insert(MSG_ID.to_owned(), deduplication_id.into());
-        let message = PubsubMessage {
-            data: encoded,
-            attributes,
-            ..Default::default()
-        };
-        let awaiter = self.publisher.publish(message.clone()).await;
+    async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, GcpError> {
+        tracing::debug!(?msg.deduplication_id, ?msg.data, "publishing message");
+        let msg = to_pubsub_message(msg)?;
+        let awaiter = self.publisher.publish(msg).await;
 
-        // NOTE: We always await since messages should be sent sequentially
+        // NOTE: await until message is sent
         let result = awaiter
             .get()
             .await
             .map_err(|err| GcpError::Publish(Box::new(err)))?;
+
+        tracing::debug!("message published");
         Ok(result)
     }
 
     #[allow(refining_impl_trait, reason = "simplification")]
+    #[tracing::instrument(skip_all)]
+    async fn publish_batch(
+        &self,
+        batch: Vec<PublishMessage<T>>,
+    ) -> Result<Vec<Self::Return>, GcpError> {
+        tracing::debug!("publishing {} count of messages as a batch", batch.len());
+
+        let bulk = batch
+            .into_iter()
+            .map(to_pubsub_message)
+            .collect::<Result<Vec<PubsubMessage>, GcpError>>()?;
+        let publish_handles = self.publisher.publish_bulk(bulk).await;
+        tracing::debug!("message added to publish queue");
+
+        // NOTE: await until all messages are sent
+        let mut output = Vec::new();
+        for handle in publish_handles {
+            let res = handle
+                .get()
+                .await
+                .map_err(|err| GcpError::Publish(Box::new(err)))?;
+            output.push(res);
+        }
+        tracing::debug!("batch published");
+
+        Ok(output)
+    }
+
+    #[allow(refining_impl_trait, reason = "simplification")]
+    #[tracing::instrument(skip_all)]
     async fn check_health(&self) -> Result<(), GcpError> {
         tracing::debug!("checking health for GCP publisher");
 
@@ -123,8 +165,10 @@ where
         client: &Client,
         topic: &str,
         kv_store: RedisClient<T::MessageId>,
+        worker_count: usize,
+        max_bundle_size: usize,
     ) -> Result<Self, GcpError> {
-        let publisher = GcpPublisher::new(client, topic).await?;
+        let publisher = GcpPublisher::new(client, topic, worker_count, max_bundle_size).await?;
 
         Ok(Self {
             publisher,
@@ -139,15 +183,42 @@ where
     T::MessageId: BorshSerialize + BorshDeserialize + Debug + Display + Send + Sync,
 {
     type Return = String;
+
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
-    async fn publish(
+    async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, GcpError> {
+        let last_msg_id = msg.data.id();
+        let res = self.publisher.publish(msg).await?;
+        self.last_message_id_store.upsert(&last_msg_id).await?;
+        tracing::info!("sent of messages to queue. Last message id is set to {last_msg_id}");
+        Ok(res)
+    }
+
+    // NOTE: all messages are batched and send independently via workers, on success last message
+    // task id is SAVED as last processed in redis so ORDER IN THE BATCH ARG MATTERS. If any of them
+    // fail entire batch is regarded failed and will be retried. Deduplication happens on
+    // consumers side per gcp recommendation
+    #[allow(refining_impl_trait, reason = "simplification")]
+    #[tracing::instrument(skip_all)]
+    async fn publish_batch(
         &self,
-        deduplication_id: impl Into<String>,
-        data: &T,
-    ) -> Result<Self::Return, GcpError> {
-        let res = self.publisher.publish(deduplication_id, data).await?;
-        self.last_message_id_store.upsert(&data.id()).await?;
+        batch: Vec<PublishMessage<T>>,
+    ) -> Result<Vec<Self::Return>, GcpError> {
+        let Some(last_msg) = batch.last() else {
+            return Err(GcpError::NoMsgToPublish);
+        };
+
+        let count = batch.len();
+
+        let last_msg_id = last_msg.data.id();
+        let res = self.publisher.publish_batch(batch).await?;
+
+        self.last_message_id_store.upsert(&last_msg_id).await?;
+
+        tracing::info!(
+            "sent {count} of messages to queue. Last message id is set to {last_msg_id}"
+        );
+
         Ok(res)
     }
 
