@@ -1,11 +1,12 @@
 use std::path::PathBuf;
 
-use crate::config::{self, Config, Validate};
 use eyre::{Context as _, ensure, eyre};
 use infrastructure::gcp;
 use infrastructure::gcp::publisher::PeekableGcpPublisher;
 use relayer_amplifier_api_integration::amplifier_api::{self, AmplifierApiClient};
 use serde::Deserialize;
+
+use crate::config::{self, Config, Validate};
 
 const TASK_KEY: &str = "last-task";
 

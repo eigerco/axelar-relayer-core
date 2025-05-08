@@ -21,24 +21,16 @@ ctrlc.workspace = true
 toml.workspace = true
 url.workspace = true
 bin-util.workspace = true
-
-
 futures.workspace = true
 
 [features]
 default = ["gcp"]
 nats = [
-  "consumer-interfaces",
-  "publisher-interfaces",
-  "storage-interfaces",
+  "infrastructure/nats",
 ]
 gcp = [
-  "consumer-interfaces",
-  "publisher-interfaces",
-  "storage-interfaces",
+  "infrastructure/gcp",
 ]
-consumer-interfaces = []
-publisher-interfaces = []
 storage-interfaces = []
 supervisor = ["dep:supervisor"]
 

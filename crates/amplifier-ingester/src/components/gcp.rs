@@ -74,6 +74,7 @@ pub(crate) async fn new_amplifier_ingester(
 
     let event_queue_consumer = gcp::connectors::connect_consumer(
         &queue_config.gcp.events_subscription,
+        queue_config.gcp.redis_connection,
         queue_config.gcp.message_buffer_size,
         queue_config.gcp.nak_deadline_secs,
         cancellation_token,

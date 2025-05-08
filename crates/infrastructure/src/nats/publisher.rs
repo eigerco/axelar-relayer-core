@@ -74,7 +74,10 @@ impl<T: BorshSerialize + Debug + Send + Sync> interfaces::publisher::Publisher<T
         }
 
         Ok(output)
+    }
 
+    #[allow(refining_impl_trait, reason = "simplification")]
+    #[tracing::instrument(skip_all)]
     #[allow(refining_impl_trait, reason = "simplification")]
     async fn check_health(&self) -> Result<(), NatsError> {
         tracing::debug!("checking health");

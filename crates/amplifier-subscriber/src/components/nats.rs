@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use crate::config::{self, Validate, deserialize_duration_from_secs};
 use eyre::{Context, ensure, eyre};
 use infrastructure::nats::publisher::NatsPublisher;
 use infrastructure::nats::{self, StreamArgs};
@@ -10,6 +9,7 @@ use serde::Deserialize;
 use url::Url;
 
 use crate::Config;
+use crate::config::{self, Validate, deserialize_duration_from_secs};
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub(crate) struct NatsSectionConfig {

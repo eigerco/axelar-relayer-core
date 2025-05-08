@@ -113,7 +113,10 @@ where
         tracing::debug!("batch published");
 
         Ok(output)
+    }
 
+    #[allow(refining_impl_trait, reason = "simplification")]
+    #[tracing::instrument(skip_all)]
     async fn check_health(&self) -> Result<(), GcpError> {
         tracing::debug!("checking health for GCP publisher");
 
