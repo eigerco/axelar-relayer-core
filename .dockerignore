@@ -42,3 +42,4 @@ Dockerfile*
 docker-compose*
 *.log
 tmp/
+relayer-config.toml
