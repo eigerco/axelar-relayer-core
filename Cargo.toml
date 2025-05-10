@@ -169,6 +169,7 @@ redis = { version = "0.30", features = [
   "aio",
   "connection-manager",
 ] }
+rustls-gcp-kms = { git = "https://github.com/vaporif/rustls-gcp-kms.git" }
 
 # tracing
 tracing = "0.1"

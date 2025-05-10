@@ -67,6 +67,7 @@ dependencies = [
  "infrastructure",
  "num_cpus",
  "relayer-amplifier-api-integration",
+ "rustls",
  "serde",
  "supervisor",
  "tokio",
@@ -87,6 +88,7 @@ dependencies = [
  "infrastructure",
  "num_cpus",
  "relayer-amplifier-api-integration",
+ "rustls",
  "serde",
  "supervisor",
  "tokio",
@@ -1087,6 +1089,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "gcloud-kms"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ad7523724c8f080ea88857f6e21f07898b8061541e2d9a96f73ec17c9b4afe7"
+dependencies = [
+ "gcloud-auth",
+ "gcloud-gax",
+ "gcloud-googleapis",
+ "token-source",
+ "tracing",
+]
+
+[[package]]
 name = "gcloud-metadata"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1571,6 +1586,8 @@ dependencies = [
  "gcloud-pubsub",
  "hex",
  "redis",
+ "rustls",
+ "rustls-gcp-kms",
  "thiserror 2.0.12",
  "tokio",
  "tokio-util",
@@ -2561,6 +2578,20 @@ dependencies = [
  "rustls-webpki 0.103.2",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "rustls-gcp-kms"
+version = "0.1.0"
+source = "git+https://github.com/vaporif/rustls-gcp-kms.git#8901f760c72ef368b3c3f5270033b5f885e96f31"
+dependencies = [
+ "eyre",
+ "futures",
+ "gcloud-gax",
+ "gcloud-kms",
+ "rustls",
+ "sha2",
+ "thiserror 2.0.12",
 ]
 
 [[package]]

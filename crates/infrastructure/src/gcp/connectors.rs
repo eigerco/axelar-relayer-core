@@ -1,8 +1,12 @@
 use core::fmt::Debug;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use google_cloud_pubsub::client::{Client, ClientConfig};
+use rustls_gcp_kms::KmsConfig;
 use tokio_util::sync::CancellationToken;
+use tonic::transport::Certificate;
 
 use super::GcpError;
 use super::consumer::GcpConsumer;
@@ -321,4 +325,20 @@ async fn connect_client() -> Result<Client, GcpError> {
     let config = ClientConfig::default().with_auth().await?;
     let client = Client::new(config).await?;
     Ok(client)
+}
+
+pub async fn kms_tls_client_config(
+    cert_path: PathBuf,
+    kms_config: KmsConfig,
+) -> Result<Box<rustls::ClientConfig>, GcpError> {
+    let cert_pem = std::fs::read(cert_path).unwrap();
+    let cert = Certificate::from_pem(&cert_pem)?;
+    let dummy_key = rustls::pki_types::PrivateKeyDer::from(vec![0_u8; 32]);
+    let client = connect_client().await.unwrap();
+    let provider = rustls_gcp_kms::provider(client, kms_config).await.unwrap();
+    let client_config = rustls::ClientConfig::builder()
+        .with_provider(Arc::new(provider))
+        .with_client_auth_cert(vec![cert.clone().into()], dummy_key)?;
+
+    Box::new(client_config)
 }

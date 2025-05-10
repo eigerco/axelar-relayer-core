@@ -1,9 +1,11 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use eyre::{Context as _, ensure, eyre};
 use infrastructure::gcp;
 use infrastructure::gcp::consumer::{GcpConsumer, GcpConsumerConfig};
 use relayer_amplifier_api_integration::amplifier_api::{self, AmplifierApiClient};
+use rustls_gcp_kms::KmsConfig;
 use serde::Deserialize;
 use tokio_util::sync::CancellationToken;
 
@@ -21,6 +23,9 @@ pub(crate) struct GcpSectionConfig {
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub(crate) struct GcpConfig {
+    certificate_path: PathBuf,
+    kms: KmsConfig,
+
     redis_connection: String,
 
     tasks_topic: String,
@@ -36,6 +41,26 @@ pub(crate) struct GcpConfig {
 
 impl Validate for GcpSectionConfig {
     fn validate(&self) -> eyre::Result<()> {
+        ensure!(
+            !self.gcp.kms.project_id.is_empty(),
+            eyre!("gcp kms project_id should be set")
+        );
+        ensure!(
+            !self.gcp.kms.location.is_empty(),
+            eyre!("gcp kms location should be set")
+        );
+        ensure!(
+            !self.gcp.kms.keyring.is_empty(),
+            eyre!("gcp kms keyring should be set")
+        );
+        ensure!(
+            !self.gcp.kms.cryptokey.is_empty(),
+            eyre!("gcp kms cryptokey should be set")
+        );
+        ensure!(
+            !self.gcp.kms.cryptokey_version.is_empty(),
+            eyre!("gcp kms cryptokey_version should be set")
+        );
         ensure!(
             !self.gcp.redis_connection.is_empty(),
             eyre!("gcp redis_connection should be set")
@@ -106,10 +131,22 @@ pub(crate) async fn new_amplifier_ingester(
     ))
 }
 
-fn amplifier_client(config: &Config) -> eyre::Result<AmplifierApiClient> {
+async fn amplifier_client(
+    config: &Config,
+    gcp_config: &GcpConfig,
+) -> eyre::Result<AmplifierApiClient> {
+    let kms_provider =
+        gcp::connectors::kms_tls_client_config(gcp_config.certificate_path, gcp_config.kms)
+            .await
+            .wrap_err("kms connection failed")?;
+
+    let client_config = rustls::ClientConfig::builder_with_provider(Arc::new(kms_provider));
+
     AmplifierApiClient::new(
         config.amplifier_component.url.clone(),
-        amplifier_api::TlsType::Certificate(Box::new(config.amplifier_component.identity.clone())),
+        amplifier_api::TlsType::CustomProvider(Box::new(
+            config.amplifier_component.identity.clone(),
+        )),
     )
     .wrap_err("amplifier api client failed to create")
 }
