@@ -100,7 +100,7 @@ pub(crate) async fn new_amplifier_ingester(
     let config = config::try_deserialize(&config_path).wrap_err("config file issues")?;
     let queue_config: GcpSectionConfig =
         config::try_deserialize(&config_path).wrap_err("gcp pubsub config issues")?;
-    let amplifier_client = amplifier_client(&config)?;
+    let amplifier_client = amplifier_client(&config).await?;
 
     let num_cpus = num_cpus::get();
 
@@ -140,13 +140,16 @@ async fn amplifier_client(
             .await
             .wrap_err("kms connection failed")?;
 
-    let client_config = rustls::ClientConfig::builder_with_provider(Arc::new(kms_provider));
+    let client_config = rustls::ClientConfig::builder_with_provider(Arc::new(kms_provider))
+        .with_safe_default_protocol_versions()
+        .unwrap()
+        .with_root_certificates(root_store)
+        .with_client_auth_cert(cert_chain, key_der)
+        .unwrap();
 
     AmplifierApiClient::new(
         config.amplifier_component.url.clone(),
-        amplifier_api::TlsType::CustomProvider(Box::new(
-            config.amplifier_component.identity.clone(),
-        )),
+        amplifier_api::TlsType::CustomProvider(Box::new(client_configo)),
     )
     .wrap_err("amplifier api client failed to create")
 }
