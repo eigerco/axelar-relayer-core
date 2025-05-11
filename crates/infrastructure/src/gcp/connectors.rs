@@ -4,7 +4,8 @@ use std::sync::Arc;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use rustls::RootCertStore;
-use rustls_gcp_kms::{KmsConfig, dummy_key};
+pub use rustls_gcp_kms::KmsConfig;
+use rustls_gcp_kms::dummy_key;
 use tokio_util::sync::CancellationToken;
 use tonic::transport::CertificateDer;
 

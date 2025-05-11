@@ -1,11 +1,10 @@
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use eyre::{Context as _, ensure, eyre};
 use infrastructure::gcp;
+use infrastructure::gcp::connectors::KmsConfig;
 use infrastructure::gcp::consumer::{GcpConsumer, GcpConsumerConfig};
 use relayer_amplifier_api_integration::amplifier_api::{self, AmplifierApiClient};
-use rustls_gcp_kms::KmsConfig;
 use serde::Deserialize;
 use tokio_util::sync::CancellationToken;
 
@@ -98,15 +97,15 @@ pub(crate) async fn new_amplifier_ingester(
     cancellation_token: CancellationToken,
 ) -> eyre::Result<amplifier_ingester::Ingester<GcpConsumer<amplifier_api::types::Event>>> {
     let config = config::try_deserialize(&config_path).wrap_err("config file issues")?;
-    let queue_config: GcpSectionConfig =
+    let infra_config: GcpSectionConfig =
         config::try_deserialize(&config_path).wrap_err("gcp pubsub config issues")?;
-    let amplifier_client = amplifier_client(&config).await?;
+    let amplifier_client = amplifier_client(&config, &infra_config.gcp).await?;
 
     let num_cpus = num_cpus::get();
 
     let consumer_cfg = GcpConsumerConfig {
-        redis_connection: queue_config.gcp.redis_connection,
-        ack_deadline_secs: queue_config.gcp.ack_deadline_secs,
+        redis_connection: infra_config.gcp.redis_connection,
+        ack_deadline_secs: infra_config.gcp.ack_deadline_secs,
         channel_capacity: num_cpus.checked_mul(CHANNEL_CAPACITY_SCALE_FACTOR),
         message_buffer_size: num_cpus
             .checked_mul(BUFFER_SCALE_FACTOR)
@@ -117,7 +116,7 @@ pub(crate) async fn new_amplifier_ingester(
     };
 
     let event_queue_consumer = gcp::connectors::connect_consumer(
-        &queue_config.gcp.events_subscription,
+        &infra_config.gcp.events_subscription,
         consumer_cfg,
         cancellation_token,
     )
@@ -135,21 +134,14 @@ async fn amplifier_client(
     config: &Config,
     gcp_config: &GcpConfig,
 ) -> eyre::Result<AmplifierApiClient> {
-    let kms_provider =
+    let client_config =
         gcp::connectors::kms_tls_client_config(gcp_config.certificate_path, gcp_config.kms)
             .await
             .wrap_err("kms connection failed")?;
 
-    let client_config = rustls::ClientConfig::builder_with_provider(Arc::new(kms_provider))
-        .with_safe_default_protocol_versions()
-        .unwrap()
-        .with_root_certificates(root_store)
-        .with_client_auth_cert(cert_chain, key_der)
-        .unwrap();
-
     AmplifierApiClient::new(
         config.amplifier_component.url.clone(),
-        amplifier_api::TlsType::CustomProvider(Box::new(client_configo)),
+        amplifier_api::TlsType::CustomProvider(client_config),
     )
     .wrap_err("amplifier api client failed to create")
 }

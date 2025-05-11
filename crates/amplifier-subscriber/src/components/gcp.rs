@@ -95,14 +95,14 @@ pub(crate) async fn new_amplifier_subscriber(
     amplifier_subscriber::Subscriber<PeekableGcpPublisher<amplifier_api::types::TaskItem>>,
 > {
     let config = config::try_deserialize(&config_path).wrap_err("config file issues")?;
-    let queue_config: GcpSectionConfig =
+    let infra_config: GcpSectionConfig =
         config::try_deserialize(&config_path).wrap_err("gcp pubsub config issues")?;
-    let amplifier_client = amplifier_client(&config).await?;
+    let amplifier_client = amplifier_client(&config, &infra_config.gcp).await?;
     let num_cpus = num_cpus::get();
 
     let task_queue_publisher = gcp::connectors::connect_peekable_publisher(
-        &queue_config.gcp.tasks_topic,
-        queue_config.gcp.redis_connection,
+        &infra_config.gcp.tasks_topic,
+        infra_config.gcp.redis_connection,
         TASK_KEY.to_owned(),
         num_cpus
             .checked_mul(WORKERS_SCALE_FACTOR)
@@ -121,13 +121,15 @@ pub(crate) async fn new_amplifier_subscriber(
     ))
 }
 
-async fn amplifier_client(config: &Config) -> eyre::Result<AmplifierApiClient> {
-    let kms_provider =
+async fn amplifier_client(
+    config: &Config,
+    gcp_config: &GcpConfig,
+) -> eyre::Result<AmplifierApiClient> {
+    let client_config =
         gcp::connectors::kms_tls_client_config(gcp_config.certificate_path, gcp_config.kms)
             .await
             .wrap_err("kms connection failed")?;
 
-    let client_config = rustls::ClientConfig::builder_with_provider(Arc::new(kms_provider));
     AmplifierApiClient::new(
         config.amplifier_component.url.clone(),
         amplifier_api::TlsType::Certificate(Box::new(config.amplifier_component.identity.clone())),
