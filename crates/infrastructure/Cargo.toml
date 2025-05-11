@@ -27,7 +27,7 @@ tracing.workspace = true
 borsh = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
 rustls = { workspace = true, features = ["std"], optional = true }
-rustls-gcp-kms = { workspace = true, optional = true }
+rustls-gcp-kms = { workspace = true, optional = true, features = ["serde"] }
 webpki-roots = { workspace = true, optional = true }
 uuid.workspace = true
 
