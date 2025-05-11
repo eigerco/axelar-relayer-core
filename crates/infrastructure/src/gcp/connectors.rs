@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use rustls::{RootCertStore, ALL_VERSIONS};
+use rustls::{ALL_VERSIONS, RootCertStore};
 pub use rustls_gcp_kms::KmsConfig;
 use rustls_gcp_kms::dummy_key;
 use tokio_util::sync::CancellationToken;
@@ -399,8 +399,6 @@ pub async fn kms_tls_client_config(
     Ok(Box::new(client_config))
 }
 
-stat
-
 async fn connect_client() -> Result<google_cloud_pubsub::client::Client, GcpError> {
     let config = google_cloud_pubsub::client::ClientConfig::default()
         .with_auth()
@@ -408,4 +406,3 @@ async fn connect_client() -> Result<google_cloud_pubsub::client::Client, GcpErro
     let client = google_cloud_pubsub::client::Client::new(config).await?;
     Ok(client)
 }
-
