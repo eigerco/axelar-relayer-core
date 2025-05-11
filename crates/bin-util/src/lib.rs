@@ -4,11 +4,11 @@ const ENV_APP_PREFIX: &str = "RELAYER";
 const SEPARATOR: &str = "_";
 
 pub mod health_check;
-use std::time::Duration;
+use core::time::Duration;
 
 use config::{Config, Environment, File};
 use eyre::Context as _;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize as _, Deserializer};
 use tokio_util::sync::CancellationToken;
 
 /// Ensures backtrace is enabled
