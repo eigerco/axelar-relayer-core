@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use eyre::{Context as _, ensure, eyre};
+use infrastructure::gcp;
 use infrastructure::gcp::connectors::KmsConfig;
 use infrastructure::gcp::publisher::PeekableGcpPublisher;
-use infrastructure::gcp::{self};
 use relayer_amplifier_api_integration::amplifier_api::{self, AmplifierApiClient};
 use serde::Deserialize;
 
