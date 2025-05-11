@@ -123,7 +123,7 @@ pub async fn connect_consumer<T>(
 where
     T: BorshDeserialize + Send + Sync + Debug + 'static,
 {
-    let client = connect_client().await?;
+    let client = connect_pubsub_client().await?;
     let consumer = GcpConsumer::new(&client, subscription, config, cancel_token).await?;
 
     Ok(consumer)
@@ -199,7 +199,7 @@ pub async fn connect_publisher<T>(
     worker_count: usize,
     max_bundle_size: usize,
 ) -> Result<GcpPublisher<T>, GcpError> {
-    let client = connect_client().await?;
+    let client = connect_pubsub_client().await?;
     let publisher = GcpPublisher::new(&client, topic, worker_count, max_bundle_size).await?;
     Ok(publisher)
 }
@@ -316,7 +316,7 @@ where
     T::MessageId: BorshSerialize + BorshDeserialize + core::fmt::Display,
 {
     let kv_store = RedisClient::connect(redis_key, redis_connection).await?;
-    let client = connect_client().await?;
+    let client = connect_pubsub_client().await?;
     let publisher =
         PeekableGcpPublisher::new(&client, topic, kv_store, worker_count, max_bundle_size).await?;
     Ok(publisher)
@@ -403,7 +403,7 @@ pub async fn kms_tls_client_config(
     Ok(Box::new(client_config))
 }
 
-async fn connect_client() -> Result<google_cloud_pubsub::client::Client, GcpError> {
+async fn connect_pubsub_client() -> Result<google_cloud_pubsub::client::Client, GcpError> {
     let config = google_cloud_pubsub::client::ClientConfig::default()
         .with_auth()
         .await?;
