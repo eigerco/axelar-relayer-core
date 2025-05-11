@@ -135,7 +135,7 @@ async fn amplifier_client(
     gcp_config: &GcpConfig,
 ) -> eyre::Result<AmplifierApiClient> {
     let client_config =
-        gcp::connectors::kms_tls_client_config(gcp_config.certificate_path, gcp_config.kms)
+        gcp::connectors::kms_tls_client_config(gcp_config.certificate_path.clone(), gcp_config.kms)
             .await
             .wrap_err("kms connection failed")?;
 
