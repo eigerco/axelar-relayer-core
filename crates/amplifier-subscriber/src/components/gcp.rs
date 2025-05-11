@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use bin_util::ValidateConfig;
 use eyre::{Context as _, ensure, eyre};
 use infrastructure::gcp;
 use infrastructure::gcp::connectors::KmsConfig;
@@ -7,7 +8,7 @@ use infrastructure::gcp::publisher::PeekableGcpPublisher;
 use relayer_amplifier_api_integration::amplifier_api::{self, AmplifierApiClient};
 use serde::Deserialize;
 
-use crate::config::{self, Config, Validate};
+use crate::config::Config;
 
 const TASK_KEY: &str = "last-task";
 const WORKERS_SCALE_FACTOR: usize = 4;
@@ -36,7 +37,7 @@ pub(crate) struct GcpConfig {
     message_buffer_size: usize,
 }
 
-impl Validate for GcpSectionConfig {
+impl ValidateConfig for GcpSectionConfig {
     fn validate(&self) -> eyre::Result<()> {
         self.gcp.kms.validate().map_err(|err| eyre::eyre!(err))?;
         ensure!(
@@ -72,13 +73,12 @@ impl Validate for GcpSectionConfig {
 }
 
 pub(crate) async fn new_amplifier_subscriber(
-    config_path: PathBuf,
+    config_path: String,
 ) -> eyre::Result<
     amplifier_subscriber::Subscriber<PeekableGcpPublisher<amplifier_api::types::TaskItem>>,
 > {
-    let config = config::try_deserialize(&config_path).wrap_err("config file issues")?;
-    let infra_config: GcpSectionConfig =
-        config::try_deserialize(&config_path).wrap_err("gcp pubsub config issues")?;
+    let config: Config = bin_util::try_deserialize(&config_path)?;
+    let infra_config: GcpSectionConfig = bin_util::try_deserialize(&config_path)?;
     let num_cpus = num_cpus::get();
 
     let task_queue_publisher = gcp::connectors::connect_peekable_publisher(

@@ -16,7 +16,9 @@ axum.workspace = true
 eyre.workspace = true
 reqwest.workspace = true
 serde_json.workspace = true
+serde.workspace = true
 futures.workspace = true
+config.workspace = true
 
 [lints]
 workspace = true

@@ -1,6 +1,6 @@
 use core::time::Duration;
-use std::path::PathBuf;
 
+use bin_util::{ValidateConfig, deserialize_duration_from_secs};
 use eyre::{Context as _, ensure, eyre};
 use infrastructure::nats::publisher::NatsPublisher;
 use infrastructure::nats::{self, StreamArgs};
@@ -9,7 +9,6 @@ use serde::Deserialize;
 use url::Url;
 
 use crate::Config;
-use crate::config::{self, Validate, deserialize_duration_from_secs};
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub(crate) struct NatsSectionConfig {
@@ -28,7 +27,7 @@ pub(crate) struct NatsConfig {
     pub stream_description: String,
 }
 
-impl Validate for NatsSectionConfig {
+impl ValidateConfig for NatsSectionConfig {
     fn validate(&self) -> eyre::Result<()> {
         ensure!(
             !self.nats.urls.is_empty(),
@@ -40,11 +39,11 @@ impl Validate for NatsSectionConfig {
 }
 
 pub(crate) async fn new_amplifier_subscriber(
-    config_path: PathBuf,
+    config_path: String,
 ) -> eyre::Result<amplifier_subscriber::Subscriber<NatsPublisher<amplifier_api::types::TaskItem>>> {
-    let config = config::try_deserialize(&config_path).wrap_err("config file issues")?;
-    let nats_config: NatsSectionConfig =
-        config::try_deserialize(&config_path).wrap_err("nats config issues")?;
+    let config: Config = bin_util::try_deserialize(&config_path)?;
+    let nats_config: NatsSectionConfig = bin_util::try_deserialize(&config_path)?;
+
     let amplifier_client = amplifier_client(&config)?;
 
     let stream = StreamArgs {
