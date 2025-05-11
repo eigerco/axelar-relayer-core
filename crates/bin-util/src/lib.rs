@@ -93,8 +93,8 @@ pub trait ValidateConfig {
     ///
     /// # Returns
     ///
-    /// * `eyre::Result<()>` - Ok if validation passes, or an error with a message
-    ///                         describing why validation failed
+    /// * `eyre::Result<()>` - Ok if validation passes, or an error with a message describing why
+    ///   validation failed
     /// # Errors
     ///
     /// This function will return an error if config is wrong

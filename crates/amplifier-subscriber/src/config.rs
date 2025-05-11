@@ -1,8 +1,8 @@
 use core::time::Duration;
 
 use bin_util::{ValidateConfig, deserialize_duration_from_secs};
-use serde::Deserialize;
 use eyre::ensure;
+use serde::Deserialize;
 
 /// Top-level configuration for the relayer.
 #[derive(Debug, Deserialize, PartialEq)]
@@ -39,4 +39,3 @@ impl ValidateConfig for Config {
         Ok(())
     }
 }
-
