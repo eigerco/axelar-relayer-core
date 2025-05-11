@@ -111,8 +111,10 @@ rand = "0.9"
 ctrlc = "3"
 tonic = "0.13"
 flume = "0.11"
-rustls = { version = "0.23", default-features = false }
 num_cpus = "1"
+rustls = { version = "0.23", default-features = false }
+webpki-roots = "1"
+rustls-gcp-kms = { git = "https://github.com/vaporif/rustls-gcp-kms.git" }
 
 
 # Serde
@@ -164,12 +166,12 @@ async-nats = "0.40"
 google-cloud-pubsub = { package = "gcloud-pubsub", version = "1.2" }
 google-cloud-gax = { package = "gcloud-gax", version = "1.2" }
 google-cloud-googleapis = { package = "gcloud-googleapis", version = "1.1.0" }
-redis = { version = "0.30", features = [
+google-cloud-kms = { package="gcloud-kms", version="1.2" }
+redis = { version = "0.31", features = [
   "tokio-comp",
   "aio",
   "connection-manager",
 ] }
-rustls-gcp-kms = { git = "https://github.com/vaporif/rustls-gcp-kms.git" }
 
 # tracing
 tracing = "0.1"

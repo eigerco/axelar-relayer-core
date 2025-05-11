@@ -10,6 +10,7 @@ license.workspace = true
 [dependencies]
 async-nats = { workspace = true, optional = true }
 google-cloud-pubsub = { workspace = true, optional = true }
+google-cloud-kms = { workspace = true, optional = true }
 redis = { workspace = true, optional = true }
 google-cloud-googleapis = { workspace = true, optional = true, features = [
   "pubsub",
@@ -27,7 +28,7 @@ borsh = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
 rustls = { workspace = true, features = ["std"], optional = true }
 rustls-gcp-kms = { workspace = true, optional = true }
-
+webpki-roots = { workspace = true, optional = true }
 uuid.workspace = true
 
 [lints]
@@ -45,6 +46,7 @@ nats = [
 gcp = [
   "dep:google-cloud-pubsub",
   "dep:google-cloud-googleapis",
+  "dep:google-cloud-kms",
   "dep:redis",
   "dep:tonic",
   "dep:hex",
@@ -52,6 +54,7 @@ gcp = [
   "dep:tokio-util",
   "dep:rustls",
   "dep:rustls-gcp-kms",
+  "dep:webpki-roots",
   "dep:flume",
   "dep:google-cloud-gax",
   "consumer-interfaces",

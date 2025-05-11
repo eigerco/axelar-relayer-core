@@ -2,8 +2,9 @@
 use core::fmt::Debug;
 
 /// google cloud platform implementation
-use google_cloud_pubsub::client::{self, google_cloud_auth};
+use google_cloud_pubsub::client::google_cloud_auth;
 use redis::RedisError;
+use rustls_gcp_kms::KmsError;
 use tokio::task::JoinError;
 
 /// connectors to queue
@@ -22,12 +23,20 @@ pub(crate) mod util;
 pub enum GcpError {
     #[error("auth error {0}")]
     Auth(#[from] google_cloud_auth::error::Error),
-    #[error("client error {0}")]
-    Client(#[from] client::Error),
+    #[error("pubsub client error: {0}")]
+    PubsubClient(#[from] google_cloud_pubsub::client::Error),
+    #[error("kms client error: {0}")]
+    KmsClient(google_cloud_gax::conn::Error),
+    #[error("kms error: {0}")]
+    Kms(#[from] KmsError),
     #[error("topic exists error {0}")]
     TopicExistsCheck(Box<tonic::Status>),
     #[error("topic not found: {topic}")]
     TopicNotFound { topic: String },
+    #[error("build client error: {0}")]
+    RustlsBuilder(#[from] rustls::Error),
+    #[error("could not read client certificate due to error: {0}")]
+    CertificateRead(std::io::Error),
     #[error("topic exists check error {0}")]
     SubscriptionExistsCheck(Box<tonic::Status>),
     #[error("subscription not found: {subscription}")]
