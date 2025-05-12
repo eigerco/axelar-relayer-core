@@ -58,6 +58,11 @@ async fn main() {
     let config: Config = config::try_deserialize(&cli.config_path).expect("generic config");
     let cancel_token = bin_util::register_cancel();
 
+    let telemetry_config = config.telemetry.clone();
+    if let Err(err) = bin_util::telemetry::init(&telemetry_config) {
+        tracing::error!(?err, "Failed to initialize telemetry");
+    }
+
     tokio::try_join!(
         spawn_subscriber_worker(config.tickrate, cli.config_path.clone(), &cancel_token),
         spawn_health_check_server(

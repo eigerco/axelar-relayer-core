@@ -24,6 +24,9 @@ pub(crate) struct Config {
     /// Configuration for health check server
     #[serde(rename = "health_check_server")]
     pub health_check: HealthCheckConfig,
+
+    /// Configuration for the telemetry
+    pub telemetry: bin_util::telemetry::TelemetryConfig,
 }
 
 /// Configuration for health check server

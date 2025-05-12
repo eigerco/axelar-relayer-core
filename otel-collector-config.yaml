@@ -1,0 +1,55 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  otlp:
+    endpoint: "jaeger:4317"
+    tls:
+      insecure: true
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+  loki:
+    endpoint: "http://loki:3100/loki/api/v1/push"
+    default_labels_enabled:
+      exporter: true
+      job: true
+
+processors:
+  batch:
+  attributes/loki_labels:
+    actions:
+      - key: service.name
+        action: insert
+        value: "rust-app"
+      - key: level
+        action: insert
+        value: "info"
+  transform:
+    log_statements:
+      - context: log
+        statements:
+          - set(body, attributes["message"]) where IsMatch(attributes["message"], ".*")
+          - set(severity_text, attributes["level"]) where IsMatch(attributes["level"], ".*")
+          - set(attributes["app.log"], body)
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp]
+
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+
+    logs:
+      receivers: [otlp]
+      processors: [transform, attributes/loki_labels, batch]
+      exporters: [loki]
