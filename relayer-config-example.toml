@@ -1,8 +1,9 @@
 tickrate_secs = 5
 
 [telemetry]
-service_name = "service-name"
-otlp_endpoint="http://otel-collector:4318"
+service_name = "axelar-relayer"
+otlp_collector_endpoint="http://otel-collector:4317"
+otlp_collector_protocol="grpc"
 filters = [
     "amplifier_ingester=debug",
     "amplifier_subscriber=debug",
@@ -19,7 +20,7 @@ filters = [
 ]
 
 [nats]
-urls = ["nats://localhost:4222"]
+urls = ["nats://nats:4222"]
 connection_timeout_secs = 30
 
 stream_name = "events"

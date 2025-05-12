@@ -20,7 +20,7 @@ futures.workspace = true
 
 #telemetry
 opentelemetry = { version = "0.29.1", features = ["metrics"] }
-opentelemetry-otlp = { version = "0.29", features = ["metrics"] }
+opentelemetry-otlp = { version = "0.29", features = ["metrics", "grpc-tonic"] }
 opentelemetry_sdk = "0.29"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json", "registry"] }
 tracing-opentelemetry = "0.30"

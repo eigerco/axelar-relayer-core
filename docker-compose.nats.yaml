@@ -25,22 +25,22 @@ services:
       - nats
     restart: unless-stopped
 
-  subscriber:
-    build:
-      context: .
-      dockerfile: crates/amplifier-subscriber/Dockerfile
-      args:
-        FEATURES: nats
-    ports:
-      - "8081:8080"
-    volumes:
-      - ./relayer-config.toml:/app/relayer-config.toml
-    environment:
-      - TICKRATE_SECS=5
-      - NATS_URLS=nats://nats:4222
-    depends_on:
-      - nats
-    restart: unless-stopped
+  # subscriber:
+  #   build:
+  #     context: .
+  #     dockerfile: crates/amplifier-subscriber/Dockerfile
+  #     args:
+  #       FEATURES: nats
+  #   ports:
+  #     - "8081:8080"
+  #   volumes:
+  #     - ./relayer-config.toml:/app/relayer-config.toml
+  #   environment:
+  #     - TICKRATE_SECS=5
+  #     - NATS_URLS=nats://nats:4222
+  #   depends_on:
+  #     - nats
+  #   restart: unless-stopped
 
   jaeger:
     image: jaegertracing/all-in-one:latest

@@ -15,27 +15,52 @@ use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitEx
 pub struct TelemetryConfig {
     /// Per-crate log levels (e.g. "my_crate" = "debug")
     pub filters: Option<Vec<String>>,
-    /// OTLP endpoint (e.g. "http://localhost:4317" or "http://localhost:4318")
-    pub otlp_endpoint: Option<String>,
+    /// OTLP endpoint URL
+    pub otlp_collector_endpoint: Option<String>,
+    /// Protocol to use for OTLP (grpc or http)
+    pub otlp_collector_protocol: Option<String>,
     /// Service name for metrics and traces
     pub service_name: String,
 }
 
 /// Initialize tracing, logging, and metrics
 pub fn init(config: &TelemetryConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    const TRACES_PATH: &str = "/v1/traces";
-    let endpoint = config
-        .otlp_endpoint
-        .as_deref()
-        .map(|base| format!("{}{}", base, TRACES_PATH))
-        .unwrap_or_else(|| format!("http://localhost:4318{}", TRACES_PATH));
+    setup_tracing(config)?;
+    setup_metrics(config)?;
 
-    // ===== Tracing Setup =====
-    let span_exporter = SpanExporter::builder()
-        .with_http()
-        .with_protocol(Protocol::HttpBinary)
-        .with_endpoint(&endpoint)
-        .build()?;
+    Ok(())
+}
+
+fn setup_tracing(config: &TelemetryConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let endpoint = config
+        .otlp_collector_endpoint
+        .clone()
+        .unwrap_or_else(|| "http://localhost:4318".to_string());
+
+    let protocol = config
+        .otlp_collector_protocol
+        .clone()
+        .unwrap_or_else(|| "http".to_string())
+        .to_lowercase();
+
+    let span_exporter_builder = SpanExporter::builder();
+
+    let span_exporter = if protocol == "grpc" {
+        // gRPC protocol
+        span_exporter_builder
+            .with_tonic()
+            .with_protocol(Protocol::Grpc)
+            .with_endpoint(&endpoint)
+            .build()?
+    } else {
+        // HTTP protocol (default)
+        let endpoint_with_path = format!("{}/v1/traces", endpoint);
+        span_exporter_builder
+            .with_http()
+            .with_protocol(Protocol::HttpBinary)
+            .with_endpoint(&endpoint_with_path)
+            .build()?
+    };
 
     let tracer_provider = SdkTracerProvider::builder()
         .with_batch_exporter(span_exporter)
@@ -54,8 +79,8 @@ pub fn init(config: &TelemetryConfig) -> Result<(), Box<dyn std::error::Error + 
     let tracer_name = config.service_name.clone();
     let tracer = tracer_provider.tracer(tracer_name);
 
-    let filters = config.filters.clone();
     // ===== Logging Setup =====
+    let filters = config.filters.clone();
     match &filters {
         Some(filters_vec) => println!("tracing filters: {:?}", filters_vec),
         None => println!("no tracing filters provided"),
@@ -74,12 +99,39 @@ pub fn init(config: &TelemetryConfig) -> Result<(), Box<dyn std::error::Error + 
         .with(OpenTelemetryLayer::new(tracer))
         .try_init()?;
 
-    // ===== Metrics Setup =====
-    let exporter = MetricExporter::builder()
-        .with_http()
-        .with_protocol(Protocol::HttpBinary)
-        .with_endpoint(endpoint)
-        .build()?;
+    Ok(())
+}
+
+fn setup_metrics(config: &TelemetryConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let endpoint = config
+        .otlp_collector_endpoint
+        .clone()
+        .unwrap_or_else(|| "http://localhost:4318".to_string());
+
+    let protocol = config
+        .otlp_collector_protocol
+        .clone()
+        .unwrap_or_else(|| "http".to_string())
+        .to_lowercase();
+
+    let metric_exporter_builder = MetricExporter::builder();
+
+    let exporter = if protocol == "grpc" {
+        // gRPC protocol
+        metric_exporter_builder
+            .with_tonic()
+            .with_protocol(Protocol::Grpc)
+            .with_endpoint(&endpoint)
+            .build()?
+    } else {
+        // HTTP protocol (default)
+        let endpoint_with_path = format!("{}/v1/metrics", endpoint);
+        metric_exporter_builder
+            .with_http()
+            .with_protocol(Protocol::HttpBinary)
+            .with_endpoint(&endpoint_with_path)
+            .build()?
+    };
 
     let meter_provider = SdkMeterProvider::builder()
         .with_periodic_exporter(exporter)

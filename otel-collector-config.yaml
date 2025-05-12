@@ -7,31 +7,39 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 exporters:
-  jaeger:
+  otlp:
     endpoint: "jaeger:14250"
     tls:
       insecure: true
-    headers:
-      x-otlp-version: "0.7.0"
+
   prometheus:
     endpoint: "0.0.0.0:8889"
+    namespace: "axelar"
+    const_labels:
+      app: "relayer"
+    metric_expiration: 1m
 
 processors:
   batch:
     timeout: 1s
     send_batch_size: 1024
     send_batch_max_size: 2048
+  attributes:
+    actions:
+      - key: service.name
+        action: upsert
+        value: "axelar-relayer"
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [jaeger]
+      processors: [batch, attributes]
+      exporters: [otlp]
 
     metrics:
       receivers: [otlp]
-      processors: [batch]
+      processors: [batch, attributes]
       exporters: [prometheus]
 
     logs:
