@@ -18,7 +18,7 @@ resource "google_kms_crypto_key_iam_member" "key_signer" {
   crypto_key_id = google_kms_crypto_key.amplifier_api_sign_key.id
   role          = "roles/cloudkms.signer"
   members = [
-    "serviceAccount:${var.events_publisher_service_account_email}"
+    "serviceAccount:${var.events_publisher_service_account_email}",
     "serviceAccount:${var.tasks_subscriber_service_account_email}"
   ]
 }
