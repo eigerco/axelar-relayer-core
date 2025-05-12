@@ -21,7 +21,6 @@ clap.workspace = true
 url.workspace = true
 bin-util.workspace = true
 futures.workspace = true
-rustls = { workspace = true, optional = true, features = ["std"] }
 
 [features]
 default = ["gcp"]
@@ -30,7 +29,6 @@ nats = [
 ]
 gcp = [
   "infrastructure/gcp",
-  "dep:rustls"
 ]
 storage-interfaces = []
 supervisor = ["dep:supervisor"]

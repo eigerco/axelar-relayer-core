@@ -21,7 +21,6 @@ clap.workspace = true
 relayer-amplifier-api-integration.workspace = true
 url.workspace = true
 bin-util.workspace = true
-rustls = { workspace = true, optional = true, features = ["std"] }
 
 [features]
 default = ["gcp"]
@@ -30,7 +29,6 @@ nats = [
 ]
 gcp = [
   "infrastructure/gcp",
-  "dep:rustls"
 ]
 consumer-interfaces = []
 publisher-interfaces = []
