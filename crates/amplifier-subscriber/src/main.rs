@@ -30,6 +30,7 @@ use core::time::Duration;
 use std::path::PathBuf;
 
 use bin_util::health_check;
+use bin_util::telemetry::{increment_counter, register_counter};
 use clap::Parser;
 use config::Config;
 use tokio_util::sync::CancellationToken;
@@ -105,12 +106,17 @@ fn spawn_subscriber_worker(
             tracing::debug!("Starting amplifier subscriber...");
 
             let mut error_count: i32 = 0;
+            let tick_counter = register_counter(
+                "subscriber_ticks",
+                "Counts the number of ticks in the worker",
+            );
 
             cancel_token
                 .run_until_cancelled(async move {
                     let mut work_interval = tokio::time::interval(tickrate);
                     loop {
                         work_interval.tick().await;
+                        increment_counter(&tick_counter, 1);
                         if let Err(err) = subscriber.subscribe().await {
                             tracing::error!(?err, "error during ingest, skipping...");
                             error_count = error_count.saturating_add(1);

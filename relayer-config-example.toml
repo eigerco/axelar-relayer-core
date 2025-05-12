@@ -2,6 +2,7 @@ tickrate_secs = 5
 
 [telemetry]
 service_name = "service-name"
+otlp_endpoint="http://otel-collector:4318"
 filters = [
     "amplifier_ingester=debug",
     "amplifier_subscriber=debug",

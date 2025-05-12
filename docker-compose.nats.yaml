@@ -7,12 +7,6 @@ services:
     command:
       - "-js"
       - "-m=8222"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8222/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
 
   ingester:
     build:
@@ -28,15 +22,8 @@ services:
       - TICKRATE_SECS=5
       - NATS_URLS=nats://nats:4222
     depends_on:
-      nats:
-        condition: service_healthy
+      - nats
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
 
   subscriber:
     build:
@@ -52,15 +39,8 @@ services:
       - TICKRATE_SECS=5
       - NATS_URLS=nats://nats:4222
     depends_on:
-      nats:
-        condition: service_healthy
+      - nats
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -73,16 +53,8 @@ services:
       - "16686:16686" # Jaeger UI
       - "14250:14250" # Collector (GRPC)
       - "14268:14268" # Collector (HTTP)
-
     environment:
       - COLLECTOR_OTLP_ENABLED=true
-
-  loki:
-    image: grafana/loki:2.8.2
-    container_name: loki
-    restart: unless-stopped
-    ports:
-      - "3100:3100" # Loki HTTP API
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
@@ -120,7 +92,6 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
       - prometheus
-      - loki
 
 networks:
   default:

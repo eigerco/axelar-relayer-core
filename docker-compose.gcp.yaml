@@ -18,12 +18,6 @@ services:
       # Optional: GCP-specific environment variables
       # - GOOGLE_APPLICATION_CREDENTIALS=/home/relayer/.config/gcloud/application_default_credentials.json
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
 
   subscriber:
     build:
@@ -42,12 +36,6 @@ services:
       # Optional: GCP-specific environment variables
       # - GOOGLE_APPLICATION_CREDENTIALS=/home/relayer/.config/gcloud/application_default_credentials.json
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -63,13 +51,6 @@ services:
 
     environment:
       - COLLECTOR_OTLP_ENABLED=true
-
-  loki:
-    image: grafana/loki:2.8.2
-    container_name: loki
-    restart: unless-stopped
-    ports:
-      - "3100:3100" # Loki HTTP API
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
@@ -107,7 +88,6 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
       - prometheus
-      - loki
 
 networks:
   default:

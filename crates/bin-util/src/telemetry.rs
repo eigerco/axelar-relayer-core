@@ -23,16 +23,18 @@ pub struct TelemetryConfig {
 
 /// Initialize tracing, logging, and metrics
 pub fn init(config: &TelemetryConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    const TRACES_PATH: &str = "/v1/traces";
     let endpoint = config
         .otlp_endpoint
         .as_deref()
-        .unwrap_or("http://localhost:4318/v1/traces");
+        .map(|base| format!("{}{}", base, TRACES_PATH))
+        .unwrap_or_else(|| format!("http://localhost:4318{}", TRACES_PATH));
 
     // ===== Tracing Setup =====
     let span_exporter = SpanExporter::builder()
         .with_http()
         .with_protocol(Protocol::HttpBinary)
-        .with_endpoint(endpoint)
+        .with_endpoint(&endpoint)
         .build()?;
 
     let tracer_provider = SdkTracerProvider::builder()
@@ -66,8 +68,6 @@ pub fn init(config: &TelemetryConfig) -> Result<(), Box<dyn std::error::Error + 
         }
     }
 
-    // Set up the subscriber with console output and OpenTelemetry export for traces
-    // The OpenTelemetry collector will convert traces with log events into logs for Loki
     tracing_subscriber::registry()
         .with(filter)
         .with(tracing_subscriber::fmt::layer().with_ansi(true))
@@ -104,6 +104,11 @@ pub fn register_counter(name: &'static str, description: &'static str) -> Counte
         .u64_counter(name)
         .with_description(description)
         .build()
+}
+
+/// Update a counter metric
+pub fn increment_counter(counter: &Counter<u64>, value: u64) {
+    counter.add(value, &[]);
 }
 
 /// Create and register a histogram metric (name and description must be `'static`)
