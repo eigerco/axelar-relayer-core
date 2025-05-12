@@ -10,6 +10,8 @@ use opentelemetry_sdk::{Resource, metrics::SdkMeterProvider, trace::SdkTracerPro
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
+const DEFAULT_ENDPOINT: &str = "http://localhost:4318";
+
 /// Configuration for telemetry
 #[derive(Debug, Clone, serde::Deserialize, PartialEq)]
 pub struct TelemetryConfig {
@@ -35,7 +37,7 @@ fn setup_tracing(config: &TelemetryConfig) -> Result<(), Box<dyn std::error::Err
     let endpoint = config
         .otlp_collector_endpoint
         .clone()
-        .unwrap_or_else(|| "http://localhost:4318".to_string());
+        .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
 
     let protocol = config
         .otlp_collector_protocol
@@ -106,7 +108,7 @@ fn setup_metrics(config: &TelemetryConfig) -> Result<(), Box<dyn std::error::Err
     let endpoint = config
         .otlp_collector_endpoint
         .clone()
-        .unwrap_or_else(|| "http://localhost:4318".to_string());
+        .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
 
     let protocol = config
         .otlp_collector_protocol
