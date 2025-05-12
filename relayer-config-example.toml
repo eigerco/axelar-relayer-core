@@ -1,5 +1,22 @@
 tickrate_secs = 5
 
+[telemetry]
+service_name = "service-name"
+filters = [
+    "amplifier_ingester=debug",
+    "amplifier_subscriber=debug",
+    "amplifier-api=debug",
+    "amplifier-subscriber=debug",
+    "common-serde-utils=debug",
+    "relayer-amplifier-api-integration=debug",
+    "relayer-engine=debug",
+    "supervisor=debug",
+    "bin-util=debug",
+    "infrastructure=debug",
+    "relayer-amplifier-state=debug",
+    "retry=debug"
+]
+
 [nats]
 urls = ["nats://localhost:4222"]
 connection_timeout_secs = 30

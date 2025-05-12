@@ -230,7 +230,6 @@ You can override configuration options using environment variables when running 
 docker run -p 8080:8080 \
   -v /path/to/your/relayer-config.toml:/app/relayer-config.toml \
   -e "TICKRATE_SECS=10" \
-  -e "NATS_URLS=nats://nats-server:4222" \
   axelar-amplifier-ingester
 ```
 

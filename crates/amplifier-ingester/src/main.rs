@@ -33,6 +33,7 @@ use bin_util::health_check;
 use clap::Parser;
 use config::Config;
 use tokio_util::sync::CancellationToken;
+use tracing::{Level, instrument};
 
 // TODO: Move this to config
 const MAX_ERRORS: i32 = 20;
@@ -50,6 +51,7 @@ pub(crate) struct Cli {
 }
 
 #[tokio::main]
+#[instrument]
 async fn main() {
     bin_util::ensure_backtrace_set();
 
@@ -57,6 +59,13 @@ async fn main() {
 
     let config: Config = config::try_deserialize(&cli.config_path).expect("generic config");
     let cancel_token = bin_util::register_cancel();
+
+    let telemetry_config = config.telemetry.clone();
+    if let Err(err) = bin_util::telemetry::init(&telemetry_config) {
+        tracing::error!(?err, "Failed to initialize telemetry");
+    }
+
+    tracing::event!(Level::INFO, "Amplifier ingester is starting up");
 
     tokio::try_join!(
         spawn_subscriber_worker(config.tickrate, cli.config_path.clone(), &cancel_token),
@@ -68,9 +77,12 @@ async fn main() {
     )
     .expect("Failed to join tasks");
 
+    tracing::event!(Level::INFO, "Amplifier ingester is shutting down");
+
     tracing::info!("Amplifier ingester has been shut down");
 }
 
+#[instrument]
 fn spawn_subscriber_worker(
     tickrate: Duration,
     config_path: PathBuf,
@@ -118,6 +130,7 @@ fn spawn_subscriber_worker(
     })
 }
 
+#[instrument]
 fn spawn_health_check_server(
     port: u16,
     config_path: PathBuf,
