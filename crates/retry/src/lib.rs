@@ -10,6 +10,9 @@ use core::time::Duration;
 
 pub use builder::Builder;
 
+pub(crate) const MAX_ATTEMPTS: usize = 20;
+pub(crate) const RATE_LIMIT_WAIT_SECS: u64 = 10;
+
 /// Retry error
 #[derive(Debug, thiserror::Error)]
 pub enum RetryError<Err: Abortable> {
@@ -55,6 +58,10 @@ mod tests {
     impl Abortable for TestError {
         fn abortable(&self) -> bool {
             self.0
+        }
+
+        fn rate_limit(&self) -> bool {
+            false
         }
     }
 

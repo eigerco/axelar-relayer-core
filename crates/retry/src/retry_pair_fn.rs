@@ -4,6 +4,7 @@ use core::time::Duration;
 
 use super::{Abortable, RetryError};
 use crate::backoff_pair_iterator::{AlternationStep, BackoffPairIterator};
+use crate::{MAX_ATTEMPTS, RATE_LIMIT_WAIT_SECS};
 
 pub struct RetryPairFn<Fn1, Fn2, T, Err> {
     backoff: BackoffPairIterator,
@@ -30,8 +31,8 @@ where
             first_function,
             second_function,
             // TODO: put into config
-            max_attempts: 20,
-            rate_limit_wait: Duration::from_secs(10),
+            max_attempts: MAX_ATTEMPTS,
+            rate_limit_wait: Duration::from_secs(RATE_LIMIT_WAIT_SECS),
             _phantom: PhantomData,
         }
     }

@@ -4,6 +4,7 @@ use core::time::Duration;
 use tokio_retry::strategy::ExponentialBackoff;
 
 use super::{Abortable, RetryError};
+use crate::{MAX_ATTEMPTS, RATE_LIMIT_WAIT_SECS};
 
 pub struct RetryFn<Fn, T, Err>
 where
@@ -26,8 +27,8 @@ where
             backoff,
             function,
             // TODO: config
-            max_attempts: 20,
-            rate_limit_wait: Duration::from_secs(10),
+            max_attempts: MAX_ATTEMPTS,
+            rate_limit_wait: Duration::from_secs(RATE_LIMIT_WAIT_SECS),
         }
     }
 

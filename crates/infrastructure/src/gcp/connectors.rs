@@ -349,7 +349,7 @@ where
 /// # Example
 ///
 /// ```no_run
-/// use infrastructure::{kms_tls_client_config, KmsConfig};
+/// use infrastructure::gcp::connectors::{kms_tls_client_config, KmsConfig};
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
