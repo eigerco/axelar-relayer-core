@@ -15,7 +15,7 @@ pub struct Config {
         env = "AMPLIFIER_API_IDENTITY",
         value_parser = parse_identity
     )]
-    pub identity: Identity,
+    pub identity: Option<Identity>,
     /// The Amplifier API url to connect to
     #[arg(value_name = "AMPLIFIER_API_URL", env = "AMPLIFIER_API_URL")]
     pub url: url::Url,
@@ -32,7 +32,7 @@ pub struct Config {
     )]
     #[arg(
         value_name = "AMPLIFIER_API_CHAINS_POLL_INTERVAL",
-        env = "AMPLIFIER_API_CHAINS_POLL_INTERVAL", 
+        env = "AMPLIFIER_API_CHAINS_POLL_INTERVAL",
         value_parser = parse_chains_poll_interval,
         default_value = config_defaults::chains_poll_interval_default_value().to_string()
     )]
@@ -44,7 +44,7 @@ pub struct Config {
     #[serde(default = "config_defaults::get_chains_limit")]
     #[arg(
         value_name = "AMPLIFIER_API_CHAINS_LIMIT",
-        env = "AMPLIFIER_API_CHAINS_LIMIT", 
+        env = "AMPLIFIER_API_CHAINS_LIMIT",
         default_value = config_defaults::get_chains_limit().to_string()
     )]
     pub get_chains_limit: u8,
@@ -58,7 +58,7 @@ pub struct Config {
     )]
     #[arg(
         value_name = "AMPLIFIER_API_HEALTHCHECK_INTERVAL",
-        env = "AMPLIFIER_API_HEALTHCHECK_INTERVAL", 
+        env = "AMPLIFIER_API_HEALTHCHECK_INTERVAL",
         value_parser = parse_healthcheck_interval,
         default_value = config_defaults::healthcheck_interval_default_value().to_string()
     )]
@@ -70,15 +70,19 @@ pub struct Config {
     #[serde(default = "config_defaults::invalid_healthchecks_before_shutdown")]
     #[arg(
         value_name = "AMPLIFIER_API_INVALID_HEALTHCHECKS_BEFORE_SHUTDOWN",
-        env = "AMPLIFIER_API_INVALID_HEALTHCHECKS_BEFORE_SHUTDOWN", 
+        env = "AMPLIFIER_API_INVALID_HEALTHCHECKS_BEFORE_SHUTDOWN",
         default_value = config_defaults::invalid_healthchecks_before_shutdown().to_string()
     )]
     pub invalid_healthchecks_before_shutdown: usize,
 }
 
-fn parse_identity(input: &str) -> Result<Identity> {
+fn parse_identity(input: &str) -> Result<Option<Identity>> {
+    if input.is_empty() {
+        return Ok(None);
+    }
+
     let identity_bytes = BASE64_STANDARD.decode(input)?;
-    Ok(Identity::new_from_pem_bytes(&identity_bytes)?)
+    Ok(Some(Identity::new_from_pem_bytes(&identity_bytes)?))
 }
 
 fn parse_chains_poll_interval(input: &str) -> Result<core::time::Duration> {

@@ -1,8 +1,8 @@
 use core::time::Duration;
 
-use bin_util::ValidateConfig;
+use bin_util::{ValidateConfig, deserialize_duration_from_secs};
 use eyre::ensure;
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 
 /// Top-level configuration for the relayer.
 #[derive(Debug, Deserialize, PartialEq)]
@@ -37,12 +37,4 @@ impl ValidateConfig for Config {
 
         Ok(())
     }
-}
-
-pub(crate) fn deserialize_duration_from_secs<'de, D>(deserializer: D) -> Result<Duration, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let seconds = u64::deserialize(deserializer)?;
-    Ok(Duration::from_secs(seconds))
 }

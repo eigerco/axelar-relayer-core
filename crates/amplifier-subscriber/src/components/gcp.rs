@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use bin_util::ValidateConfig;
 use eyre::{Context as _, ensure, eyre};
 use infrastructure::gcp;
@@ -16,14 +14,13 @@ const BUNDLE_SIZE_SCALE_FACTOR: usize = 4;
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct GcpSectionConfig {
-    pub gcp: GcpConfig,
+    gcp: GcpConfig,
+    amplifier_tls_public_certificate: String,
+    kms: KmsConfig,
 }
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct GcpConfig {
-    certificate_path: PathBuf,
-    kms: KmsConfig,
-
     redis_connection: String,
 
     tasks_topic: String,
@@ -39,7 +36,7 @@ pub(crate) struct GcpConfig {
 
 impl ValidateConfig for GcpSectionConfig {
     fn validate(&self) -> eyre::Result<()> {
-        self.gcp.kms.validate().map_err(|err| eyre::eyre!(err))?;
+        self.kms.validate().map_err(|err| eyre::eyre!(err))?;
         ensure!(
             !self.gcp.redis_connection.is_empty(),
             eyre!("gcp redis_connection should be set")
@@ -107,10 +104,12 @@ async fn amplifier_client(
     config: &Config,
     gcp_config: GcpSectionConfig,
 ) -> eyre::Result<AmplifierApiClient> {
-    let client_config =
-        gcp::connectors::kms_tls_client_config(gcp_config.gcp.certificate_path, gcp_config.gcp.kms)
-            .await
-            .wrap_err("kms connection failed")?;
+    let client_config = gcp::connectors::kms_tls_client_config(
+        gcp_config.amplifier_tls_public_certificate.into_bytes(),
+        gcp_config.kms,
+    )
+    .await
+    .wrap_err("kms connection failed")?;
 
     AmplifierApiClient::new(
         config.amplifier_component.url.clone(),

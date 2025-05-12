@@ -1,5 +1,4 @@
 use core::fmt::Debug;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -330,7 +329,7 @@ where
 ///
 /// # Arguments
 ///
-/// * `cert_path` - Path to the client certificate file in PEM or DER format
+/// * `public_certificate` - Public client certificate bytes in PEM or DER format
 /// * `kms_config` - Configuration for connecting to Google Cloud KMS and identifying the key
 ///
 /// # Returns
@@ -350,12 +349,10 @@ where
 /// # Example
 ///
 /// ```no_run
-/// use std::path::PathBuf;
 /// use infrastructure::{kms_tls_client_config, KmsConfig};
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let cert_path = PathBuf::from("path/to/client.crt");
 ///     let kms_config = KmsConfig::new(
 ///         "my-project-id",
 ///         "global",
@@ -364,7 +361,9 @@ where
 ///         "1"
 ///     );
 ///
-///     let client_config = kms_tls_client_config(cert_path, kms_config).await?;
+///     let cert = vec![0_u8; 32];
+///
+///     let client_config = kms_tls_client_config(cert, kms_config).await?;
 ///
 ///     // Use the client_config with a TLS client
 ///     // ...
@@ -374,7 +373,7 @@ where
 /// ```
 #[tracing::instrument]
 pub async fn kms_tls_client_config(
-    cert_path: PathBuf,
+    public_certificate: Vec<u8>,
     kms_config: KmsConfig,
 ) -> Result<Box<rustls::ClientConfig>, GcpError> {
     let config = google_cloud_kms::client::ClientConfig::default()
@@ -386,9 +385,7 @@ pub async fn kms_tls_client_config(
     tracing::debug!("client connected");
     let provider = rustls_gcp_kms::provider(client, kms_config).await?;
 
-    let cert = std::fs::read(cert_path).map_err(GcpError::CertificateRead)?;
-    tracing::debug!("tls certificate read");
-    let cert = CertificateDer::from_slice(&cert).into_owned();
+    let cert = CertificateDer::from_slice(&public_certificate).into_owned();
 
     let root_store = RootCertStore {
         roots: webpki_roots::TLS_SERVER_ROOTS.into(),

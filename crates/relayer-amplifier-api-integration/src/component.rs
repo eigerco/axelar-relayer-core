@@ -105,7 +105,11 @@ where
         let config = self.config.clone();
         let client = amplifier_api::AmplifierApiClient::new(
             self.config.url.clone(),
-            amplifier_api::TlsType::Certificate(Box::new(self.config.identity)),
+            amplifier_api::TlsType::Certificate(Box::new(
+                self.config
+                    .identity
+                    .ok_or_else(|| eyre::Report::msg("identity cert+key not set"))?,
+            )),
         )?;
         let clock = get_clock()?;
 
