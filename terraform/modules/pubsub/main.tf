@@ -110,34 +110,58 @@ resource "google_pubsub_subscription" "amplifier_tasks_sub" {
   labels = var.default_labels
 }
 
-resource "google_pubsub_topic_iam_binding" "tasks_publisher_binding" {
-  topic = google_pubsub_topic.amplifier_tasks.name
-  role  = "roles/pubsub.publisher"
-  members = [
-    "serviceAccount:${var.tasks_publisher_service_account_email}",
-  ]
+resource "google_iam_policy" "tasks_publish" {
+  binding {
+    role  = "roles/pubsub.publisher"
+    members = [
+      "serviceAccount:${var.tasks_publisher_service_account_email}",
+    ]
+  }
 }
 
-resource "google_pubsub_subscription_iam_binding" "tasks_subscriber_binding" {
-  subscription = google_pubsub_subscription.amplifier_tasks_sub.name
-  role         = "roles/pubsub.subscriber"
-  members = [
-    "serviceAccount:${var.tasks_subscriber_service_account_email}",
-  ]
+resource "google_iam_policy" "tasks_subscribe" {
+  binding {
+    role  = "roles/pubsub.publisher"
+    members = [
+      "serviceAccount:${var.tasks_subscriber_service_account_email}",
+    ]
+  }
 }
 
-resource "google_pubsub_topic_iam_binding" "events_publisher_binding" {
-  topic = google_pubsub_topic.amplifier_events.name
-  role  = "roles/pubsub.publisher"
-  members = [
-    "serviceAccount:${var.events_publisher_service_account_email}",
-  ]
+resource "google_iam_policy" "events_publish" {
+  binding {
+    role  = "roles/pubsub.publisher"
+    members = [
+      "serviceAccount:${var.events_publisher_service_account_email}",
+    ]
+  }
 }
 
-resource "google_pubsub_subscription_iam_binding" "events_subscriber_binding" {
-  subscription = google_pubsub_subscription.amplifier_events_sub.name
-  role         = "roles/pubsub.subscriber"
-  members = [
+resource "google_iam_policy" "events_subscribe" {
+  binding {
+    role  = "roles/pubsub.publisher"
+    members = [
     "serviceAccount:${var.events_subscriber_service_account_email}",
-  ]
+    ]
+  }
+}
+
+resource "google_pubsub_topic_iam_policy" "tasks_publish" {
+  topic = google_pubsub_topic.amplifier_tasks.name
+  policy = google_iam_policy.tasks_publish
+}
+
+resource "google_pubsub_topic_iam_policy" "tasks_subscribe" {
+  topic = google_pubsub_topic.amplifier_tasks.name
+  policy = google_iam_policy.tasks_publish
+}
+
+resource "google_pubsub_topic_iam_policy" "events_publish" {
+  topic = google_pubsub_topic.amplifier_events.name
+  policy = google_iam_policy.events_publish
+}
+
+resource "google_pubsub_topic_iam_policy" "events_publish" {
+  topic = google_pubsub_topic.amplifier_events.name
+  policy = google_iam_policy.events_publish
 }
