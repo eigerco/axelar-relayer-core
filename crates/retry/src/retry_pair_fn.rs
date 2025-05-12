@@ -80,7 +80,6 @@ where
                         }
                         Err(err) => {
                             tracing::error!(%err, retry_count, "retry attempt with primary lambda failed");
-                            continue;
                         }
                     }
                 }
@@ -116,7 +115,6 @@ where
                         }
                         Err(err) => {
                             tracing::error!(%err, retry_count, "retry attempt with secondary lambda failed");
-                            continue;
                         }
                     }
                 }
