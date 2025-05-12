@@ -70,7 +70,13 @@ pub(crate) async fn new_amplifier_subscriber(
 fn amplifier_client(config: &Config) -> eyre::Result<AmplifierApiClient> {
     AmplifierApiClient::new(
         config.amplifier_component.url.clone(),
-        amplifier_api::TlsType::Certificate(Box::new(config.amplifier_component.identity.clone())),
+        amplifier_api::TlsType::Certificate(Box::new(
+            config
+                .amplifier_component
+                .identity
+                .clone()
+                .ok_or_else(|| eyre::Report::msg("identity not set"))?,
+        )),
     )
     .wrap_err("amplifier api client failed to create")
 }

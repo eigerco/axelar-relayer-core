@@ -1,6 +1,6 @@
 use core::time::Duration;
 
-use bin_util::ValidateConfig;
+use bin_util::{ValidateConfig, deserialize_duration_from_secs};
 use eyre::{Context as _, ensure, eyre};
 use infrastructure::nats::consumer::NatsConsumer;
 use infrastructure::nats::{self, StreamArgs};
@@ -9,7 +9,6 @@ use serde::Deserialize;
 use url::Url;
 
 use crate::Config;
-use crate::config::deserialize_duration_from_secs;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub(crate) struct NatsSectionConfig {
@@ -75,7 +74,13 @@ pub(crate) async fn new_amplifier_ingester(
 fn amplifier_client(config: &Config) -> eyre::Result<AmplifierApiClient> {
     AmplifierApiClient::new(
         config.amplifier_component.url.clone(),
-        amplifier_api::TlsType::Certificate(Box::new(config.amplifier_component.identity.clone())),
+        amplifier_api::TlsType::Certificate(Box::new(
+            config
+                .amplifier_component
+                .identity
+                .clone()
+                .ok_or_else(|| eyre::Report::msg("identity not set"))?,
+        )),
     )
     .wrap_err("amplifier api client failed to create")
 }
