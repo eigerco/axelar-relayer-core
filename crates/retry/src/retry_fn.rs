@@ -1,4 +1,5 @@
 use core::fmt::Display;
+use std::time::Duration;
 
 use tokio_retry::strategy::ExponentialBackoff;
 
@@ -12,6 +13,7 @@ where
     backoff: ExponentialBackoff,
     function: Fn,
     max_attempts: usize,
+    rate_limit_wait: Duration,
 }
 
 impl<Fn, T, Err> RetryFn<Fn, T, Err>
@@ -25,6 +27,7 @@ where
             function,
             // TODO: config
             max_attempts: 20,
+            rate_limit_wait: Duration::from_secs(10),
         }
     }
 
@@ -36,12 +39,15 @@ where
             tokio::time::sleep(duration).await;
             match (self.function)().await {
                 Ok(res) => return Ok(res),
+                Err(err) if err.abortable() => {
+                    tracing::error!(%err, "aborted");
+                    return Err(RetryError::Aborted(err));
+                }
+                Err(err) if err.rate_limit() => {
+                    tracing::error!(%err, "rate limit reached, extend wait");
+                    tokio::time::sleep(self.rate_limit_wait).await;
+                }
                 Err(err) => {
-                    if err.abortable() {
-                        tracing::error!(%err, "aborted");
-                        return Err(RetryError::Aborted(err));
-                    }
-
                     tracing::error!(%err, retry_attempt, "retryable lambda err");
                 }
             }
@@ -72,6 +78,10 @@ mod tests {
     impl Abortable for TestError {
         fn abortable(&self) -> bool {
             self.abort
+        }
+
+        fn rate_limit(&self) -> bool {
+            false
         }
     }
 

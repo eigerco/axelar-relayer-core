@@ -33,6 +33,8 @@ pub(crate) struct BackoffParrams {
 pub trait Abortable {
     /// Is error abortable i.e. non-recoverable?
     fn abortable(&self) -> bool;
+    /// Is error rate limit i.e. we need to wait more?
+    fn rate_limit(&self) -> bool;
 }
 
 #[cfg(test)]
