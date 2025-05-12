@@ -73,7 +73,7 @@ pub fn try_deserialize<T: serde::de::DeserializeOwned + ValidateConfig>(
     config_path: &str,
 ) -> eyre::Result<T> {
     let cfg_deserializer = Config::builder()
-        .add_source(File::from_str(config_path, config::FileFormat::Toml).required(false))
+        .add_source(File::with_name(config_path).required(false))
         .add_source(Environment::with_prefix(ENV_APP_PREFIX).separator(SEPARATOR))
         .build()
         .wrap_err("could not load config")?;
