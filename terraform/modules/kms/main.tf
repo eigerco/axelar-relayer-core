@@ -14,11 +14,19 @@ resource "google_kms_crypto_key" "amplifier_api_sign_key" {
   }
 }
 
-resource "google_kms_crypto_key_iam_member" "key_signer" {
-  crypto_key_id = google_kms_crypto_key.amplifier_api_sign_key.id
-  role          = "roles/cloudkms.signer"
-  members = [
+data "google_iam_policy" "crypto_policy" {
+  binding {
+    role = "roles/cloudkms.signer"
+
+    members = [
     "serviceAccount:${var.events_publisher_service_account_email}",
     "serviceAccount:${var.tasks_subscriber_service_account_email}"
-  ]
+    ]
+  }
 }
+
+resource "google_kms_crypto_key_iam_policy" "crypto_key" {
+  crypto_key_id = google_kms_crypto_key.amplifier_api_sign_key.id
+  policy_data = google_iam_policy.crypto_policy.policy_data
+}
+
