@@ -1,6 +1,6 @@
 use core::fmt::Display;
 use core::marker::PhantomData;
-use std::time::Duration;
+use core::time::Duration;
 
 use super::{Abortable, RetryError};
 use crate::backoff_pair_iterator::{AlternationStep, BackoffPairIterator};

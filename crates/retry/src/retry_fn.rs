@@ -1,5 +1,5 @@
 use core::fmt::Display;
-use std::time::Duration;
+use core::time::Duration;
 
 use tokio_retry::strategy::ExponentialBackoff;
 
