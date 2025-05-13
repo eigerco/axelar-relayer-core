@@ -15,22 +15,17 @@ const BUNDLE_SIZE_SCALE_FACTOR: usize = 4;
 #[derive(Debug, Deserialize)]
 pub(crate) struct GcpSectionConfig {
     gcp: GcpConfig,
-    amplifier_tls_public_certificate: String,
     kms: KmsConfig,
 }
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct GcpConfig {
     redis_connection: String,
-
     tasks_topic: String,
     tasks_subscription: String,
-
     events_topic: String,
     events_subscription: String,
-
     nak_deadline_secs: i32,
-
     message_buffer_size: usize,
 }
 
@@ -102,11 +97,16 @@ pub(crate) async fn new_amplifier_subscriber(
 
 async fn amplifier_client(
     config: &Config,
-    gcp_config: GcpSectionConfig,
+    infra_config: GcpSectionConfig,
 ) -> eyre::Result<AmplifierApiClient> {
     let client_config = gcp::connectors::kms_tls_client_config(
-        gcp_config.amplifier_tls_public_certificate.into_bytes(),
-        gcp_config.kms,
+        config
+            .amplifier_component
+            .tls_public_certificate
+            .clone()
+            .ok_or_else(|| eyre::Report::msg("tls_public_certificate should be set"))?
+            .into_bytes(),
+        infra_config.kms,
     )
     .await
     .wrap_err("kms connection failed")?;

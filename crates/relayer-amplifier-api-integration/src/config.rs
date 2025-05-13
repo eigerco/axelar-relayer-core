@@ -9,13 +9,16 @@ use typed_builder::TypedBuilder;
 /// global Amplifier component configuration
 #[derive(Debug, Deserialize, Clone, PartialEq, TypedBuilder, Parser)]
 pub struct Config {
-    /// Identity certificate for the Amplifier API authentication to work
+    /// Identity keys for the Amplifier API
     #[arg(
         value_name = "AMPLIFIER_API_IDENTITY",
         env = "AMPLIFIER_API_IDENTITY",
         value_parser = parse_identity
     )]
     pub identity: Option<Identity>,
+    /// TLS public certificate for Amplifier API
+    #[arg(value_name = "AMPLIFIER_API_TLS_CERT", env = "AMPLIFIER_API_TLS_CERT")]
+    pub tls_public_certificate: Option<String>,
     /// The Amplifier API url to connect to
     #[arg(value_name = "AMPLIFIER_API_URL", env = "AMPLIFIER_API_URL")]
     pub url: url::Url,
