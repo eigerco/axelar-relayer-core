@@ -27,6 +27,6 @@ data "google_iam_policy" "crypto_policy" {
 
 resource "google_kms_crypto_key_iam_policy" "crypto_key" {
   crypto_key_id = google_kms_crypto_key.amplifier_api_sign_key.id
-  policy_data = google_iam_policy.crypto_policy.policy_data
+  policy_data = data.google_iam_policy.crypto_policy.policy_data
 }
 

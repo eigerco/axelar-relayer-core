@@ -110,7 +110,7 @@ resource "google_pubsub_subscription" "amplifier_tasks_sub" {
   labels = var.default_labels
 }
 
-resource "google_iam_policy" "tasks_publish" {
+data "google_iam_policy" "tasks_publish" {
   binding {
     role  = "roles/pubsub.publisher"
     members = [
@@ -119,7 +119,7 @@ resource "google_iam_policy" "tasks_publish" {
   }
 }
 
-resource "google_iam_policy" "tasks_subscribe" {
+data "google_iam_policy" "tasks_subscribe" {
   binding {
     role  = "roles/pubsub.publisher"
     members = [
@@ -128,7 +128,7 @@ resource "google_iam_policy" "tasks_subscribe" {
   }
 }
 
-resource "google_iam_policy" "events_publish" {
+data "google_iam_policy" "events_publish" {
   binding {
     role  = "roles/pubsub.publisher"
     members = [
@@ -137,7 +137,7 @@ resource "google_iam_policy" "events_publish" {
   }
 }
 
-resource "google_iam_policy" "events_subscribe" {
+data "google_iam_policy" "events_subscribe" {
   binding {
     role  = "roles/pubsub.publisher"
     members = [
@@ -148,20 +148,20 @@ resource "google_iam_policy" "events_subscribe" {
 
 resource "google_pubsub_topic_iam_policy" "tasks_publish" {
   topic = google_pubsub_topic.amplifier_tasks.name
-  policy = google_iam_policy.tasks_publish
+  policy_data = data.google_iam_policy.tasks_publish.policy_data
 }
 
 resource "google_pubsub_topic_iam_policy" "tasks_subscribe" {
   topic = google_pubsub_topic.amplifier_tasks.name
-  policy = google_iam_policy.tasks_subscribe
+  policy_data = data.google_iam_policy.tasks_subscribe.policy_data
 }
 
 resource "google_pubsub_topic_iam_policy" "events_publish" {
   topic = google_pubsub_topic.amplifier_events.name
-  policy = google_iam_policy.events_publish
+  policy_data = data.google_iam_policy.events_publish.policy_data
 }
 
 resource "google_pubsub_topic_iam_policy" "events_subscribe" {
   topic = google_pubsub_topic.amplifier_events.name
-  policy = google_iam_policy.events_subscribe
+  policy_data = data.google_iam_policy.events_subscribe.policy_data
 }
