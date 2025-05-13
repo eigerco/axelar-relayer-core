@@ -161,7 +161,7 @@ resource "google_pubsub_topic_iam_policy" "events_publish" {
   policy = google_iam_policy.events_publish
 }
 
-resource "google_pubsub_topic_iam_policy" "events_publish" {
+resource "google_pubsub_topic_iam_policy" "events_subscribe" {
   topic = google_pubsub_topic.amplifier_events.name
   policy = google_iam_policy.events_subscribe
 }
