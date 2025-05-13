@@ -17,23 +17,23 @@ const CHANNEL_CAPACITY_SCALE_FACTOR: usize = 4;
 #[derive(Debug, Deserialize)]
 pub(crate) struct GcpSectionConfig {
     gcp: GcpConfig,
-    kms: KmsConfig,
 }
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct GcpConfig {
-    redis_connection: String,
-    tasks_topic: String,
-    tasks_subscription: String,
-    events_topic: String,
-    events_subscription: String,
-    ack_deadline_secs: i32,
-    message_buffer_size: usize,
+    pub kms: KmsConfig,
+    pub redis_connection: String,
+    pub tasks_topic: String,
+    pub tasks_subscription: String,
+    pub events_topic: String,
+    pub events_subscription: String,
+    pub ack_deadline_secs: i32,
+    pub message_buffer_size: usize,
 }
 
 impl ValidateConfig for GcpSectionConfig {
     fn validate(&self) -> eyre::Result<()> {
-        self.kms.validate().map_err(|err| eyre::eyre!(err))?;
+        self.gcp.kms.validate().map_err(|err| eyre::eyre!(err))?;
         ensure!(
             !self.gcp.redis_connection.is_empty(),
             eyre!("gcp redis_connection should be set")
@@ -115,7 +115,7 @@ async fn amplifier_client(
             .clone()
             .ok_or_else(|| eyre::Report::msg("tls_public_certificate should be set"))?
             .into_bytes(),
-        infra_config.kms,
+        infra_config.gcp.kms,
     )
     .await
     .wrap_err("kms connection failed")?;
