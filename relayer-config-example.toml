@@ -25,6 +25,12 @@ events_subscription = "amplifier-events-sub"
 ack_deadline_secs = 10
 message_buffer_size = 1000
 
+[gcp.kms]
+project_id = "axelar-relayer"
+location = "global"
+keyring = "amplifier_api_keyring"
+cryptokey = "amplifier_api_signing_key"
+
 [amplifier_component]
 # pem format cert
 identity = '''
