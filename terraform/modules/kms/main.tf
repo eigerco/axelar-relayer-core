@@ -10,7 +10,7 @@ resource "google_kms_crypto_key" "amplifier_api_signing_key" {
 
   version_template {
     protection_level = var.protection_level
-    algorithm        = "EC_SIGN_SECP256K1_SHA256"
+    algorithm        = "RSA_SIGN_PKCS1_4096_SHA256"
   }
 }
 
