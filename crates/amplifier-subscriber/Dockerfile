@@ -12,7 +12,8 @@ RUN apk add --no-cache \
     ca-certificates \
     musl-dev \
     perl \
-    make
+    make \
+    git
 
 # Set environment variables for static linking
 ENV OPENSSL_STATIC=1

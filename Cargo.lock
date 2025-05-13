@@ -2749,7 +2749,7 @@ dependencies = [
 [[package]]
 name = "rustls-gcp-kms"
 version = "0.1.0"
-source = "git+https://github.com/vaporif/rustls-gcp-kms.git#cb7e45c6f1cf647dcc048a0364a3418b91b46ef3"
+source = "git+https://github.com/vaporif/rustls-gcp-kms.git#c2ae546b45775d4c23d56007b98090ae40e49453"
 dependencies = [
  "eyre",
  "futures",
@@ -3160,9 +3160,9 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.19.1"
+version = "3.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7437ac7763b9b123ccf33c338a5cc1bac6f69b45a136c19bdd8a65e3916435bf"
+checksum = "e8a64e3985349f2441a1a9ef0b853f869006c3855f2cda6862a94d26ebb9d6a1"
 dependencies = [
  "fastrand",
  "getrandom 0.3.3",
