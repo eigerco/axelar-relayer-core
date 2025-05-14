@@ -12,7 +12,11 @@ amplifier-api.workspace = true
 supervisor = { workspace = true, optional = true }
 tracing.workspace = true
 eyre.workspace = true
-infrastructure = { workspace = true, features = ["publisher-interfaces", "consumer-interfaces", "storage-interfaces"] }
+infrastructure = { workspace = true, features = [
+  "publisher-interfaces",
+  "consumer-interfaces",
+  "storage-interfaces",
+] }
 tokio.workspace = true
 tokio-util.workspace = true
 num_cpus.workspace = true
@@ -24,12 +28,8 @@ bin-util.workspace = true
 
 [features]
 default = ["gcp"]
-nats = [
-  "infrastructure/nats",
-]
-gcp = [
-  "infrastructure/gcp",
-]
+nats = ["infrastructure/nats"]
+gcp = ["infrastructure/gcp"]
 consumer-interfaces = []
 publisher-interfaces = []
 storage-interfaces = []

@@ -24,12 +24,8 @@ futures.workspace = true
 
 [features]
 default = ["gcp"]
-nats = [
-  "infrastructure/nats",
-]
-gcp = [
-  "infrastructure/gcp",
-]
+nats = ["infrastructure/nats"]
+gcp = ["infrastructure/gcp"]
 storage-interfaces = []
 supervisor = ["dep:supervisor"]
 

@@ -20,7 +20,7 @@ chrono.workspace = true
 bnum.workspace = true
 typed-builder.workspace = true
 borsh.workspace = true
-infrastructure = { workspace = true, features = ["publisher-interfaces"]}
+infrastructure = { workspace = true, features = ["publisher-interfaces"] }
 rustls.workspace = true
 simd-json = "0.15"
 

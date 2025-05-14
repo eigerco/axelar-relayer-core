@@ -87,9 +87,9 @@ arrayvec = "0.7"
 url = { version = "2.5", features = ["serde"] }
 temp-env = "0.3"
 chrono = { version = "0.4", default-features = false, features = [
-    "serde",
-    "clock",
-    "std",
+  "serde",
+  "clock",
+  "std",
 ] }
 base64 = "0.22"
 bs58 = "0.5"
@@ -131,21 +131,21 @@ color-eyre = "0.6"
 
 # HTTP
 reqwest = { version = "0.12", default-features = false, features = [
-    "json",
-    "gzip",
-    "deflate",
-    "rustls-tls",
-    "stream",
-    "http2",
+  "json",
+  "gzip",
+  "deflate",
+  "rustls-tls",
+  "stream",
+  "http2",
 ] }
 
 # async
 tokio = { version = "1", features = [
-    "rt",
-    "signal",
-    "rt-multi-thread",
-    "macros",
-    "time",
+  "rt",
+  "signal",
+  "rt-multi-thread",
+  "macros",
+  "time",
 ] }
 tokio-stream = { version = "0.1" }
 tokio-util = "0.7"
@@ -157,12 +157,12 @@ async-trait = "0"
 # tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [
-    "env-filter",
-    "fmt",
-    "tracing-log",
-    "json",
-    "valuable",
-    "tracing",
+  "env-filter",
+  "fmt",
+  "tracing-log",
+  "json",
+  "valuable",
+  "tracing",
 ] }
 tracing-error = "0.2"
 

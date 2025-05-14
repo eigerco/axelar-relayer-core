@@ -8,7 +8,6 @@ repository.workspace = true
 license.workspace = true
 
 [dependencies]
-tonic = { workspace = true, optional = true }
 url.workspace = true
 tokio.workspace = true
 tokio-util = { workspace = true, optional = true }
@@ -20,11 +19,11 @@ hex = { workspace = true, optional = true }
 rustls = { workspace = true, features = ["std"], optional = true }
 uuid.workspace = true
 
-async-nats = { version = "0.40", optional = true}
-google-cloud-pubsub = { package = "gcloud-pubsub", version = "1.2" , optional = true}
+async-nats = { version = "0.40", optional = true }
+google-cloud-pubsub = { package = "gcloud-pubsub", version = "1.2", optional = true }
 google-cloud-gax = { package = "gcloud-gax", version = "1.2", optional = true }
 google-cloud-googleapis = { package = "gcloud-googleapis", version = "1.1.0", optional = true }
-google-cloud-kms = { package="gcloud-kms", version="1.2", optional = true }
+google-cloud-kms = { package = "gcloud-kms", version = "1.2", optional = true }
 redis = { version = "0.31", features = [
   "tokio-comp",
   "aio",
@@ -32,7 +31,11 @@ redis = { version = "0.31", features = [
 ], optional = true }
 flume = { version = "0.11", optional = true, features = ["async"] }
 webpki-roots = { version = "1", optional = true }
-rustls-gcp-kms = { git = "https://github.com/eigerco/rustls-gcp-kms.git", optional = true, features = ["serde"] }
+rustls-gcp-kms = { git = "https://github.com/eigerco/rustls-gcp-kms.git", optional = true, features = [
+  "serde",
+] }
+tonic = { version = "0.13", optional = true }
+
 [lints]
 workspace = true
 
