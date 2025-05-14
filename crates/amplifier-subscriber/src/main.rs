@@ -131,7 +131,7 @@ fn spawn_health_check_server(
                 let config_path = config_path.clone();
                 async move {
                     #[cfg(feature = "nats")]
-                    let subscriber = components::nats::new_amplifier_subscriber(config_path)
+                    let subscriber = components::nats::new_amplifier_subscriber(&config_path)
                         .await
                         .expect("subscriber is created");
 
