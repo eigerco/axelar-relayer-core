@@ -39,10 +39,10 @@ impl ValidateConfig for NatsSectionConfig {
 }
 
 pub(crate) async fn new_amplifier_subscriber(
-    config_path: String,
+    config_path: &str,
 ) -> eyre::Result<amplifier_subscriber::Subscriber<NatsPublisher<amplifier_api::types::TaskItem>>> {
-    let config: Config = bin_util::try_deserialize(&config_path)?;
-    let nats_config: NatsSectionConfig = bin_util::try_deserialize(&config_path)?;
+    let config: Config = bin_util::try_deserialize(config_path)?;
+    let nats_config: NatsSectionConfig = bin_util::try_deserialize(config_path)?;
 
     let amplifier_client = amplifier_client(&config)?;
 

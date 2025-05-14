@@ -86,7 +86,7 @@ fn spawn_subscriber_worker(
                 .expect("subscriber is created");
 
             #[cfg(feature = "gcp")]
-            let mut subscriber = components::gcp::new_amplifier_subscriber(config_path)
+            let mut subscriber = components::gcp::new_amplifier_subscriber(&config_path)
                 .await
                 .expect("subscriber is created");
 
@@ -136,7 +136,7 @@ fn spawn_health_check_server(
                         .expect("subscriber is created");
 
                     #[cfg(feature = "gcp")]
-                    let subscriber = components::gcp::new_amplifier_subscriber(config_path)
+                    let subscriber = components::gcp::new_amplifier_subscriber(&config_path)
                         .await
                         .expect("subscriber is created");
                     subscriber.check_health().await

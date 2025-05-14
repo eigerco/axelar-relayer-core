@@ -79,7 +79,7 @@ fn spawn_subscriber_worker(
         let cancel_token = cancel_token.clone();
         async move {
             #[cfg(feature = "nats")]
-            let ingester = components::nats::new_amplifier_ingester(config_path)
+            let ingester = components::nats::new_amplifier_ingester(&config_path)
                 .await
                 .expect("ingester is created");
 
@@ -133,7 +133,7 @@ fn spawn_health_check_server(
                 let cancel_token = cancel_token.clone();
                 async move {
                     #[cfg(feature = "nats")]
-                    let ingester = components::nats::new_amplifier_ingester(config_path)
+                    let ingester = components::nats::new_amplifier_ingester(&config_path)
                         .await
                         .expect("ingester is created");
 

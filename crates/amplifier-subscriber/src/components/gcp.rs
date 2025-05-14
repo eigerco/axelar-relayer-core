@@ -65,12 +65,12 @@ impl ValidateConfig for GcpSectionConfig {
 }
 
 pub(crate) async fn new_amplifier_subscriber(
-    config_path: String,
+    config_path: &str,
 ) -> eyre::Result<
     amplifier_subscriber::Subscriber<PeekableGcpPublisher<amplifier_api::types::TaskItem>>,
 > {
-    let config: Config = bin_util::try_deserialize(&config_path)?;
-    let infra_config: GcpSectionConfig = bin_util::try_deserialize(&config_path)?;
+    let config: Config = bin_util::try_deserialize(config_path)?;
+    let infra_config: GcpSectionConfig = bin_util::try_deserialize(config_path)?;
     let num_cpus = num_cpus::get();
 
     let task_queue_publisher = gcp::connectors::connect_peekable_publisher(
