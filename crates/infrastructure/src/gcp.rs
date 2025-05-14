@@ -33,10 +33,10 @@ pub enum GcpError {
     TopicExistsCheck(Box<tonic::Status>),
     #[error("topic not found: {topic}")]
     TopicNotFound { topic: String },
+    #[error("could not read client certificate due to error: {0}")]
+    CertificateRead(#[from] rustls::pki_types::pem::Error),
     #[error("build client error: {0}")]
     RustlsBuilder(#[from] rustls::Error),
-    #[error("could not read client certificate due to error: {0}")]
-    CertificateRead(std::io::Error),
     #[error("topic exists check error {0}")]
     SubscriptionExistsCheck(Box<tonic::Status>),
     #[error("subscription not found: {subscription}")]

@@ -2,6 +2,7 @@ use core::fmt::Debug;
 use std::sync::Arc;
 
 use borsh::{BorshDeserialize, BorshSerialize};
+use rustls::pki_types::pem::PemObject as _;
 use rustls::{ALL_VERSIONS, RootCertStore};
 pub use rustls_gcp_kms::KmsConfig;
 use rustls_gcp_kms::dummy_key;
@@ -385,7 +386,7 @@ pub async fn kms_tls_client_config(
     tracing::debug!("client connected");
     let provider = rustls_gcp_kms::provider(client, kms_config).await?;
 
-    let cert = CertificateDer::from_slice(&public_certificate).into_owned();
+    let cert = CertificateDer::from_pem_slice(public_certificate.iter().as_slice())?;
 
     let root_store = RootCertStore {
         roots: webpki_roots::TLS_SERVER_ROOTS.into(),
