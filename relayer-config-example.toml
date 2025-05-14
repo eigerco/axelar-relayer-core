@@ -12,11 +12,6 @@ consumer_description = "Event processor"
 deliver_group = "event-processors"
 
 [gcp]
-amplifier_tls_public_certificate: '''
------BEGIN CERTIFICATE-----
-...
------END CERTIFICATE-----
-'''
 redis_connection = "redis://127.0.0.1/"
 tasks_topic = "amplifier-tasks"
 tasks_subscription = "amplifier-tasks-sub"
