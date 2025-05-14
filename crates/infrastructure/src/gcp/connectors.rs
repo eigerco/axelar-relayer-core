@@ -2,8 +2,8 @@ use core::fmt::Debug;
 use std::sync::Arc;
 
 use borsh::{BorshDeserialize, BorshSerialize};
+use rustls::RootCertStore;
 use rustls::pki_types::pem::PemObject as _;
-use rustls::{ALL_VERSIONS, RootCertStore};
 pub use rustls_gcp_kms::KmsConfig;
 use rustls_gcp_kms::dummy_key;
 use tokio_util::sync::CancellationToken;
@@ -393,7 +393,7 @@ pub async fn kms_tls_client_config(
     };
 
     let client_config = rustls::ClientConfig::builder_with_provider(Arc::new(provider))
-        .with_protocol_versions(ALL_VERSIONS)?
+        .with_safe_default_protocol_versions()?
         .with_root_certificates(root_store)
         .with_client_auth_cert(vec![cert], dummy_key())?;
 
