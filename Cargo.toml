@@ -114,13 +114,9 @@ num_cpus = "1"
 rustls = { version = "0.23", default-features = false }
 webpki-roots = "1"
 
-
 # Serde
 serde = { version = "1", features = ["derive"] }
-config = "0.15"
 serde_json = "1"
-simd-json = "0.15"
-
 borsh = { version = "1.5", features = ["derive"] }
 
 # Tests
@@ -153,7 +149,6 @@ tokio = { version = "1", features = [
 ] }
 tokio-stream = { version = "0.1" }
 tokio-util = "0.7"
-tokio-retry = "0.3"
 futures-concurrency = "7.4"
 futures-util = "0.3"
 futures = "0.3"
