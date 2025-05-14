@@ -195,7 +195,7 @@ fn authenticated_client(tls_type: TlsType) -> Result<reqwest::Client, AmplifierA
 
     let temp_client = match tls_type {
         TlsType::Certificate(identity) => temp_client.identity(identity.0.expose_secret().clone()),
-        TlsType::CustomProvider(client_config) => temp_client.use_preconfigured_tls(client_config),
+        TlsType::CustomProvider(client_config) => temp_client.use_preconfigured_tls(*client_config),
     };
 
     let temp_client = temp_client
