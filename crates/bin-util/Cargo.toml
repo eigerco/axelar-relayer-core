@@ -8,7 +8,6 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
-ctrlc.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
 tracing.workspace = true
@@ -17,6 +16,8 @@ reqwest.workspace = true
 serde_json.workspace = true
 serde = { workspace = true, features = ["derive"] }
 futures.workspace = true
+
+ctrlc = "3"
 config = "0.15"
 opentelemetry = { version = "0.29.1", features = ["metrics"] }
 opentelemetry-otlp = { version = "0.29", features = ["metrics", "grpc-tonic"] }

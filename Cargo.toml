@@ -87,9 +87,9 @@ arrayvec = "0.7"
 url = { version = "2.5", features = ["serde"] }
 temp-env = "0.3"
 chrono = { version = "0.4", default-features = false, features = [
-  "serde",
-  "clock",
-  "std",
+    "serde",
+    "clock",
+    "std",
 ] }
 base64 = "0.22"
 bs58 = "0.5"
@@ -98,9 +98,7 @@ thiserror = "2"
 uuid = { version = "1.2", features = ["v4", "serde", "borsh"] }
 typed-builder = "0.21"
 derive_builder = "0.20"
-bnum = "0.13"
 hex = "0.4"
-quanta = "0.12"
 backoff = { version = "0.4", features = ["tokio"] }
 indoc = "2"
 itertools = "0.14"
@@ -108,8 +106,6 @@ num-traits = "0.2"
 memmap2 = "0.9"
 bytemuck = "1.19"
 rand = "0.9"
-ctrlc = "3"
-tonic = "0.13"
 num_cpus = "1"
 rustls = { version = "0.23", default-features = false }
 webpki-roots = "1"
@@ -131,23 +127,22 @@ color-eyre = "0.6"
 
 # HTTP
 reqwest = { version = "0.12", default-features = false, features = [
-  "json",
-  "gzip",
-  "deflate",
-  "rustls-tls",
-  "stream",
-  "http2",
+    "json",
+    "gzip",
+    "deflate",
+    "rustls-tls",
+    "stream",
+    "http2",
 ] }
 
 # async
 tokio = { version = "1", features = [
-  "rt",
-  "signal",
-  "rt-multi-thread",
-  "macros",
-  "time",
+    "rt",
+    "signal",
+    "rt-multi-thread",
+    "macros",
+    "time",
 ] }
-tokio-stream = { version = "0.1" }
 tokio-util = "0.7"
 futures-concurrency = "7.4"
 futures-util = "0.3"
@@ -157,12 +152,12 @@ async-trait = "0"
 # tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [
-  "env-filter",
-  "fmt",
-  "tracing-log",
-  "json",
-  "valuable",
-  "tracing",
+    "env-filter",
+    "fmt",
+    "tracing-log",
+    "json",
+    "valuable",
+    "tracing",
 ] }
 tracing-error = "0.2"
 

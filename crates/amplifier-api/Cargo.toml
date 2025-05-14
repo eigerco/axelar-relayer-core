@@ -8,6 +8,8 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
+infrastructure = { workspace = true, features = ["publisher-interfaces"] }
+
 serde.workspace = true
 reqwest.workspace = true
 base64.workspace = true
@@ -17,11 +19,11 @@ thiserror.workspace = true
 url.workspace = true
 uuid.workspace = true
 chrono.workspace = true
-bnum.workspace = true
 typed-builder.workspace = true
 borsh.workspace = true
-infrastructure = { workspace = true, features = ["publisher-interfaces"] }
 rustls.workspace = true
+
+bnum = "0.13"
 simd-json = "0.15"
 
 [dev-dependencies]

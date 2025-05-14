@@ -10,20 +10,22 @@ edition.workspace = true
 [dependencies]
 amplifier-api.workspace = true
 typed-builder.workspace = true
+relayer-engine.workspace = true
+common-serde-utils.workspace = true
+relayer-amplifier-state.workspace = true
+
 futures.workspace = true
 tracing.workspace = true
 futures-concurrency.workspace = true
 tokio.workspace = true
 eyre.workspace = true
 url.workspace = true
-quanta.workspace = true
 serde.workspace = true
-relayer-engine.workspace = true
-tokio-stream.workspace = true
-common-serde-utils.workspace = true
-relayer-amplifier-state.workspace = true
 clap.workspace = true
 base64.workspace = true
+
+tokio-stream = { version = "0.1" }
+quanta = "0.12"
 
 [lints]
 workspace = true
