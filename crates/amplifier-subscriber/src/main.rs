@@ -81,7 +81,7 @@ fn spawn_subscriber_worker(
 
         async move {
             #[cfg(feature = "nats")]
-            let mut subscriber = components::nats::new_amplifier_subscriber(config_path)
+            let mut subscriber = components::nats::new_amplifier_subscriber(&config_path)
                 .await
                 .expect("subscriber is created");
 
