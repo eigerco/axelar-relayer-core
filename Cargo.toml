@@ -110,11 +110,9 @@ bytemuck = "1.19"
 rand = "0.9"
 ctrlc = "3"
 tonic = "0.13"
-flume = "0.11"
 num_cpus = "1"
 rustls = { version = "0.23", default-features = false }
 webpki-roots = "1"
-rustls-gcp-kms = { git = "https://github.com/eigerco/rustls-gcp-kms.git" }
 
 
 # Serde
@@ -161,18 +159,6 @@ futures-util = "0.3"
 futures = "0.3"
 async-trait = "0"
 
-# queues / kv
-async-nats = "0.40"
-google-cloud-pubsub = { package = "gcloud-pubsub", version = "1.2" }
-google-cloud-gax = { package = "gcloud-gax", version = "1.2" }
-google-cloud-googleapis = { package = "gcloud-googleapis", version = "1.1.0" }
-google-cloud-kms = { package="gcloud-kms", version="1.2" }
-redis = { version = "0.31", features = [
-  "tokio-comp",
-  "aio",
-  "connection-manager",
-] }
-
 # tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [
@@ -185,24 +171,7 @@ tracing-subscriber = { version = "0.3", features = [
 ] }
 tracing-error = "0.2"
 
-# opentelemetry
-opentelemetry = "0.25"
-opentelemetry-otlp = { version = "0.25", default-features = false, features = [
-    "trace",
-    "tokio",
-    "logs",
-    "metrics",
-    "grpc-tonic",
-] }
-tracing-opentelemetry = { version = "0.26", default-features = false, features = [
-    "metrics",
-] }
-opentelemetry-semantic-conventions = "0.25"
-opentelemetry_sdk = { version = "0.25", features = ["rt-tokio"] }
-opentelemetry-appender-tracing = { version = "0.25" }
-
 # health-check server
-axum = "0.8"
 
 [profile.release]
 lto = true

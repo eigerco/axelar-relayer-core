@@ -4,6 +4,7 @@ const ENV_APP_PREFIX: &str = "RELAYER";
 const SEPARATOR: &str = "_";
 
 pub mod health_check;
+pub mod telemetry;
 use core::time::Duration;
 
 use config::{Config, Environment, File};

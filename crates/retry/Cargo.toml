@@ -10,9 +10,9 @@ edition.workspace = true
 [dependencies]
 thiserror.workspace = true
 tokio.workspace = true
-tokio-retry.workspace = true
 tracing.workspace = true
 rand.workspace = true
+tokio-retry = "0.3"
 
 [lints]
 workspace = true
