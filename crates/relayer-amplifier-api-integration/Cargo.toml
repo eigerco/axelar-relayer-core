@@ -9,11 +9,11 @@ edition.workspace = true
 
 [dependencies]
 amplifier-api.workspace = true
-typed-builder.workspace = true
+relayer-amplifier-state.workspace = true
 relayer-engine.workspace = true
 common-serde-utils.workspace = true
-relayer-amplifier-state.workspace = true
 
+typed-builder.workspace = true
 futures.workspace = true
 tracing.workspace = true
 futures-concurrency.workspace = true

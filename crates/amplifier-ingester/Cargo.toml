@@ -10,16 +10,17 @@ license.workspace = true
 [dependencies]
 relayer-amplifier-api-integration.workspace = true
 supervisor = { workspace = true, optional = true }
+infrastructure = { workspace = true, features = ["consumer-interfaces"] }
+bin-util.workspace = true
+
 tracing.workspace = true
 eyre.workspace = true
-infrastructure = { workspace = true, features = ["consumer-interfaces"] }
 tokio.workspace = true
 tokio-util.workspace = true
 num_cpus.workspace = true
 serde.workspace = true
 clap.workspace = true
 url.workspace = true
-bin-util.workspace = true
 futures.workspace = true
 
 [features]

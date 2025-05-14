@@ -10,21 +10,22 @@ license.workspace = true
 [dependencies]
 amplifier-api.workspace = true
 supervisor = { workspace = true, optional = true }
-tracing.workspace = true
-eyre.workspace = true
 infrastructure = { workspace = true, features = [
   "publisher-interfaces",
   "consumer-interfaces",
   "storage-interfaces",
 ] }
+bin-util.workspace = true
+relayer-amplifier-api-integration.workspace = true
+
+tracing.workspace = true
+eyre.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
 num_cpus.workspace = true
 serde.workspace = true
 clap.workspace = true
-relayer-amplifier-api-integration.workspace = true
 url.workspace = true
-bin-util.workspace = true
 
 [features]
 default = ["gcp"]
