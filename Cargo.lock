@@ -2750,7 +2750,7 @@ dependencies = [
 [[package]]
 name = "rustls-gcp-kms"
 version = "0.1.0"
-source = "git+https://github.com/vaporif/rustls-gcp-kms.git#ca63a05824f999ac126ab483247378438158a7fa"
+source = "git+https://github.com/eigerco/rustls-gcp-kms.git#ca63a05824f999ac126ab483247378438158a7fa"
 dependencies = [
  "eyre",
  "futures",
