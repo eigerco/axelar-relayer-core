@@ -2,6 +2,7 @@ use core::time::Duration;
 
 use bin_util::{ValidateConfig, deserialize_duration_from_secs};
 use eyre::ensure;
+use serde::Deserialize;
 
 /// Top-level configuration for the relayer.
 #[derive(Debug, Deserialize)]
