@@ -54,7 +54,7 @@ fn setup_tracing(config: &Config) -> Result<(), Box<dyn core::error::Error + Sen
     let endpoint = config
         .otlp_collector_endpoint
         .clone()
-        .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
+        .unwrap_or_else(|| DEFAULT_ENDPOINT.to_owned());
 
     let protocol = config
         .otlp_collector_protocol
@@ -73,7 +73,7 @@ fn setup_tracing(config: &Config) -> Result<(), Box<dyn core::error::Error + Sen
             .build()?
     } else {
         // HTTP protocol (default)
-        let endpoint_with_path = format!("{}/v1/traces", endpoint);
+        let endpoint_with_path = format!("{endpoint}/v1/traces");
         span_exporter_builder
             .with_http()
             .with_protocol(Protocol::HttpBinary)
@@ -144,7 +144,7 @@ fn setup_metrics(config: &Config) -> Result<(), Box<dyn core::error::Error + Sen
             .build()?
     } else {
         // HTTP protocol (default)
-        let endpoint_with_path = format!("{}/v1/metrics", endpoint);
+        let endpoint_with_path = format!("{endpoint}/v1/metrics");
         metric_exporter_builder
             .with_http()
             .with_protocol(Protocol::HttpBinary)
