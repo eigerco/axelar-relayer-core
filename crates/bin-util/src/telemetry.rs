@@ -164,7 +164,7 @@ fn setup_metrics(config: &Config) -> Result<(), Box<dyn core::error::Error + Sen
         )
         .build();
 
-    global::set_meter_provider(meter_provider.clone());
+    global::set_meter_provider(meter_provider);
     Ok(())
 }
 
