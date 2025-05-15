@@ -162,7 +162,7 @@ mod tests {
 
     macro_rules! function_always_succeeding {
         ($val:expr) => {{
-            let call_count = Arc::new(AtomicI32::new(0));
+            let call_count = Arc::new(AtomicI32::new(0_i32));
             let call_count_clone = call_count.clone();
             let func = move || {
                 let counter = call_count_clone.clone();
@@ -178,7 +178,7 @@ mod tests {
 
     macro_rules! function_always_failing {
         () => {{
-            let call_count = Arc::new(AtomicI32::new(0));
+            let call_count = Arc::new(AtomicI32::new(0_i32));
             let call_count_clone = call_count.clone();
             let func = move || {
                 let counter = call_count_clone.clone();
@@ -197,7 +197,7 @@ mod tests {
 
     macro_rules! function_always_aborting {
         () => {{
-            let call_count = Arc::new(AtomicI32::new(0));
+            let call_count = Arc::new(AtomicI32::new(0_i32));
             let call_count_clone = call_count.clone();
             let func = move || {
                 let counter = call_count_clone.clone();
@@ -216,7 +216,7 @@ mod tests {
 
     macro_rules! function_failing_until_n_attempt {
         ($threshold:expr, $val:expr) => {{
-            let call_count = Arc::new(AtomicI32::new(0));
+            let call_count = Arc::new(AtomicI32::new(0_i32));
             let call_count_clone = call_count.clone();
             let func = move || {
                 let counter = call_count_clone.clone();
@@ -239,7 +239,7 @@ mod tests {
 
     macro_rules! function_aborts_on_n_attempt {
         ($threshold:expr) => {{
-            let call_count = Arc::new(AtomicI32::new(0));
+            let call_count = Arc::new(AtomicI32::new(0_i32));
             let call_count_clone = call_count.clone();
             let func = move || {
                 let counter = call_count_clone.clone();
@@ -281,9 +281,9 @@ mod tests {
 
     #[tokio::test]
     async fn retry_pair_alternates_until_success() {
-        let (func1, func1_called_count) = function_failing_until_n_attempt!(3, "ok1");
-        let (_func2, _func2_called_count) = function_always_failing!();
-        let retry = RetryPairFn::new(test_backoff(), func1, _func2);
+        let (func1, func1_called_count) = function_failing_until_n_attempt!(3_i32, "ok1");
+        let (func2, _func2_called_count) = function_always_failing!();
+        let retry = RetryPairFn::new(test_backoff(), func1, func2);
         let result = retry.retry().await.unwrap();
         assert_eq!(result, "ok1");
         assert!(func1_called_count.load(Ordering::Relaxed) >= 3);
@@ -306,7 +306,7 @@ mod tests {
             ..RetryPairFn::new(backoff, func.clone(), func)
         };
         assert!(matches!(retry.retry().await, Err(RetryError::MaxAttempts)));
-        assert_eq!(func_called_count.load(Ordering::Relaxed), 4);
+        assert_eq!(func_called_count.load(Ordering::Relaxed), 4_i32);
     }
 
     #[tokio::test]
@@ -333,7 +333,7 @@ mod tests {
 
     #[tokio::test]
     async fn retry_pair_primary_aborts_after_some_failures() {
-        let (func1, func1_called_count) = function_aborts_on_n_attempt!(3);
+        let (func1, func1_called_count) = function_aborts_on_n_attempt!(3_i32);
         let (func2, _func2_called_count) = function_always_failing!();
         let retry = RetryPairFn {
             max_attempts: 6,
@@ -346,7 +346,7 @@ mod tests {
     #[tokio::test]
     async fn retry_pair_secondary_aborts_after_some_failures() {
         let (func1, _func1_called_count) = function_always_failing!();
-        let (func2, func2_called_count) = function_aborts_on_n_attempt!(2);
+        let (func2, func2_called_count) = function_aborts_on_n_attempt!(2_i32);
         let retry = RetryPairFn {
             max_attempts: 5,
             ..RetryPairFn::new(test_backoff(), func1, func2)
@@ -358,7 +358,7 @@ mod tests {
     #[tokio::test]
     async fn retry_pair_one_aborts_other_always_fails_then_both_abort() {
         let (func1, _func1_called_count) = function_always_aborting!();
-        let (func2, func2_called_count) = function_aborts_on_n_attempt!(2);
+        let (func2, func2_called_count) = function_aborts_on_n_attempt!(2_i32);
         let retry = RetryPairFn::new(test_backoff(), func1, func2);
         assert!(matches!(retry.retry().await, Err(RetryError::Aborted(e)) if e.abort));
         assert_eq!(func2_called_count.load(Ordering::Relaxed), 2_i32);

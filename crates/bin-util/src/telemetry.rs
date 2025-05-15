@@ -169,6 +169,7 @@ fn setup_metrics(config: &Config) -> Result<(), Box<dyn core::error::Error + Sen
 }
 
 /// Create and register a counter metric (name and description must be `'static`)
+#[must_use]
 pub fn register_counter(name: &'static str, description: &'static str) -> Counter<u64> {
     let meter = global::meter("telemetry");
     meter
@@ -183,6 +184,7 @@ pub fn increment_counter(counter: &Counter<u64>, value: u64) {
 }
 
 /// Create and register a histogram metric (name and description must be `'static`)
+#[must_use]
 pub fn register_histogram(name: &'static str, description: &'static str) -> Histogram<f64> {
     let meter = global::meter("telemetry");
     meter

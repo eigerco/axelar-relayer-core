@@ -282,16 +282,16 @@ mod tests {
     async fn test_multiple_health_checks() {
         let port = get_free_port();
         let flag = Arc::new(AtomicBool::new(false));
-        let flag2 = flag.clone();
         let cancel_token = CancellationToken::new();
         let token_clone = cancel_token.clone();
 
+        let is_healthy_flag = flag.clone();
         let server = Server::new(port)
             .add_health_check(|| async { Ok(()) })
             .add_health_check(move || {
-                let ok = !flag2.load(Ordering::SeqCst);
+                let is_ok = !is_healthy_flag.load(Ordering::Relaxed);
                 async move {
-                    if ok {
+                    if is_ok {
                         Ok(())
                     } else {
                         Err(eyre::eyre!("Intentional failure"))

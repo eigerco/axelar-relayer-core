@@ -37,7 +37,7 @@ use tokio_util::sync::CancellationToken;
 const MAX_ERRORS: i32 = 20;
 
 #[derive(Parser, Debug)]
-#[command(author = "Eiger", name = "Axelar<>Blockchain Relayer")]
+#[command(author = "Eiger", name = "Axelar<>Blockchain Relayer ")]
 pub(crate) struct Cli {
     #[arg(
         long,
@@ -51,13 +51,14 @@ pub(crate) struct Cli {
 #[tokio::main]
 async fn main() {
     bin_util::ensure_backtrace_set();
-
     let cli = Cli::parse();
 
-    let config: Config =
-        bin_util::try_deserialize(&cli.config_path).expect("common config correct");
-    let cancel_token = bin_util::register_cancel();
+    let config: Config = bin_util::try_deserialize(&cli.config_path).expect("config is correct");
+    if let Err(err) = bin_util::telemetry::init(&config.telemetry) {
+        tracing::error!(?err, "Failed to initialize telemetry");
+    }
 
+    let cancel_token = bin_util::register_cancel();
     tokio::try_join!(
         spawn_subscriber_worker(config.tickrate, cli.config_path.clone(), &cancel_token),
         spawn_health_check_server(
@@ -66,7 +67,7 @@ async fn main() {
             cancel_token.clone()
         )
     )
-    .expect("Failed to join tasks");
+    .expect("Failed to join main loop and health server tasks");
 
     tracing::info!("Amplifier subscriber has been shut down");
 }
