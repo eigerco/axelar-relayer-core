@@ -1,22 +1,22 @@
 //! Centralized OpenTelemetry initialization for tracing, metrics, and logging.
 use opentelemetry::metrics::{Counter, Histogram};
-use opentelemetry::trace::TracerProvider;
+use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::{KeyValue, global};
-use opentelemetry_otlp::{MetricExporter, Protocol, SpanExporter, WithExportConfig};
+use opentelemetry_otlp::{MetricExporter, Protocol, SpanExporter, WithExportConfig as _};
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::EnvFilter;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::util::SubscriberInitExt as _;
 
 const DEFAULT_ENDPOINT: &str = "http://localhost:4318";
 
 /// Configuration for telemetry
-#[derive(Debug, Clone, serde::Deserialize, PartialEq)]
-pub struct TelemetryConfig {
-    /// Per-crate log levels (e.g. "my_crate" = "debug")
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct Config {
+    /// Per-crate log levels (e.g. `my_crate` = "debug")
     pub filters: Option<Vec<String>>,
     /// OTLP endpoint URL
     pub otlp_collector_endpoint: Option<String>,
@@ -26,15 +26,31 @@ pub struct TelemetryConfig {
     pub service_name: String,
 }
 
-/// Initialize tracing, logging, and metrics
-pub fn init(config: &TelemetryConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+/// Initializes the application with tracing and metrics systems.
+///
+/// # Arguments
+///
+/// * `config` - A reference to the application configuration containing settings for tracing and
+///   metrics subsystems.
+///
+/// # Returns
+///
+/// * `Ok(())` - If initialization was successful.
+/// * `Err(...)` - If any initialization step failed, with the underlying error.
+///
+/// # Errors
+///
+/// This function may fail if:
+/// * Tracing system initialization fails
+/// * Metrics system initialization fails
+pub fn init(config: &Config) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     setup_tracing(config)?;
     setup_metrics(config)?;
 
     Ok(())
 }
 
-fn setup_tracing(config: &TelemetryConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+fn setup_tracing(config: &Config) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let endpoint = config
         .otlp_collector_endpoint
         .clone()
@@ -105,7 +121,7 @@ fn setup_tracing(config: &TelemetryConfig) -> Result<(), Box<dyn std::error::Err
     Ok(())
 }
 
-fn setup_metrics(config: &TelemetryConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+fn setup_metrics(config: &Config) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let endpoint = config
         .otlp_collector_endpoint
         .clone()
