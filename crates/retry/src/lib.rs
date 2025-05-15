@@ -47,8 +47,8 @@ pub trait Abortable {
 #[cfg(test)]
 mod tests {
     use core::num::NonZeroU64;
+    use core::sync::atomic::{AtomicI32, Ordering};
     use core::time::Duration;
-    use std::sync::atomic::{AtomicI32, Ordering};
 
     use super::*;
 
@@ -78,7 +78,7 @@ mod tests {
         );
         let call_count = AtomicI32::new(0);
         let func = || {
-            let counter = &call_count; // Reference the outer variable
+            let counter = &call_count;
             async move {
                 counter.fetch_add(1, Ordering::Relaxed);
                 if counter.load(Ordering::Relaxed) < 2_i32 {

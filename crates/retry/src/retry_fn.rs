@@ -60,7 +60,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
+    use core::sync::atomic::{AtomicI32, Ordering};
 
     use tokio_retry::strategy::ExponentialBackoff;
 
@@ -88,12 +88,11 @@ mod tests {
 
     #[tokio::test]
     async fn retry_succeeds_first_try() {
-        let called = Arc::new(Mutex::new(0));
-        let called_clone = called.clone();
-        let func = move || {
-            let called = called_clone.clone();
+        let call_count = AtomicI32::new(0);
+        let func = || {
+            let counter = &call_count; // Reference the outer variable
             async move {
-                *called.lock().unwrap() += 1;
+                counter.fetch_add(1, Ordering::Relaxed);
                 Ok::<_, TestError>("ok")
             }
         };
@@ -101,7 +100,7 @@ mod tests {
         let retry_fn = RetryFn::new(backoff, func);
         let result = retry_fn.retry().await;
         assert_eq!(result.unwrap(), "ok");
-        assert_eq!(*called.lock().unwrap(), 1);
+        assert_eq!(call_count.load(Ordering::Relaxed), 1_i32);
     }
 
     #[tokio::test]
@@ -109,14 +108,12 @@ mod tests {
         // The function will be called 3 times.
         // First 2 times it will return an error
         // and the last time it will return Ok
-        let called = Arc::new(Mutex::new(0));
-        let called_clone = called.clone();
-        let func = move || {
-            let called = called_clone.clone();
+        let call_count = AtomicI32::new(0);
+        let func = || {
+            let counter = &call_count;
             async move {
-                let mut lock = called.lock().unwrap();
-                *lock += 1;
-                if *lock < 3 {
+                counter.fetch_add(1, Ordering::Relaxed);
+                if counter.load(Ordering::Relaxed) < 3_i32 {
                     Err(TestError { abort: false })
                 } else {
                     Ok::<_, TestError>("ok")
@@ -127,7 +124,7 @@ mod tests {
         let retry_fn = RetryFn::new(backoff, func);
         let result = retry_fn.retry().await;
         assert_eq!(result.unwrap(), "ok");
-        assert_eq!(*called.lock().unwrap(), 3);
+        assert_eq!(call_count.load(Ordering::Relaxed), 3_i32);
     }
 
     #[tokio::test]
@@ -141,12 +138,11 @@ mod tests {
 
     #[tokio::test]
     async fn retry_returns_max_attempts() {
-        let called = Arc::new(Mutex::new(0));
-        let called_clone = called.clone();
-        let func = move || {
-            let called = called_clone.clone();
+        let call_count = AtomicI32::new(0);
+        let func = || {
+            let counter = &call_count;
             async move {
-                *called.lock().unwrap() += 1;
+                counter.fetch_add(1, Ordering::Relaxed);
                 Err::<(), _>(TestError { abort: false })
             }
         };
@@ -157,6 +153,6 @@ mod tests {
         assert!(matches!(result, Err(RetryError::MaxAttempts)));
 
         // Check that the function was called 3 times
-        assert_eq!(*called.lock().unwrap(), 3);
+        assert_eq!(call_count.load(Ordering::Relaxed), 3_i32);
     }
 }
