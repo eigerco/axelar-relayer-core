@@ -26,13 +26,12 @@ async fn main() {
     .expect("could not construct client");
     client
         .build_request(&HealthCheck)
-        .unwrap()
+        .expect("works")
         .execute()
         .await
-        .unwrap()
+        .expect("works")
         .json_err()
         .await
-        .unwrap()
-        .unwrap();
-    println!("healthcheck succeeded");
+        .expect("works")
+        .expect("works");
 }

@@ -5,19 +5,17 @@ use eyre::ensure;
 use serde::Deserialize;
 
 /// Top-level configuration for the relayer.
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize)]
 pub(crate) struct Config {
-    /// Configuration for the Amplifier API processor
     pub amplifier_component: relayer_amplifier_api_integration::Config,
     /// Duration (in seconds) to wait between consecutive polling
     /// operations Used to prevent overwhelming the network with requests
     #[serde(rename = "tickrate_secs")]
     #[serde(deserialize_with = "deserialize_duration_from_secs")]
     pub tickrate: Duration,
-
-    /// Configuration for health check server
+    pub telemetry: bin_util::telemetry::Config,
     #[serde(rename = "health_check_server")]
-    pub health_check: HealthCheckConfig,
+    pub health_check: bin_util::health_check::Config,
 }
 
 /// Configuration for health check server

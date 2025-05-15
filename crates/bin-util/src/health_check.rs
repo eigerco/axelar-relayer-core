@@ -44,6 +44,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Json};
 use axum::routing::get;
 use eyre::Result;
+use serde::Deserialize;
 use serde_json::json;
 use tokio_util::sync::CancellationToken;
 
@@ -53,6 +54,14 @@ use tokio_util::sync::CancellationToken;
 /// where `Ok(())` indicates a successful health check and `Err(_)` indicates a failure.
 pub type HealthCheck =
     Box<dyn Fn() -> Pin<Box<dyn Future<Output = Result<()>> + Send>> + Send + Sync>;
+
+/// Healthcheck config
+#[derive(Debug, Deserialize)]
+pub struct Config {
+    /// Port for the health check server
+    #[serde(rename = "port")]
+    pub port: u16,
+}
 
 /// A server that handles health check and readiness probe requests.
 ///
