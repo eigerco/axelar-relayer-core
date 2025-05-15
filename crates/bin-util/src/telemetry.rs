@@ -43,14 +43,14 @@ pub struct Config {
 /// This function may fail if:
 /// * Tracing system initialization fails
 /// * Metrics system initialization fails
-pub fn init(config: &Config) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub fn init(config: &Config) -> Result<(), Box<dyn core::error::Error + Send + Sync>> {
     setup_tracing(config)?;
     setup_metrics(config)?;
 
     Ok(())
 }
 
-fn setup_tracing(config: &Config) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+fn setup_tracing(config: &Config) -> Result<(), Box<dyn core::error::Error + Send + Sync>> {
     let endpoint = config
         .otlp_collector_endpoint
         .clone()
@@ -121,7 +121,7 @@ fn setup_tracing(config: &Config) -> Result<(), Box<dyn std::error::Error + Send
     Ok(())
 }
 
-fn setup_metrics(config: &Config) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+fn setup_metrics(config: &Config) -> Result<(), Box<dyn core::error::Error + Send + Sync>> {
     let endpoint = config
         .otlp_collector_endpoint
         .clone()
