@@ -126,8 +126,9 @@ where
 
 #[cfg(test)]
 mod tests {
+    use core::sync::atomic::{AtomicI32, Ordering};
     use core::time::Duration;
-    use std::sync::{Arc, Mutex};
+    use std::sync::Arc;
 
     use super::*;
 
@@ -161,111 +162,104 @@ mod tests {
 
     macro_rules! function_always_succeeding {
         ($val:expr) => {{
-            let count = Arc::new(Mutex::new(0));
-            let func = {
-                let count = count.clone();
-                move || {
-                    let count = count.clone();
-                    async move {
-                        *count.lock().unwrap() += 1;
-                        Ok::<_, TestError>($val)
-                    }
+            let call_count = Arc::new(AtomicI32::new(0));
+            let call_count_clone = call_count.clone();
+            let func = move || {
+                let counter = call_count_clone.clone();
+
+                async move {
+                    counter.fetch_add(1, Ordering::Relaxed);
+                    Ok::<_, TestError>($val)
                 }
             };
-            (func, count)
+            (func, call_count)
         }};
     }
 
     macro_rules! function_always_failing {
         () => {{
-            let count = Arc::new(Mutex::new(0));
-            let func = {
-                let count = count.clone();
-                move || {
-                    let count = count.clone();
-                    async move {
-                        *count.lock().unwrap() += 1;
-                        Err::<&'static str, _>(TestError {
-                            abort: false,
-                            msg: "fail",
-                        })
-                    }
+            let call_count = Arc::new(AtomicI32::new(0));
+            let call_count_clone = call_count.clone();
+            let func = move || {
+                let counter = call_count_clone.clone();
+
+                async move {
+                    counter.fetch_add(1, Ordering::Relaxed);
+                    Err::<&'static str, _>(TestError {
+                        abort: false,
+                        msg: "fail",
+                    })
                 }
             };
-            (func, count)
+            (func, call_count)
         }};
     }
 
     macro_rules! function_always_aborting {
         () => {{
-            let count = Arc::new(Mutex::new(0));
-            let func = {
-                let count = count.clone();
-                move || {
-                    let count = count.clone();
-                    async move {
-                        *count.lock().unwrap() += 1;
-                        Err::<&'static str, _>(TestError {
-                            abort: true,
-                            msg: "fails with abort",
-                        })
-                    }
+            let call_count = Arc::new(AtomicI32::new(0));
+            let call_count_clone = call_count.clone();
+            let func = move || {
+                let counter = call_count_clone.clone();
+
+                async move {
+                    counter.fetch_add(1, Ordering::Relaxed);
+                    Err::<&'static str, _>(TestError {
+                        abort: true,
+                        msg: "fails with abort",
+                    })
                 }
             };
-            (func, count)
+            (func, call_count)
         }};
     }
 
     macro_rules! function_failing_until_n_attempt {
         ($threshold:expr, $val:expr) => {{
-            let count = Arc::new(Mutex::new(0));
-            let func = {
-                let count = count.clone();
-                move || {
-                    let count = count.clone();
-                    async move {
-                        let mut lock = count.lock().unwrap();
-                        *lock += 1;
-                        if *lock < $threshold {
-                            Err(TestError {
-                                abort: false,
-                                msg: "fail",
-                            })
-                        } else {
-                            Ok::<_, TestError>($val)
-                        }
+            let call_count = Arc::new(AtomicI32::new(0));
+            let call_count_clone = call_count.clone();
+            let func = move || {
+                let counter = call_count_clone.clone();
+
+                async move {
+                    counter.fetch_add(1, Ordering::Relaxed);
+                    if counter.load(Ordering::Relaxed) < $threshold {
+                        Err(TestError {
+                            abort: false,
+                            msg: "fail",
+                        })
+                    } else {
+                        Ok::<_, TestError>($val)
                     }
                 }
             };
-            (func, count)
+            (func, call_count)
         }};
     }
 
     macro_rules! function_aborts_on_n_attempt {
         ($threshold:expr) => {{
-            let count = Arc::new(Mutex::new(0));
-            let func = {
-                let count = count.clone();
-                move || {
-                    let count = count.clone();
-                    async move {
-                        let mut lock = count.lock().unwrap();
-                        *lock += 1;
-                        if *lock < $threshold {
-                            Err(TestError {
-                                abort: false,
-                                msg: "fail",
-                            })
-                        } else {
-                            Err(TestError {
-                                abort: true,
-                                msg: "fail",
-                            })
-                        }
+            let call_count = Arc::new(AtomicI32::new(0));
+            let call_count_clone = call_count.clone();
+            let func = move || {
+                let counter = call_count_clone.clone();
+
+                async move {
+                    counter.fetch_add(1, Ordering::Relaxed);
+                    if counter.load(Ordering::Relaxed) < $threshold {
+                        Err(TestError {
+                            abort: false,
+                            msg: "fail",
+                        })
+                    } else {
+                        Err(TestError {
+                            abort: true,
+                            msg: "fail",
+                        })
                     }
                 }
             };
-            (func, count)
+            (func, call_count)
         }};
     }
 
@@ -292,7 +286,7 @@ mod tests {
         let retry = RetryPairFn::new(test_backoff(), func1, _func2);
         let result = retry.retry().await.unwrap();
         assert_eq!(result, "ok1");
-        assert!(*func1_called_count.lock().unwrap() >= 3);
+        assert!(func1_called_count.load(Ordering::Relaxed) >= 3);
     }
 
     #[tokio::test]
@@ -312,7 +306,7 @@ mod tests {
             ..RetryPairFn::new(backoff, func.clone(), func)
         };
         assert!(matches!(retry.retry().await, Err(RetryError::MaxAttempts)));
-        assert_eq!(*func_called_count.lock().unwrap(), 4);
+        assert_eq!(func_called_count.load(Ordering::Relaxed), 4);
     }
 
     #[tokio::test]
@@ -346,7 +340,7 @@ mod tests {
             ..RetryPairFn::new(test_backoff(), func1, func2)
         };
         assert!(matches!(retry.retry().await, Err(RetryError::MaxAttempts)));
-        assert_eq!(*func1_called_count.lock().unwrap(), 3);
+        assert_eq!(func1_called_count.load(Ordering::Relaxed), 3);
     }
 
     #[tokio::test]
@@ -358,7 +352,7 @@ mod tests {
             ..RetryPairFn::new(test_backoff(), func1, func2)
         };
         assert!(matches!(retry.retry().await, Err(RetryError::MaxAttempts)));
-        assert_eq!(*func2_called_count.lock().unwrap(), 2);
+        assert_eq!(func2_called_count.load(Ordering::Relaxed), 2);
     }
 
     #[tokio::test]
@@ -367,6 +361,6 @@ mod tests {
         let (func2, func2_called_count) = function_aborts_on_n_attempt!(2);
         let retry = RetryPairFn::new(test_backoff(), func1, func2);
         assert!(matches!(retry.retry().await, Err(RetryError::Aborted(e)) if e.abort));
-        assert_eq!(*func2_called_count.lock().unwrap(), 2);
+        assert_eq!(func2_called_count.load(Ordering::Relaxed), 2);
     }
 }
