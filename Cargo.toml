@@ -80,7 +80,6 @@ amplifier-ingester = { path = "crates/amplifier-ingester" }
 
 # CLI
 clap = { version = "4", features = ["derive", "env", "string"] }
-xshell = "0.2"
 
 # Utils
 arrayvec = "0.7"
@@ -103,12 +102,10 @@ backoff = { version = "0.4", features = ["tokio"] }
 indoc = "2"
 itertools = "0.14"
 num-traits = "0.2"
-memmap2 = "0.9"
 bytemuck = "1.19"
 rand = "0.9"
 num_cpus = "1"
 rustls = { version = "0.23", default-features = false }
-webpki-roots = "1"
 
 # Serde
 serde = { version = "1", features = ["derive"] }
