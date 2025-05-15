@@ -3,6 +3,8 @@ use core::marker::PhantomData;
 
 use requests::AmplifierApiRequest;
 use reqwest::header;
+use reqwest_middleware::{ClientBuilder, Extension};
+use reqwest_tracing::{OtelName, TracingMiddleware};
 use tracing::instrument;
 
 use crate::error::AmplifierApiError;
@@ -10,7 +12,7 @@ use crate::error::AmplifierApiError;
 /// Client for the Amplifier API
 #[derive(Clone, Debug)]
 pub struct AmplifierApiClient {
-    inner: reqwest::Client,
+    inner: reqwest_middleware::ClientWithMiddleware,
     url: url::Url,
 }
 
@@ -69,7 +71,7 @@ impl AmplifierApiClient {
 /// Encalpsulated HTTP request for the Amplifier API
 #[derive(Debug)]
 pub struct AmplifierRequest<T, E> {
-    request: reqwest::RequestBuilder,
+    request: reqwest_middleware::RequestBuilder,
     result: PhantomData<T>,
     err: PhantomData<E>,
 }
@@ -175,7 +177,9 @@ where
     let error = simd_json::from_slice::<E>(bytes.as_mut())?;
     Ok(error)
 }
-fn authenticated_client(tls_type: TlsType) -> Result<reqwest::Client, AmplifierApiError> {
+fn authenticated_client(
+    tls_type: TlsType,
+) -> Result<reqwest_middleware::ClientWithMiddleware, AmplifierApiError> {
     const KEEP_ALIVE_INTERVAL: core::time::Duration = core::time::Duration::from_secs(15);
     let mut headers = header::HeaderMap::new();
     headers.insert(
@@ -191,19 +195,23 @@ fn authenticated_client(tls_type: TlsType) -> Result<reqwest::Client, AmplifierA
         header::HeaderValue::from_static("application/json"),
     );
 
-    let temp_client = reqwest::Client::builder().use_rustls_tls();
+    let client = reqwest::Client::builder().use_rustls_tls();
 
-    let temp_client = match tls_type {
-        TlsType::Certificate(identity) => temp_client.identity(identity.0.expose_secret().clone()),
-        TlsType::CustomProvider(client_config) => temp_client.use_preconfigured_tls(*client_config),
+    let client = match tls_type {
+        TlsType::Certificate(identity) => client.identity(identity.0.expose_secret().clone()),
+        TlsType::CustomProvider(client_config) => client.use_preconfigured_tls(*client_config),
     };
 
-    let temp_client = temp_client
+    let client = client
         .http2_keep_alive_interval(KEEP_ALIVE_INTERVAL)
         .http2_keep_alive_while_idle(true)
         .default_headers(headers)
         .build()?;
-    Ok(temp_client)
+    let client = ClientBuilder::new(client)
+        .with_init(Extension(OtelName("amplifier-api-client".into())))
+        .with(TracingMiddleware::default())
+        .build();
+    Ok(client)
 }
 
 /// helpers for deserializing `.pem` encoded certificates

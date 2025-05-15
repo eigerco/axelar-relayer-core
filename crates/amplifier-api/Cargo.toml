@@ -25,6 +25,8 @@ rustls.workspace = true
 
 bnum = "0.13"
 simd-json = "0.15"
+reqwest-tracing = "0.5.7"
+reqwest-middleware = "0.4.2"
 
 [dev-dependencies]
 pretty_assertions.workspace = true
