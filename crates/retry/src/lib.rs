@@ -48,7 +48,7 @@ pub trait Abortable {
 mod tests {
     use core::num::NonZeroU64;
     use core::time::Duration;
-    use std::sync::{Arc, Mutex};
+    use std::sync::atomic::{AtomicI32, Ordering};
 
     use super::*;
 
@@ -76,14 +76,12 @@ mod tests {
             NonZeroU64::new(2).unwrap(),
             Duration::from_millis(10),
         );
-        let called = Arc::new(Mutex::new(0));
-        let called2 = called.clone();
-        let func = move || {
-            let called = called2.clone();
+        let call_count = AtomicI32::new(0);
+        let func = || {
+            let counter = &call_count; // Reference the outer variable
             async move {
-                let mut lock = called.lock().unwrap();
-                *lock += 1;
-                if *lock < 2 {
+                counter.fetch_add(1, Ordering::Relaxed);
+                if counter.load(Ordering::Relaxed) < 2_i32 {
                     Err(TestError(false))
                 } else {
                     Ok::<_, TestError>("ok")
@@ -93,7 +91,7 @@ mod tests {
         let retry = builder.with_retry(func);
         let result = retry.retry().await;
         assert_eq!(result.unwrap(), "ok");
-        assert_eq!(*called.lock().unwrap(), 2);
+        assert_eq!(call_count.load(Ordering::Relaxed), 2_i32);
     }
 
     #[tokio::test]
