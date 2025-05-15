@@ -35,6 +35,7 @@ impl<T> GcpMessage<T> {
 }
 
 impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
+    #[tracing::instrument(skip_all)]
     fn decode(
         subscription_name: String,
         msg: ReceivedMessage,
@@ -170,8 +171,6 @@ where
         skip(client, cancel_token),
         fields(
             subscription = %subscription,
-            worker_count = %config.worker_count,
-            ack_deadline = %config.ack_deadline_secs,
         )
     )]
     pub(crate) async fn new(
@@ -265,8 +264,6 @@ where
     skip(redis_connection, subscription, sender, cancel_token),
     fields(
         subscription = %subscription.fully_qualified_name(),
-        worker_count = worker_count,
-        ack_deadline = ack_deadline_secs
     )
 )]
 fn start_read_messages_task<T>(
@@ -295,6 +292,10 @@ where
         "starting message read task"
     );
     tokio::spawn(async move {
+        let background_span = tracing::span!(tracing::Level::INFO, "pubsub_message_receiver");
+        let _background_guard = background_span.enter();
+
+        tracing::info!("starting PubSub receiver loop");
         subscription
             .receive(
                 move |message, cancel| {
