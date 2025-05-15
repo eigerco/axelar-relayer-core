@@ -59,7 +59,7 @@ fn setup_tracing(config: &Config) -> Result<(), Box<dyn core::error::Error + Sen
     let protocol = config
         .otlp_collector_protocol
         .clone()
-        .unwrap_or_else(|| "http".to_string())
+        .unwrap_or_else(|| "http".to_owned())
         .to_lowercase();
 
     let span_exporter_builder = SpanExporter::builder();
@@ -101,7 +101,7 @@ fn setup_tracing(config: &Config) -> Result<(), Box<dyn core::error::Error + Sen
     // ===== Logging Setup =====
     let filters = config.filters.clone();
     match &filters {
-        Some(filters_vec) => println!("tracing filters: {:?}", filters_vec),
+        Some(filters_vec) => println!("tracing filters: {filters_vec:?}"),
         None => println!("no tracing filters provided"),
     };
 
@@ -125,12 +125,12 @@ fn setup_metrics(config: &Config) -> Result<(), Box<dyn core::error::Error + Sen
     let endpoint = config
         .otlp_collector_endpoint
         .clone()
-        .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
+        .unwrap_or_else(|| DEFAULT_ENDPOINT.to_owned());
 
     let protocol = config
         .otlp_collector_protocol
         .clone()
-        .unwrap_or_else(|| "http".to_string())
+        .unwrap_or_else(|| "http".to_owned())
         .to_lowercase();
 
     let metric_exporter_builder = MetricExporter::builder();
