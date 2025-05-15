@@ -340,7 +340,7 @@ mod tests {
             ..RetryPairFn::new(test_backoff(), func1, func2)
         };
         assert!(matches!(retry.retry().await, Err(RetryError::MaxAttempts)));
-        assert_eq!(func1_called_count.load(Ordering::Relaxed), 3);
+        assert_eq!(func1_called_count.load(Ordering::Relaxed), 3_i32);
     }
 
     #[tokio::test]
@@ -352,7 +352,7 @@ mod tests {
             ..RetryPairFn::new(test_backoff(), func1, func2)
         };
         assert!(matches!(retry.retry().await, Err(RetryError::MaxAttempts)));
-        assert_eq!(func2_called_count.load(Ordering::Relaxed), 2);
+        assert_eq!(func2_called_count.load(Ordering::Relaxed), 2_i32);
     }
 
     #[tokio::test]
@@ -361,6 +361,6 @@ mod tests {
         let (func2, func2_called_count) = function_aborts_on_n_attempt!(2);
         let retry = RetryPairFn::new(test_backoff(), func1, func2);
         assert!(matches!(retry.retry().await, Err(RetryError::Aborted(e)) if e.abort));
-        assert_eq!(func2_called_count.load(Ordering::Relaxed), 2);
+        assert_eq!(func2_called_count.load(Ordering::Relaxed), 2_i32);
     }
 }
