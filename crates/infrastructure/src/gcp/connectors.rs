@@ -355,11 +355,11 @@ where
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let kms_config = KmsConfig::new(
-///         "my-project-id",
-///         "global",
-///         "my-keyring",
-///         "my-key",
-///         "1"
+///         "my-project-id".to_owned(),
+///         "global".to_owned(),
+///         "my-keyring".to_owned(),
+///         "my-key".to_owned(),
+///         "1".to_owned()
 ///     );
 ///
 ///     let cert = vec![0_u8; 32];
