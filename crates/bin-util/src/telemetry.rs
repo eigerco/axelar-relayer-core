@@ -25,10 +25,13 @@ pub struct Config {
     pub otlp_transport: Transport,
 }
 
+/// Tracing/Metrics telemetry transport
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Transport {
+    /// Http (binary)
     Http,
+    /// Grp
     Grpc,
 }
 
@@ -50,42 +53,7 @@ pub enum Transport {
 /// * Tracing system initialization fails
 /// * Metrics system initialization fails
 pub fn init(config: &Config) -> eyre::Result<()> {
-    let (span_exporter, metric_exporter) = match config.otlp_transport {
-        Transport::Http => {
-            let span_exporter = SpanExporter::builder()
-                .with_http()
-                .with_protocol(Protocol::HttpBinary)
-                .with_endpoint(format!("{}/v1/traces", config.otlp_endpoint))
-                .build()
-                .wrap_err("set up http trace exporter")?;
-
-            let metric_exporter = MetricExporter::builder()
-                .with_http()
-                .with_protocol(Protocol::HttpBinary)
-                .with_endpoint(format!("{}/v1/metrics", config.otlp_endpoint))
-                .build()
-                .wrap_err("set up http metric exporter")?;
-
-            (span_exporter, metric_exporter)
-        }
-        Transport::Grpc => {
-            let span_exporter = SpanExporter::builder()
-                .with_tonic()
-                .with_protocol(Protocol::Grpc)
-                .with_endpoint(&config.otlp_endpoint)
-                .build()
-                .wrap_err("set up grpc trace exporter")?;
-
-            let metric_exporter = MetricExporter::builder()
-                .with_tonic()
-                .with_protocol(Protocol::Grpc)
-                .with_endpoint(&config.otlp_endpoint)
-                .build()
-                .wrap_err("set up grcp metric exporter")?;
-
-            (span_exporter, metric_exporter)
-        }
-    };
+    let (span_exporter, metric_exporter) = get_exporters(config)?;
 
     let tracer_provider = SdkTracerProvider::builder()
         .with_batch_exporter(span_exporter)
@@ -117,6 +85,11 @@ pub fn init(config: &Config) -> eyre::Result<()> {
         .with(OpenTelemetryLayer::new(tracer))
         .try_init()?;
     let filters = config.filters.clone();
+
+    #[allow(
+        clippy::print_stdout,
+        reason = "need to get filters before bootstrapping tracing"
+    )]
     match &filters {
         Some(filters_vec) => println!("tracing filters: {filters_vec:?}"),
         None => println!("no tracing filters provided"),
@@ -136,4 +109,43 @@ pub fn init(config: &Config) -> eyre::Result<()> {
 
     global::set_meter_provider(meter_provider);
     Ok(())
+}
+
+fn get_exporters(config: &Config) -> eyre::Result<(SpanExporter, MetricExporter)> {
+    match config.otlp_transport {
+        Transport::Http => {
+            let span_exporter = SpanExporter::builder()
+                .with_http()
+                .with_protocol(Protocol::HttpBinary)
+                .with_endpoint(format!("{}/v1/traces", config.otlp_endpoint))
+                .build()
+                .wrap_err("set up http trace exporter")?;
+
+            let metric_exporter = MetricExporter::builder()
+                .with_http()
+                .with_protocol(Protocol::HttpBinary)
+                .with_endpoint(format!("{}/v1/metrics", config.otlp_endpoint))
+                .build()
+                .wrap_err("set up http metric exporter")?;
+
+            Ok((span_exporter, metric_exporter))
+        }
+        Transport::Grpc => {
+            let span_exporter = SpanExporter::builder()
+                .with_tonic()
+                .with_protocol(Protocol::Grpc)
+                .with_endpoint(&config.otlp_endpoint)
+                .build()
+                .wrap_err("set up grpc trace exporter")?;
+
+            let metric_exporter = MetricExporter::builder()
+                .with_tonic()
+                .with_protocol(Protocol::Grpc)
+                .with_endpoint(&config.otlp_endpoint)
+                .build()
+                .wrap_err("set up grcp metric exporter")?;
+
+            Ok((span_exporter, metric_exporter))
+        }
+    }
 }
