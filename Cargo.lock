@@ -1663,6 +1663,7 @@ dependencies = [
  "gcloud-kms",
  "gcloud-pubsub",
  "hex",
+ "opentelemetry",
  "redis",
  "rustls",
  "rustls-gcp-kms",

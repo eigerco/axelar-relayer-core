@@ -1,29 +1,35 @@
 //! Centralized OpenTelemetry initialization for tracing, metrics, and logging.
-use opentelemetry::metrics::{Counter, Histogram};
+use eyre::Context as _;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::{KeyValue, global};
 use opentelemetry_otlp::{MetricExporter, Protocol, SpanExporter, WithExportConfig as _};
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
+use serde::Deserialize;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 
-const DEFAULT_ENDPOINT: &str = "http://localhost:4318";
-
 /// Configuration for telemetry
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Config {
+    /// Service name for metrics and traces
+    pub service_name: String,
     /// Per-crate log levels (e.g. `my_crate` = "debug")
     pub filters: Option<Vec<String>>,
     /// OTLP endpoint URL
-    pub otlp_collector_endpoint: Option<String>,
+    pub otlp_endpoint: String,
     /// Protocol to use for OTLP (grpc or http)
-    pub otlp_collector_protocol: Option<String>,
-    /// Service name for metrics and traces
-    pub service_name: String,
+    pub otlp_transport: Transport,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Transport {
+    Http,
+    Grpc,
 }
 
 /// Initializes the application with tracing and metrics systems.
@@ -43,42 +49,42 @@ pub struct Config {
 /// This function may fail if:
 /// * Tracing system initialization fails
 /// * Metrics system initialization fails
-pub fn init(config: &Config) -> Result<(), Box<dyn core::error::Error + Send + Sync>> {
-    setup_tracing(config)?;
-    setup_metrics(config)?;
+pub fn init(config: &Config) -> eyre::Result<()> {
+    let (span_exporter, metric_exporter) = match config.otlp_transport {
+        Transport::Http => {
+            let span_exporter = SpanExporter::builder()
+                .with_http()
+                .with_protocol(Protocol::HttpBinary)
+                .with_endpoint(format!("{}/v1/traces", config.otlp_endpoint))
+                .build()
+                .wrap_err("set up http trace exporter")?;
 
-    Ok(())
-}
+            let metric_exporter = MetricExporter::builder()
+                .with_http()
+                .with_protocol(Protocol::HttpBinary)
+                .with_endpoint(format!("{}/v1/metrics", config.otlp_endpoint))
+                .build()
+                .wrap_err("set up http metric exporter")?;
 
-fn setup_tracing(config: &Config) -> Result<(), Box<dyn core::error::Error + Send + Sync>> {
-    let endpoint = config
-        .otlp_collector_endpoint
-        .clone()
-        .unwrap_or_else(|| DEFAULT_ENDPOINT.to_owned());
+            (span_exporter, metric_exporter)
+        }
+        Transport::Grpc => {
+            let span_exporter = SpanExporter::builder()
+                .with_tonic()
+                .with_protocol(Protocol::Grpc)
+                .with_endpoint(&config.otlp_endpoint)
+                .build()
+                .wrap_err("set up grpc trace exporter")?;
 
-    let protocol = config
-        .otlp_collector_protocol
-        .clone()
-        .unwrap_or_else(|| "http".to_owned())
-        .to_lowercase();
+            let metric_exporter = MetricExporter::builder()
+                .with_tonic()
+                .with_protocol(Protocol::Grpc)
+                .with_endpoint(&config.otlp_endpoint)
+                .build()
+                .wrap_err("set up grcp metric exporter")?;
 
-    let span_exporter_builder = SpanExporter::builder();
-
-    let span_exporter = if protocol == "grpc" {
-        // gRPC protocol
-        span_exporter_builder
-            .with_tonic()
-            .with_protocol(Protocol::Grpc)
-            .with_endpoint(&endpoint)
-            .build()?
-    } else {
-        // HTTP protocol (default)
-        let endpoint_with_path = format!("{endpoint}/v1/traces");
-        span_exporter_builder
-            .with_http()
-            .with_protocol(Protocol::HttpBinary)
-            .with_endpoint(&endpoint_with_path)
-            .build()?
+            (span_exporter, metric_exporter)
+        }
     };
 
     let tracer_provider = SdkTracerProvider::builder()
@@ -93,20 +99,13 @@ fn setup_tracing(config: &Config) -> Result<(), Box<dyn core::error::Error + Sen
         )
         .build();
 
-    // Install tracer
     global::set_tracer_provider(tracer_provider.clone());
+
     let tracer_name = config.service_name.clone();
     let tracer = tracer_provider.tracer(tracer_name);
 
-    // ===== Logging Setup =====
-    let filters = config.filters.clone();
-    match &filters {
-        Some(filters_vec) => println!("tracing filters: {filters_vec:?}"),
-        None => println!("no tracing filters provided"),
-    };
-
     let mut filter = EnvFilter::new("");
-    if let Some(filters) = filters {
+    if let Some(filters) = &config.filters {
         for directive in filters {
             filter = filter.add_directive(directive.parse()?);
         }
@@ -117,43 +116,14 @@ fn setup_tracing(config: &Config) -> Result<(), Box<dyn core::error::Error + Sen
         .with(tracing_subscriber::fmt::layer().with_ansi(true))
         .with(OpenTelemetryLayer::new(tracer))
         .try_init()?;
-
-    Ok(())
-}
-
-fn setup_metrics(config: &Config) -> Result<(), Box<dyn core::error::Error + Send + Sync>> {
-    let endpoint = config
-        .otlp_collector_endpoint
-        .clone()
-        .unwrap_or_else(|| DEFAULT_ENDPOINT.to_owned());
-
-    let protocol = config
-        .otlp_collector_protocol
-        .clone()
-        .unwrap_or_else(|| "http".to_owned())
-        .to_lowercase();
-
-    let metric_exporter_builder = MetricExporter::builder();
-
-    let exporter = if protocol == "grpc" {
-        // gRPC protocol
-        metric_exporter_builder
-            .with_tonic()
-            .with_protocol(Protocol::Grpc)
-            .with_endpoint(&endpoint)
-            .build()?
-    } else {
-        // HTTP protocol (default)
-        let endpoint_with_path = format!("{endpoint}/v1/metrics");
-        metric_exporter_builder
-            .with_http()
-            .with_protocol(Protocol::HttpBinary)
-            .with_endpoint(&endpoint_with_path)
-            .build()?
+    let filters = config.filters.clone();
+    match &filters {
+        Some(filters_vec) => println!("tracing filters: {filters_vec:?}"),
+        None => println!("no tracing filters provided"),
     };
 
     let meter_provider = SdkMeterProvider::builder()
-        .with_periodic_exporter(exporter)
+        .with_periodic_exporter(metric_exporter)
         .with_resource(
             Resource::builder_empty()
                 .with_attributes(vec![KeyValue::new(
@@ -166,29 +136,4 @@ fn setup_metrics(config: &Config) -> Result<(), Box<dyn core::error::Error + Sen
 
     global::set_meter_provider(meter_provider);
     Ok(())
-}
-
-/// Create and register a counter metric (name and description must be `'static`)
-#[must_use]
-pub fn register_counter(name: &'static str, description: &'static str) -> Counter<u64> {
-    let meter = global::meter("telemetry");
-    meter
-        .u64_counter(name)
-        .with_description(description)
-        .build()
-}
-
-/// Update a counter metric
-pub fn increment_counter(counter: &Counter<u64>, value: u64) {
-    counter.add(value, &[]);
-}
-
-/// Create and register a histogram metric (name and description must be `'static`)
-#[must_use]
-pub fn register_histogram(name: &'static str, description: &'static str) -> Histogram<f64> {
-    let meter = global::meter("telemetry");
-    meter
-        .f64_histogram(name)
-        .with_description(description)
-        .build()
 }

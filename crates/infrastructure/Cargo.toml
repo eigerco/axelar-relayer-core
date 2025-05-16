@@ -18,6 +18,7 @@ borsh = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
 rustls = { workspace = true, features = ["std"], optional = true }
 uuid.workspace = true
+opentelemetry.workspace = true
 
 async-nats = { version = "0.40", optional = true }
 google-cloud-pubsub = { package = "gcloud-pubsub", version = "1.2", optional = true }
