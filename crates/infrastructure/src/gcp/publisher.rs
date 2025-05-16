@@ -336,7 +336,7 @@ pub struct Metrics {
     published_count: Counter<u64>,
     publish_duration: Histogram<f64>,
     batch_size: Histogram<u64>,
-    attributes: [KeyValue; 3],
+    attributes: [KeyValue; 4],
 }
 
 impl Metrics {
@@ -360,6 +360,7 @@ impl Metrics {
             .build();
 
         let attributes = [
+            KeyValue::new("uuid", uuid::Uuid::new_v4().to_string()),
             KeyValue::new(
                 "host.name",
                 hostname::get()
