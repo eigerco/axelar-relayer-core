@@ -336,7 +336,7 @@ pub struct Metrics {
     published_count: Counter<u64>,
     publish_duration: Histogram<f64>,
     batch_size: Histogram<u64>,
-    attributes: [KeyValue; 4],
+    attributes: [KeyValue; 1],
 }
 
 impl Metrics {
@@ -360,15 +360,6 @@ impl Metrics {
             .build();
 
         let attributes = [
-            KeyValue::new("uuid", uuid::Uuid::new_v4().to_string()),
-            KeyValue::new(
-                "host.name",
-                hostname::get()
-                    .unwrap_or_default()
-                    .into_string()
-                    .unwrap_or_default(),
-            ),
-            KeyValue::new("messaging.system", "gcp_pubsub"),
             KeyValue::new("messaging.destination.name", topic_name.to_owned()),
         ];
 

@@ -3,14 +3,18 @@ use eyre::Context as _;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::{KeyValue, global};
 use opentelemetry_otlp::{MetricExporter, Protocol, SpanExporter, WithExportConfig as _};
+use opentelemetry_resource_detectors::{K8sResourceDetector, ProcessResourceDetector};
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
+use opentelemetry_semantic_conventions::resource;
+use opentelemetry_system_metrics::init_process_observer;
 use serde::Deserialize;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
+// use opentelemetry_semantic_conventions::k8s;
 
 /// Configuration for telemetry
 #[derive(Debug, Clone, Deserialize)]
@@ -52,19 +56,22 @@ pub enum Transport {
 /// This function may fail if:
 /// * Tracing system initialization fails
 /// * Metrics system initialization fails
-pub fn init(config: &Config) -> eyre::Result<()> {
+pub async fn init(service_name: &str, service_version: &str, config: &Config) -> eyre::Result<()> {
     let (span_exporter, metric_exporter) = get_exporters(config)?;
-
+    let service_resource = Resource::builder()
+        .with_service_name(service_name.to_owned())
+        .with_attribute(KeyValue::new(
+            resource::SERVICE_VERSION,
+            service_version.to_owned(),
+        ))
+        .build();
+    let process_resource = ProcessResourceDetector.detect();
+    let k8s_resource = K8sResourceDetector.detect();
     let tracer_provider = SdkTracerProvider::builder()
         .with_batch_exporter(span_exporter)
-        .with_resource(
-            Resource::builder_empty()
-                .with_attributes(vec![KeyValue::new(
-                    "service.name",
-                    config.service_name.clone(),
-                )])
-                .build(),
-        )
+        .with_resource(service_resource.clone())
+        .with_resource(process_resource.clone())
+        .with_resource(k8s_resource.clone())
         .build();
 
     global::set_tracer_provider(tracer_provider.clone());
@@ -87,17 +94,18 @@ pub fn init(config: &Config) -> eyre::Result<()> {
 
     let meter_provider = SdkMeterProvider::builder()
         .with_periodic_exporter(metric_exporter)
-        .with_resource(
-            Resource::builder_empty()
-                .with_attributes(vec![KeyValue::new(
-                    "service.name",
-                    config.service_name.clone(),
-                )])
-                .build(),
-        )
+        .with_resource(service_resource)
+        .with_resource(process_resource)
+        .with_resource(k8s_resource)
         .build();
 
     global::set_meter_provider(meter_provider);
+
+    let meter = global::meter("process-meter");
+    init_process_observer(meter)
+        .await
+        .wrap_err("system metrics did not register in telemetry")?;
+
     Ok(())
 }
 
