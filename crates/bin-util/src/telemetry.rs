@@ -84,16 +84,6 @@ pub fn init(config: &Config) -> eyre::Result<()> {
         .with(tracing_subscriber::fmt::layer().with_ansi(true))
         .with(OpenTelemetryLayer::new(tracer))
         .try_init()?;
-    let filters = config.filters.clone();
-
-    #[allow(
-        clippy::print_stdout,
-        reason = "need to get filters before bootstrapping tracing"
-    )]
-    match &filters {
-        Some(filters_vec) => println!("tracing filters: {filters_vec:?}"),
-        None => println!("no tracing filters provided"),
-    };
 
     let meter_provider = SdkMeterProvider::builder()
         .with_periodic_exporter(metric_exporter)
