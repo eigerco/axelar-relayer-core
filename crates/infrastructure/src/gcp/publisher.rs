@@ -104,7 +104,7 @@ where
         let msg = to_pubsub_message(msg)?;
         tracing::debug!("publishing message to PubSub queue");
 
-        let timer = std::time::Instant::now();
+        let start_time = std::time::Instant::now();
 
         let awaiter = self.publisher.publish(msg).await;
         tracing::debug!("waiting for publish confirmation");
@@ -114,11 +114,7 @@ where
             .get()
             .await
             .map_err(|err| GcpError::Publish(Box::new(err)))?;
-        self.metrics.published_count.add(1, &[]);
-        self.metrics
-            .publish_duration
-            .record(timer.elapsed().as_secs_f64(), &[]);
-
+        self.metrics.record_publish(start_time);
         tracing::info!(message_id = %result, "message successfully published to PubSub");
         Ok(result)
     }
@@ -133,10 +129,7 @@ where
             tracing::warn!("attempt to publish empty batch");
             return Ok(Vec::new());
         }
-
         let batch_size = batch.len();
-
-        self.metrics.batch_size.record(batch_size as u64, &[]);
 
         tracing::info!("publishing batch of {} messages to PubSub", batch.len());
         let bulk = batch
@@ -144,9 +137,8 @@ where
             .map(to_pubsub_message)
             .collect::<Result<Vec<PubsubMessage>, GcpError>>()?;
 
-        let timer = std::time::Instant::now();
-
         tracing::debug!("submitting batch to publish queue");
+        let start_time = std::time::Instant::now();
         let publish_handles = self.publisher.publish_bulk(bulk).await;
         tracing::debug!("waiting for batch publish confirmations");
 
@@ -161,9 +153,7 @@ where
             output.push(res);
         }
 
-        self.metrics
-            .publish_duration
-            .record(timer.elapsed().as_secs_f64() / batch_size as f64, &[]);
+        self.metrics.record_batch_publish(batch_size, start_times);
         tracing::info!("successfully published batch of {} messages", output.len());
 
         Ok(output)
@@ -343,9 +333,10 @@ where
 }
 
 pub struct Metrics {
-    pub published_count: Counter<u64>,
-    pub publish_duration: Histogram<f64>,
-    pub batch_size: Histogram<u64>,
+    published_count: Counter<u64>,
+    publish_duration: Histogram<f64>,
+    batch_size: Histogram<u64>,
+    attributes: [KeyValue; 3],
 }
 
 impl Metrics {
@@ -368,28 +359,38 @@ impl Metrics {
             .with_description("Size of message batches published to PubSub")
             .build();
 
+        let attributes = [
+            KeyValue::new(
+                "host.name",
+                hostname::get()
+                    .unwrap_or_default()
+                    .into_string()
+                    .unwrap_or_default(),
+            ),
+            KeyValue::new("messaging.system", "gcp_pubsub"),
+            KeyValue::new("messaging.destination.name", topic_name.to_owned()),
+        ];
+
         Self {
             published_count,
             publish_duration,
             batch_size,
+            attributes,
         }
     }
 
     pub fn record_publish(&self, start_time: std::time::Instant) {
         self.published_count.add(1, &[]);
         self.publish_duration
-            .record(start_time.elapsed().as_secs_f64(), &[]);
+            .record(start_time.elapsed().as_secs_f64(), &self.attributes);
     }
 
-    pub fn record_batch(
-        &self,
-        batch_size: u64,
-        start_time: std::time::Instant,
-        attributes: &[KeyValue],
-    ) {
-        self.published_count.add(batch_size, attributes);
-        self.batch_size.record(batch_size, attributes);
-        self.publish_duration
-            .record(batch_size as f64 / sta.elapsed().as_secs_f64(), attributes);
+    pub fn record_batch_publish(&self, batch_size: u64, start_time: std::time::Instant) {
+        self.published_count.add(batch_size, &self.attributes);
+        self.batch_size.record(batch_size, &self.attributes);
+        self.publish_duration.record(
+            batch_size as f64 / start_time.elapsed().as_secs_f64(),
+            &self.attributes,
+        );
     }
 }
