@@ -5,6 +5,8 @@ use borsh::BorshDeserialize;
 use google_cloud_pubsub::client::Client;
 use google_cloud_pubsub::subscriber::{ReceivedMessage, SubscriberConfig};
 use google_cloud_pubsub::subscription::{ReceiveConfig, Subscription};
+use opentelemetry::metrics::{Counter, Histogram, ObservableGauge};
+use opentelemetry::{KeyValue, global};
 use redis::AsyncCommands as _;
 use redis::aio::MultiplexedConnection;
 use tokio_util::sync::CancellationToken;
@@ -144,6 +146,7 @@ pub struct GcpConsumer<T> {
     receiver: flume::Receiver<Result<GcpMessage<T>, GcpError>>,
     cancel_token: CancellationToken,
     read_messages_handle: tokio::task::JoinHandle<Result<(), GcpError>>,
+    metrics: Metrics,
     _phantom: PhantomData<T>,
 }
 
@@ -199,6 +202,8 @@ where
             buffer_size = config.message_buffer_size,
             "starting message processing task"
         );
+        let metrics = Metrics::new(subscription.fully_qualified_name());
+
         let read_messages_handle = start_read_messages_task(
             redis_connection,
             subscription,
@@ -215,6 +220,7 @@ where
             receiver,
             cancel_token,
             read_messages_handle,
+            metrics,
             _phantom: PhantomData,
         })
     }
@@ -377,5 +383,105 @@ async fn forward_message<T>(
 impl<T> Drop for GcpConsumer<T> {
     fn drop(&mut self) {
         self.cancel_token.cancel();
+    }
+}
+
+struct Metrics {
+    received_counter: Counter<u64>,
+    processed_counter: Counter<u64>,
+    duplicates_counter: Counter<u64>,
+    errors_counter: Counter<u64>,
+
+    processing_time: Histogram<f64>,
+    messages_per_second: ObservableGauge<f64>,
+    acks_counter: Counter<u64>,
+    nacks_counter: Counter<u64>,
+    deadline_extensions_counter: Counter<u64>,
+
+    channel_capacity_gauge: ObservableGauge<i64>,
+    message_buffer_size_gauge: ObservableGauge<i64>,
+    attributes: [KeyValue; 1],
+}
+
+impl Metrics {
+    fn new(subscription_name: &str) -> Self {
+        let meter = global::meter("pubsub_consumer");
+
+        let received_counter = meter
+            .u64_counter("messages.received")
+            .with_description("Total number of messages received from PubSub")
+            .build();
+
+        let processed_counter = meter
+            .u64_counter("messages.processed")
+            .with_description("Total number of messages successfully processed")
+            .build();
+
+        let duplicates_counter = meter
+            .u64_counter("messages.duplicates")
+            .with_description("Total number of duplicate messages detected")
+            .build();
+
+        let errors_counter = meter
+            .u64_counter("messages.errors")
+            .with_description("Total number of errors encountered during message processing")
+            .build();
+
+        let processing_time = meter
+            .f64_histogram("messages.processing_time")
+            .with_description("Time taken to process messages in seconds")
+            .with_unit("s")
+            .build();
+
+        let messages_per_second = meter
+            .f64_observable_gauge("messages.throughput")
+            .with_description("Messages processed per second")
+            .with_unit("messages/s")
+            .build();
+
+        let acks_counter = meter
+            .u64_counter("messages.acks")
+            .with_description("Total number of messages acknowledged")
+            .build();
+
+        let nacks_counter = meter
+            .u64_counter("messages.nacks")
+            .with_description("Total number of messages negatively acknowledged")
+            .build();
+
+        let deadline_extensions_counter = meter
+            .u64_counter("messages.deadline_extensions")
+            .with_description("Total number of message deadline extensions")
+            .build();
+
+        let channel_capacity_gauge = meter
+            .i64_observable_gauge("channel.capacity")
+            .with_description("Current capacity of the message channel")
+            .build();
+
+        let message_buffer_size_gauge = meter
+            .i64_observable_gauge("buffer.size")
+            .with_description("Current size of the message buffer")
+            .build();
+
+        let attributes = [KeyValue::new(
+            "subscription.name",
+            subscription_name.to_owned(),
+        )];
+
+        Self {
+            received_counter,
+            processed_counter,
+            duplicates_counter,
+            errors_counter,
+            processing_time,
+            messages_per_second,
+            acks_counter,
+            nacks_counter,
+            deadline_extensions_counter,
+            channel_capacity_gauge,
+            message_buffer_size_gauge,
+            attributes,
+        }
     }
 }

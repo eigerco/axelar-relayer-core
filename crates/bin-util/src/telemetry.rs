@@ -101,7 +101,7 @@ pub async fn init(service_name: &str, service_version: &str, config: &Config) ->
 
     global::set_meter_provider(meter_provider);
 
-    let meter = global::meter("process-meter");
+    let meter = global::meter("process");
     init_process_observer(meter)
         .await
         .wrap_err("system metrics did not register in telemetry")?;

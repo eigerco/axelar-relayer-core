@@ -11,8 +11,7 @@ services:
       - "8080:8080"
     volumes:
       - ./relayer-config.toml:/app/relayer-config.toml
-      # Optional: Mount GCP credentials if needed
-      # - ~/.config/gcloud:/home/relayer/.config/gcloud:ro
+      - ~/.config/gcloud:/home/relayer/.config/gcloud:ro
     environment:
       - TICKRATE_SECS=5
       # Optional: GCP-specific environment variables
@@ -35,8 +34,7 @@ services:
       - "8081:8080"
     volumes:
       - ./relayer-config.toml:/app/relayer-config.toml
-      # Optional: Mount GCP credentials if needed
-      # - ~/.config/gcloud:/home/relayer/.config/gcloud:ro
+      - ~/.config/gcloud:/home/relayer/.config/gcloud:ro
     environment:
       - TICKRATE_SECS=5
       # Optional: GCP-specific environment variables
@@ -65,7 +63,7 @@ services:
     ports:
       - "11211:11211"
     environment:
-      - MEMCACHED_MAX_MEMORY=64m  # Set the maximum memory usage
+      - MEMCACHED_MAX_MEMORY=128m  # Set the maximum memory usage
       - MEMCACHED_THREADS=4       # Number of threads to use
 
   tempo:
@@ -114,6 +112,5 @@ services:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_DISABLE_LOGIN_FORM=true
       - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor metricsSummary
-      - GF_INSTALL_PLUGINS=https://storage.googleapis.com/integration-artifacts/grafana-exploretraces-app/grafana-exploretraces-app-latest.zip;grafana-traces-app
-    ports:
+https://asahilinux.org/2024/10/aaa-gaming-on-asahi-linux/
       - "3000:3000"

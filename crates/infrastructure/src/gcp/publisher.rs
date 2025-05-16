@@ -332,7 +332,7 @@ where
     }
 }
 
-pub struct Metrics {
+struct Metrics {
     published_count: Counter<u64>,
     publish_duration: Histogram<f64>,
     batch_size: Histogram<u64>,
@@ -344,23 +344,23 @@ impl Metrics {
         let meter = global::meter("pubsub_publisher");
 
         let published_count = meter
-            .u64_counter("pubsub.publisher.messages.count")
+            .u64_counter("messages.count")
             .with_description("Total number of messages published to PubSub")
             .build();
 
         let publish_duration = meter
-            .f64_histogram("pubsub.publisher.duration")
+            .f64_histogram("publisher.duration")
             .with_description("Time taken to publish messages to PubSub in seconds")
             .with_unit("s")
             .build();
 
         let batch_size = meter
-            .u64_histogram("pubsub.publisher.batch.size")
+            .u64_histogram("atch.size")
             .with_description("Size of message batches published to PubSub")
             .build();
 
         let attributes = [
-            KeyValue::new("messaging.destination.name", topic_name.to_owned()),
+            KeyValue::new("topic.name", topic_name.to_owned()),
         ];
 
         Self {
