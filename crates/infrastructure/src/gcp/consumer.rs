@@ -1,8 +1,6 @@
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Duration, SystemTime};
 
 use borsh::BorshDeserialize;
 use google_cloud_pubsub::client::Client;
@@ -12,8 +10,6 @@ use opentelemetry::metrics::{Counter, Histogram, ObservableGauge};
 use opentelemetry::{KeyValue, global};
 use redis::AsyncCommands as _;
 use redis::aio::MultiplexedConnection;
-use tokio::sync::Mutex;
-use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 use super::GcpError;
@@ -32,6 +28,7 @@ pub struct GcpMessage<T> {
     subscription_name: String,
     msg: ReceivedMessage,
     redis_connection: MultiplexedConnection,
+    metrics: Arc<Metrics>,
     decoded: T,
     ack_deadline_secs: i32,
 }
@@ -48,6 +45,7 @@ impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
         subscription_name: String,
         msg: ReceivedMessage,
         redis_connection: MultiplexedConnection,
+        metrics: Arc<Metrics>,
         ack_deadline_secs: i32,
     ) -> Result<Self, GcpError> {
         tracing::debug!(?msg, "decoding msg");
@@ -70,6 +68,7 @@ impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
             subscription_name,
             msg,
             redis_connection,
+            metrics,
             decoded,
             ack_deadline_secs,
         })
@@ -103,6 +102,7 @@ impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for GcpMessag
                     .await
                     .map_err(|err| GcpError::Ack(Box::new(err)))?;
 
+                self.metrics.record_ack();
                 tracing::debug!("acknowledged, storing message ID in Redis for deduplication...");
 
                 // NOTE: regard this message with its id to be processed for the next 10 minutes
@@ -119,6 +119,7 @@ impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for GcpMessag
                     .nack()
                     .await
                     .map_err(|err| GcpError::Nak(Box::new(err)))?;
+                self.metrics.record_nack();
                 tracing::info!(
                     "message negatively acknowledged - might get redelivered based on configuration"
                 );
@@ -139,6 +140,7 @@ impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for GcpMessag
                     .modify_ack_deadline(self.ack_deadline_secs)
                     .await
                     .map_err(|err| GcpError::ModifyAckDeadline(Box::new(err)))?;
+                self.metrics.record_deadline_extension();
                 tracing::info!("message deadline extended to allow more processing time");
             }
         }
@@ -152,7 +154,7 @@ pub struct GcpConsumer<T> {
     receiver: flume::Receiver<Result<GcpMessage<T>, GcpError>>,
     cancel_token: CancellationToken,
     read_messages_handle: tokio::task::JoinHandle<Result<(), GcpError>>,
-    metrics: Metrics,
+    metrics: Arc<Metrics>,
     _phantom: PhantomData<T>,
 }
 
@@ -208,7 +210,7 @@ where
             buffer_size = config.message_buffer_size,
             "starting message processing task"
         );
-        let metrics = Metrics::new(subscription.fully_qualified_name());
+        let metrics = Arc::new(Metrics::new(subscription.fully_qualified_name()));
 
         let read_messages_handle = start_read_messages_task(
             redis_connection,
@@ -217,6 +219,7 @@ where
             config.ack_deadline_secs,
             config.channel_capacity,
             config.worker_count,
+            metrics.clone(),
             cancel_token.clone(),
         );
 
@@ -245,6 +248,7 @@ where
         GcpError,
     > {
         if self.read_messages_handle.is_finished() {
+            self.metrics.record_error();
             return Err(GcpError::ConsumerReadTaskExited);
         }
         tracing::debug!("getting message stream");
@@ -273,7 +277,7 @@ where
 /// Starts tokio task to read from subscription to relay (messages) to
 /// receiver channel
 #[tracing::instrument(
-    skip(redis_connection, subscription, sender, cancel_token),
+    skip(redis_connection, subscription, sender, metrics, cancel_token),
     fields(
         subscription = %subscription.fully_qualified_name(),
     )
@@ -285,6 +289,7 @@ fn start_read_messages_task<T>(
     ack_deadline_secs: i32,
     channel_capacity: Option<usize>,
     worker_count: usize,
+    metrics: Arc<Metrics>,
     cancel_token: CancellationToken,
 ) -> tokio::task::JoinHandle<Result<(), GcpError>>
 where
@@ -314,12 +319,14 @@ where
                     let sender = sender.clone();
                     let subscription_name = subscription_name.clone();
                     let redis_connection = redis_connection.clone();
+                    let metrics = metrics.clone();
                     async move {
                         tracing::debug!(?message, "received message from PubSub");
                         match GcpMessage::decode(
                             subscription_name,
                             message,
                             redis_connection,
+                            metrics.clone(),
                             ack_deadline_secs,
                         ) {
                             Ok(mut message) => match message.is_processed().await {
@@ -338,7 +345,7 @@ where
                                             ?err,
                                             "failed to acknowledge duplicate message, forwarding..."
                                         );
-                                        forward_message(Err(err), sender, cancel).await;
+                                        forward_message(Err(err), sender, metrics, cancel).await;
                                     }
                                 }
                                 Ok(false) => {
@@ -346,7 +353,7 @@ where
                                         message_id = %message.id,
                                         "new message, forwarding..."
                                     );
-                                    forward_message(Ok(message), sender, cancel).await;
+                                    forward_message(Ok(message), sender, metrics, cancel).await;
                                 }
                                 Err(err) => {
                                     tracing::error!(
@@ -354,7 +361,8 @@ where
                                         message_id = %message.id,
                                         "failed to check if message was processed, forwarding..."
                                     );
-                                    forward_message(Err(err), sender, cancel).await;
+
+                                    forward_message(Err(err), sender, metrics, cancel).await;
                                 }
                             },
                             Err(err) => {
@@ -362,7 +370,7 @@ where
                                     ?err,
                                     "failed to decode message from PubSub, forwarding..."
                                 );
-                                forward_message(Err(err), sender, cancel).await;
+                                forward_message(Err(err), sender, metrics, cancel).await;
                             }
                         }
                     }
@@ -378,8 +386,13 @@ where
 async fn forward_message<T>(
     message_result: Result<GcpMessage<T>, GcpError>,
     sender: flume::Sender<Result<GcpMessage<T>, GcpError>>,
+    metrics: Arc<Metrics>,
     cancel: CancellationToken,
 ) {
+    if message_result.is_err() {
+        metrics.record_error();
+    }
+
     if let Err(err) = sender.send_async(message_result).await {
         tracing::info!(?err, "shutting down");
         cancel.cancel();
@@ -392,10 +405,10 @@ impl<T> Drop for GcpConsumer<T> {
     }
 }
 
+#[derive(Clone)]
 struct Metrics {
-    throughput_tracker: Arc<ThroughputTracker>
+    throughput_tracker: Arc<ThroughputTracker>,
     received_counter: Counter<u64>,
-    processed_counter: Counter<u64>,
     duplicates_counter: Counter<u64>,
     errors_counter: Counter<u64>,
 
@@ -423,11 +436,6 @@ impl Metrics {
         let received_counter = meter
             .u64_counter("messages.received")
             .with_description("Total number of messages received from PubSub")
-            .build();
-
-        let processed_counter = meter
-            .u64_counter("messages.processed")
-            .with_description("Total number of messages successfully processed")
             .build();
 
         let duplicates_counter = meter
@@ -487,7 +495,6 @@ impl Metrics {
         Self {
             throughput_tracker,
             received_counter,
-            processed_counter,
             duplicates_counter,
             errors_counter,
             processing_time,
@@ -500,5 +507,21 @@ impl Metrics {
             attributes,
         }
     }
-}
 
+    fn record_ack(&self) {
+        self.acks_counter.add(1, &self.attributes);
+        self.throughput_tracker.record_processed_message();
+    }
+
+    fn record_nack(&self) {
+        self.nacks_counter.add(1, &self.attributes);
+    }
+
+    fn record_deadline_extension(&self) {
+        self.deadline_extensions_counter.add(1, &self.attributes);
+    }
+
+    fn record_error(&self) {
+        self.errors_counter.add(1, &self.attributes);
+    }
+}
