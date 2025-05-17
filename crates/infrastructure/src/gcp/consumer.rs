@@ -1,5 +1,8 @@
 use core::fmt::Debug;
 use core::marker::PhantomData;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, SystemTime};
 
 use borsh::BorshDeserialize;
 use google_cloud_pubsub::client::Client;
@@ -9,12 +12,15 @@ use opentelemetry::metrics::{Counter, Histogram, ObservableGauge};
 use opentelemetry::{KeyValue, global};
 use redis::AsyncCommands as _;
 use redis::aio::MultiplexedConnection;
+use tokio::sync::Mutex;
+use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 use super::GcpError;
 use super::util::get_subscription;
 use crate::gcp::publisher::MSG_ID;
 use crate::interfaces;
+use crate::tracking::ThroughputTracker;
 
 // NOTE: common max value in gcp pub/sub for apache beam & dataflow
 const TEN_MINUTES_IN_SECS: u64 = 60 * 10;
@@ -387,6 +393,7 @@ impl<T> Drop for GcpConsumer<T> {
 }
 
 struct Metrics {
+    throughput_tracker: Arc<ThroughputTracker>
     received_counter: Counter<u64>,
     processed_counter: Counter<u64>,
     duplicates_counter: Counter<u64>,
@@ -406,6 +413,12 @@ struct Metrics {
 impl Metrics {
     fn new(subscription_name: &str) -> Self {
         let meter = global::meter("pubsub_consumer");
+        let throughput_tracker = Arc::new(ThroughputTracker::new());
+
+        let attributes = [KeyValue::new(
+            "subscription.name",
+            subscription_name.to_owned(),
+        )];
 
         let received_counter = meter
             .u64_counter("messages.received")
@@ -433,10 +446,17 @@ impl Metrics {
             .with_unit("s")
             .build();
 
+        let observer_tracker = throughput_tracker.clone();
+        let observer_attributes = attributes.clone();
         let messages_per_second = meter
             .f64_observable_gauge("messages.throughput")
             .with_description("Messages processed per second")
             .with_unit("messages/s")
+            .with_callback(move |observer| {
+                if let Some(rate) = observer_tracker.update_and_get_rate() {
+                    observer.observe(rate, &observer_attributes);
+                }
+            })
             .build();
 
         let acks_counter = meter
@@ -464,12 +484,8 @@ impl Metrics {
             .with_description("Current size of the message buffer")
             .build();
 
-        let attributes = [KeyValue::new(
-            "subscription.name",
-            subscription_name.to_owned(),
-        )];
-
         Self {
+            throughput_tracker,
             received_counter,
             processed_counter,
             duplicates_counter,
@@ -485,3 +501,4 @@ impl Metrics {
         }
     }
 }
+

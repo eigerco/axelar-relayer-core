@@ -16,6 +16,8 @@ pub mod gcp;
 /// Interfaces for ingesters/subscribers
 pub mod interfaces;
 
+pub(crate) mod tracking;
+
 /// Nats implementation
 #[cfg(feature = "nats")]
 pub mod nats;

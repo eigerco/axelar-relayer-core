@@ -3,6 +3,7 @@ use std::sync::atomic::Ordering;
 use std::time::Instant;
 
 pub struct ThroughputTracker {
+    processed_count: AtomicU64,
     last_count: AtomicU64,
     last_timestamp_ms: AtomicU64,
 }
@@ -10,21 +11,29 @@ pub struct ThroughputTracker {
 impl ThroughputTracker {
     pub fn new() -> Self {
         Self {
+            processed_count: AtomicU64::new(0),
             last_count: AtomicU64::new(0),
             last_timestamp_ms: AtomicU64::new(current_time_millis()),
         }
     }
 
-    pub fn update_and_get_rate(&self, current_count: u64) -> f64 {
-        let prev_count = self.last_count.swap(current_count, Ordering::Acquire);
+    pub fn update_and_get_rate(&self) -> Option<f64> {
+        let current_count = self.processed_count.load(Ordering::Relaxed);
+        let prev_count = self.last_count.swap(current_count, Ordering::Relaxed);
+
         let now = current_time_millis();
-        let last = self.last_timestamp_ms.swap(now, Ordering::Release);
+        let last = self.last_timestamp_ms.swap(now, Ordering::Relaxed);
 
         let elapsed_sec = (now - last) as f64 / 1000.0;
         if elapsed_sec > 0.0 {
-            return (current_count - prev_count) as f64 / elapsed_sec;
+            return Some((current_count - prev_count) as f64 / elapsed_sec);
         }
-        0.0
+
+        None
+    }
+
+    pub fn record_processed_message(&self) {
+        self.processed_count.fetch_add(1, Ordering::Relaxed);
     }
 }
 
