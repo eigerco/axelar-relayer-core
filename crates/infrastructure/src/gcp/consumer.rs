@@ -22,7 +22,6 @@ use crate::tracking::ThroughputTracker;
 const TEN_MINUTES_IN_SECS: u64 = 60 * 10;
 
 /// Decoded queue message
-#[derive(Debug)]
 pub struct GcpMessage<T> {
     id: String,
     subscription_name: String,
@@ -31,6 +30,17 @@ pub struct GcpMessage<T> {
     metrics: Arc<Metrics>,
     decoded: T,
     ack_deadline_secs: i32,
+}
+
+impl<T: Debug> Debug for GcpMessage<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GcpMessage")
+            .field("id", &self.id)
+            .field("subscription_name", &self.subscription_name)
+            .field("msg", &self.msg)
+            .field("decoded", &self.decoded)
+            .finish()
+    }
 }
 
 impl<T> GcpMessage<T> {
