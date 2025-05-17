@@ -1,6 +1,7 @@
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use std::sync::Arc;
+use std::time::Instant;
 
 use borsh::BorshDeserialize;
 use google_cloud_pubsub::client::Client;
@@ -24,6 +25,7 @@ const TEN_MINUTES_IN_SECS: u64 = 60 * 10;
 /// Decoded queue message
 pub struct GcpMessage<T> {
     id: String,
+    received_timestamp: Instant,
     subscription_name: String,
     msg: ReceivedMessage,
     redis_connection: MultiplexedConnection,
@@ -58,6 +60,7 @@ impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
         metrics: Arc<Metrics>,
         ack_deadline_secs: i32,
     ) -> Result<Self, GcpError> {
+        let received_timestamp = Instant::now();
         tracing::debug!(?msg, "decoding msg");
         let id = msg
             .message
@@ -80,6 +83,7 @@ impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
             redis_connection,
             metrics,
             decoded,
+            received_timestamp,
             ack_deadline_secs,
         })
     }
@@ -112,7 +116,7 @@ impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for GcpMessag
                     .await
                     .map_err(|err| GcpError::Ack(Box::new(err)))?;
 
-                self.metrics.record_ack();
+                self.metrics.record_ack(self.received_timestamp);
                 tracing::debug!("acknowledged, storing message ID in Redis for deduplication...");
 
                 // NOTE: regard this message with its id to be processed for the next 10 minutes
@@ -129,7 +133,7 @@ impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for GcpMessag
                     .nack()
                     .await
                     .map_err(|err| GcpError::Nak(Box::new(err)))?;
-                self.metrics.record_nack();
+                self.metrics.record_nack(self.received_timestamp);
                 tracing::info!(
                     "message negatively acknowledged - might get redelivered based on configuration"
                 );
@@ -462,7 +466,7 @@ impl Metrics {
         let processing_time = meter
             .f64_histogram("messages.processing_time")
             .with_description("Time taken to process messages in seconds")
-            .with_unit("s")
+            .with_unit("ms")
             .build();
 
         let observer_tracker = throughput_tracker.clone();
@@ -519,13 +523,20 @@ impl Metrics {
         }
     }
 
-    fn record_ack(&self) {
+    fn record_ack(&self, received_timestamp: Instant) {
+        let now = Instant::now();
+        let elapsed_ms = now.duration_since(received_timestamp).as_millis() as f64;
+        self.processing_time.record(elapsed_ms, &self.attributes);
         self.acks_counter.add(1, &self.attributes);
         self.throughput_tracker.record_processed_message();
     }
 
-    fn record_nack(&self) {
+    fn record_nack(&self, received_timestamp: Instant) {
+        let now = Instant::now();
+        let elapsed_ms = now.duration_since(received_timestamp).as_millis() as f64;
+        self.processing_time.record(elapsed_ms, &self.attributes);
         self.nacks_counter.add(1, &self.attributes);
+        self.throughput_tracker.record_processed_message();
     }
 
     fn record_deadline_extension(&self) {
