@@ -149,11 +149,11 @@ where
                 .get()
                 .await
                 .map_err(|err| GcpError::Publish(Box::new(err)))?;
+            self.metrics.record_publish(start_time);
             tracing::debug!(message_index = index, message_id = %res, "message confirmed");
             output.push(res);
         }
 
-        self.metrics.record_batch_publish(batch_size, start_times);
         tracing::info!("successfully published batch of {} messages", output.len());
 
         Ok(output)
@@ -335,7 +335,6 @@ where
 struct Metrics {
     published_count: Counter<u64>,
     publish_duration: Histogram<f64>,
-    batch_size: Histogram<u64>,
     attributes: [KeyValue; 1],
 }
 
@@ -359,14 +358,11 @@ impl Metrics {
             .with_description("Size of message batches published to PubSub")
             .build();
 
-        let attributes = [
-            KeyValue::new("topic.name", topic_name.to_owned()),
-        ];
+        let attributes = [KeyValue::new("topic.name", topic_name.to_owned())];
 
         Self {
             published_count,
             publish_duration,
-            batch_size,
             attributes,
         }
     }
@@ -375,14 +371,5 @@ impl Metrics {
         self.published_count.add(1, &[]);
         self.publish_duration
             .record(start_time.elapsed().as_secs_f64(), &self.attributes);
-    }
-
-    pub fn record_batch_publish(&self, batch_size: u64, start_time: std::time::Instant) {
-        self.published_count.add(batch_size, &self.attributes);
-        self.batch_size.record(batch_size, &self.attributes);
-        self.publish_duration.record(
-            batch_size as f64 / start_time.elapsed().as_secs_f64(),
-            &self.attributes,
-        );
     }
 }

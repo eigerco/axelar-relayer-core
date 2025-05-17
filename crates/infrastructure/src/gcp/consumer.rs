@@ -1,6 +1,7 @@
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 use borsh::BorshDeserialize;
@@ -133,7 +134,7 @@ impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for GcpMessag
                     .nack()
                     .await
                     .map_err(|err| GcpError::Nak(Box::new(err)))?;
-                self.metrics.record_nack(self.received_timestamp);
+                self.metrics.record_nack();
                 tracing::info!(
                     "message negatively acknowledged - might get redelivered based on configuration"
                 );
@@ -224,16 +225,22 @@ where
             buffer_size = config.message_buffer_size,
             "starting message processing task"
         );
-        let metrics = Arc::new(Metrics::new(subscription.fully_qualified_name()));
+
+        let channel_len = Arc::new(AtomicU64::new(0));
+        let metrics = Arc::new(Metrics::new(
+            subscription.fully_qualified_name(),
+            channel_len.clone(),
+        ));
 
         let read_messages_handle = start_read_messages_task(
             redis_connection,
             subscription,
-            sender,
             config.ack_deadline_secs,
             config.channel_capacity,
             config.worker_count,
             metrics.clone(),
+            channel_len,
+            sender,
             cancel_token.clone(),
         );
 
@@ -299,11 +306,12 @@ where
 fn start_read_messages_task<T>(
     redis_connection: MultiplexedConnection,
     subscription: Subscription,
-    sender: flume::Sender<Result<GcpMessage<T>, GcpError>>,
     ack_deadline_secs: i32,
     channel_capacity: Option<usize>,
     worker_count: usize,
     metrics: Arc<Metrics>,
+    channel_len: Arc<AtomicU64>,
+    sender: flume::Sender<Result<GcpMessage<T>, GcpError>>,
     cancel_token: CancellationToken,
 ) -> tokio::task::JoinHandle<Result<(), GcpError>>
 where
@@ -330,6 +338,11 @@ where
         subscription
             .receive(
                 move |message, cancel| {
+                    channel_len.store(
+                        u64::try_from(sender.len()).expect("always work"),
+                        Ordering::SeqCst,
+                    );
+
                     let sender = sender.clone();
                     let subscription_name = subscription_name.clone();
                     let redis_connection = redis_connection.clone();
@@ -433,13 +446,12 @@ struct Metrics {
     nacks_counter: Counter<u64>,
     deadline_extensions_counter: Counter<u64>,
 
-    channel_capacity_gauge: ObservableGauge<i64>,
-    message_buffer_size_gauge: ObservableGauge<i64>,
+    channel_capacity_gauge: ObservableGauge<u64>,
     attributes: [KeyValue; 1],
 }
 
 impl Metrics {
-    fn new(subscription_name: &str) -> Self {
+    fn new(subscription_name: &str, channel_len: Arc<AtomicU64>) -> Self {
         let meter = global::meter("pubsub_consumer");
         let throughput_tracker = Arc::new(ThroughputTracker::new());
 
@@ -470,14 +482,14 @@ impl Metrics {
             .build();
 
         let observer_tracker = throughput_tracker.clone();
-        let observer_attributes = attributes.clone();
+        let throughput_attr = attributes.clone();
         let messages_per_second = meter
             .f64_observable_gauge("messages.throughput")
             .with_description("Messages processed per second")
             .with_unit("messages/s")
             .with_callback(move |observer| {
                 if let Some(rate) = observer_tracker.update_and_get_rate() {
-                    observer.observe(rate, &observer_attributes);
+                    observer.observe(rate, &throughput_attr);
                 }
             })
             .build();
@@ -497,14 +509,14 @@ impl Metrics {
             .with_description("Total number of message deadline extensions")
             .build();
 
+        let capacity_attr = attributes.clone();
         let channel_capacity_gauge = meter
-            .i64_observable_gauge("channel.capacity")
+            .u64_observable_gauge("channel.capacity")
             .with_description("Current capacity of the message channel")
-            .build();
-
-        let message_buffer_size_gauge = meter
-            .i64_observable_gauge("buffer.size")
-            .with_description("Current size of the message buffer")
+            .with_callback(move |observer| {
+                let len = channel_len.load(Ordering::Relaxed);
+                observer.observe(len, &capacity_attr);
+            })
             .build();
 
         Self {
@@ -518,7 +530,6 @@ impl Metrics {
             nacks_counter,
             deadline_extensions_counter,
             channel_capacity_gauge,
-            message_buffer_size_gauge,
             attributes,
         }
     }
@@ -531,12 +542,8 @@ impl Metrics {
         self.throughput_tracker.record_processed_message();
     }
 
-    fn record_nack(&self, received_timestamp: Instant) {
-        let now = Instant::now();
-        let elapsed_ms = now.duration_since(received_timestamp).as_millis() as f64;
-        self.processing_time.record(elapsed_ms, &self.attributes);
+    fn record_nack(&self) {
         self.nacks_counter.add(1, &self.attributes);
-        self.throughput_tracker.record_processed_message();
     }
 
     fn record_deadline_extension(&self) {
