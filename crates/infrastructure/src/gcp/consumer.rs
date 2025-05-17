@@ -26,23 +26,23 @@ const TEN_MINUTES_IN_SECS: u64 = 60 * 10;
 /// Decoded queue message
 pub struct GcpMessage<T> {
     id: String,
-    received_timestamp: Instant,
+    decoded: T,
     subscription_name: String,
     msg: ReceivedMessage,
     redis_connection: MultiplexedConnection,
-    metrics: Arc<Metrics>,
-    decoded: T,
+    received_timestamp: Instant,
     ack_deadline_secs: i32,
+    metrics: Arc<Metrics>,
 }
 
 impl<T: Debug> Debug for GcpMessage<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("GcpMessage")
             .field("id", &self.id)
             .field("subscription_name", &self.subscription_name)
             .field("msg", &self.msg)
             .field("decoded", &self.decoded)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -79,13 +79,13 @@ impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
 
         Ok(Self {
             id,
+            decoded,
             subscription_name,
             msg,
             redis_connection,
-            metrics,
-            decoded,
             received_timestamp,
             ack_deadline_secs,
+            metrics,
         })
     }
 
