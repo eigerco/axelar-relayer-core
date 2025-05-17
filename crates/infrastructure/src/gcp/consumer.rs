@@ -345,6 +345,7 @@ where
                                         message_id = %message.id,
                                         "message already processed, acknowledging duplicate"
                                     );
+                                    metrics.record_duplicate();
                                     if let Err(err) = message
                                         .msg
                                         .ack()
@@ -529,6 +530,10 @@ impl Metrics {
 
     fn record_deadline_extension(&self) {
         self.deadline_extensions_counter.add(1, &self.attributes);
+    }
+
+    fn record_duplicate(&self) {
+        self.duplicates_counter.add(1, &self.attributes);
     }
 
     fn record_error(&self) {
