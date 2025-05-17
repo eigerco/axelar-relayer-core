@@ -353,11 +353,6 @@ impl Metrics {
             .with_unit("s")
             .build();
 
-        let batch_size = meter
-            .u64_histogram("atch.size")
-            .with_description("Size of message batches published to PubSub")
-            .build();
-
         let attributes = [KeyValue::new("topic.name", topic_name.to_owned())];
 
         Self {
