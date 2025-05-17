@@ -129,7 +129,6 @@ where
             tracing::warn!("attempt to publish empty batch");
             return Ok(Vec::new());
         }
-        let batch_size = batch.len();
 
         tracing::info!("publishing batch of {} messages to PubSub", batch.len());
         let bulk = batch
@@ -339,7 +338,7 @@ struct Metrics {
 }
 
 impl Metrics {
-    pub fn new(topic_name: &str) -> Self {
+    fn new(topic_name: &str) -> Self {
         let meter = global::meter("pubsub_publisher");
 
         let published_count = meter
@@ -362,7 +361,7 @@ impl Metrics {
         }
     }
 
-    pub fn record_publish(&self, start_time: std::time::Instant) {
+    fn record_publish(&self, start_time: std::time::Instant) {
         self.published_count.add(1, &[]);
         self.publish_duration
             .record(start_time.elapsed().as_secs_f64(), &self.attributes);
