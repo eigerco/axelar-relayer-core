@@ -19,7 +19,6 @@ pub(crate) struct Config {
     pub health_check: bin_util::health_check::Config,
 }
 
-
 impl ValidateConfig for Config {
     fn validate(&self) -> eyre::Result<()> {
         ensure!(
