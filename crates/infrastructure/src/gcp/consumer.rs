@@ -1,7 +1,6 @@
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 use borsh::BorshDeserialize;
@@ -226,11 +225,7 @@ where
             "starting message processing task"
         );
 
-        let channel_len = Arc::new(AtomicU64::new(0));
-        let metrics = Arc::new(Metrics::new(
-            subscription.fully_qualified_name(),
-            channel_len.clone(),
-        ));
+        let metrics = Arc::new(Metrics::new(subscription.fully_qualified_name()));
 
         let read_messages_handle = start_read_messages_task(
             redis_connection,
@@ -238,8 +233,7 @@ where
             config.ack_deadline_secs,
             config.channel_capacity,
             config.worker_count,
-            metrics.clone(),
-            channel_len,
+            Arc::clone(&metrics),
             sender,
             cancel_token.clone(),
         );
@@ -310,7 +304,6 @@ fn start_read_messages_task<T>(
     channel_capacity: Option<usize>,
     worker_count: usize,
     metrics: Arc<Metrics>,
-    channel_len: Arc<AtomicU64>,
     sender: flume::Sender<Result<GcpMessage<T>, GcpError>>,
     cancel_token: CancellationToken,
 ) -> tokio::task::JoinHandle<Result<(), GcpError>>
@@ -338,22 +331,18 @@ where
         subscription
             .receive(
                 move |message, cancel| {
-                    channel_len.store(
-                        u64::try_from(sender.len()).expect("always work"),
-                        Ordering::SeqCst,
-                    );
-
+                    metrics.record_received();
                     let sender = sender.clone();
                     let subscription_name = subscription_name.clone();
                     let redis_connection = redis_connection.clone();
-                    let metrics = metrics.clone();
+                    let metrics = Arc::clone(&metrics);
                     async move {
                         tracing::debug!(?message, "received message from PubSub");
                         match GcpMessage::decode(
                             subscription_name,
                             message,
                             redis_connection,
-                            metrics.clone(),
+                            Arc::clone(&metrics),
                             ack_deadline_secs,
                         ) {
                             Ok(mut message) => match message.is_processed().await {
@@ -446,12 +435,11 @@ struct Metrics {
     nacks_counter: Counter<u64>,
     deadline_extensions_counter: Counter<u64>,
 
-    channel_capacity_gauge: ObservableGauge<u64>,
     attributes: [KeyValue; 1],
 }
 
 impl Metrics {
-    fn new(subscription_name: &str, channel_len: Arc<AtomicU64>) -> Self {
+    fn new(subscription_name: &str) -> Self {
         let meter = global::meter("pubsub_consumer");
         let throughput_tracker = Arc::new(ThroughputTracker::new());
 
@@ -509,16 +497,6 @@ impl Metrics {
             .with_description("Total number of message deadline extensions")
             .build();
 
-        let capacity_attr = attributes.clone();
-        let channel_capacity_gauge = meter
-            .u64_observable_gauge("channel.capacity")
-            .with_description("Current capacity of the message channel")
-            .with_callback(move |observer| {
-                let len = channel_len.load(Ordering::Relaxed);
-                observer.observe(len, &capacity_attr);
-            })
-            .build();
-
         Self {
             throughput_tracker,
             received_counter,
@@ -529,9 +507,12 @@ impl Metrics {
             acks_counter,
             nacks_counter,
             deadline_extensions_counter,
-            channel_capacity_gauge,
             attributes,
         }
+    }
+
+    fn record_received(&self) {
+        self.received_counter.add(1, &self.attributes);
     }
 
     fn record_ack(&self, received_timestamp: Instant) {
