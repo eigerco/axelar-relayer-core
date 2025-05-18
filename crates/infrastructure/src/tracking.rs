@@ -1,3 +1,4 @@
+#![allow(dead_code, reason = "not implemented for every feature yet")]
 use core::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 

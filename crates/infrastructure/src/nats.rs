@@ -4,7 +4,9 @@ use core::time::Duration;
 
 use async_nats::jetstream::consumer::StreamError;
 use async_nats::jetstream::consumer::push::MessagesError;
-use async_nats::jetstream::context::{CreateKeyValueError, CreateStreamError, PublishError};
+use async_nats::jetstream::context::{
+    ConsumerInfoError, CreateKeyValueError, CreateStreamError, PublishError,
+};
 use async_nats::jetstream::kv::{EntryError, PutError, UpdateError};
 use async_nats::jetstream::stream::{ConsumerError, DirectGetError, InfoError};
 use async_nats::{self, ConnectError, jetstream};
@@ -56,7 +58,9 @@ pub enum NatsError {
     #[error("read nats consumer message error: {0}")]
     Messages(#[from] MessagesError),
     #[error("nats info error: {0}")]
-    Info(#[from] InfoError),
+    ConsumerInfo(#[from] ConsumerInfoError),
+    #[error("nats info error: {0}")]
+    PublisherInfo(#[from] InfoError),
     #[error("get direct nats message error: {0}")]
     DirectGet(#[from] DirectGetError),
     #[error("nats ack error: {0}")]
