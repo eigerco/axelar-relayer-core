@@ -286,7 +286,7 @@ mod tests {
         let retry = RetryPairFn::new(test_backoff(), func1, func2);
         let result = retry.retry().await.unwrap();
         assert_eq!(result, "ok1");
-        assert!(func1_called_count.load(Ordering::Relaxed) >= 3);
+        assert!(func1_called_count.load(Ordering::Relaxed) >= 3_i32);
     }
 
     #[tokio::test]
