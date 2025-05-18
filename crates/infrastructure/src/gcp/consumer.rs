@@ -227,16 +227,16 @@ where
 
         let metrics = Arc::new(Metrics::new(subscription.fully_qualified_name()));
 
-        let read_messages_handle = start_read_messages_task(
+        let read_messages_handle = start_read_messages_task(ReadMessagesConfig {
             redis_connection,
             subscription,
-            config.ack_deadline_secs,
-            config.channel_capacity,
-            config.worker_count,
-            Arc::clone(&metrics),
+            ack_deadline_secs: config.ack_deadline_secs,
+            channel_capacity: config.channel_capacity,
+            worker_count: config.worker_count,
+            metrics: Arc::clone(&metrics),
             sender,
-            cancel_token.clone(),
-        );
+            cancel_token: cancel_token.clone(),
+        });
 
         tracing::info!("GCP PubSub consumer successfully initialized");
 
@@ -289,15 +289,7 @@ where
     }
 }
 
-/// Starts tokio task to read from subscription to relay (messages) to
-/// receiver channel
-#[tracing::instrument(
-    skip(redis_connection, subscription, sender, metrics, cancel_token),
-    fields(
-        subscription = %subscription.fully_qualified_name(),
-    )
-)]
-fn start_read_messages_task<T>(
+struct ReadMessagesConfig<T> {
     redis_connection: MultiplexedConnection,
     subscription: Subscription,
     ack_deadline_secs: i32,
@@ -306,10 +298,27 @@ fn start_read_messages_task<T>(
     metrics: Arc<Metrics>,
     sender: flume::Sender<Result<GcpMessage<T>, GcpError>>,
     cancel_token: CancellationToken,
+}
+
+/// Starts tokio task to read from subscription to relay (messages) to
+/// receiver channel
+fn start_read_messages_task<T>(
+    config: ReadMessagesConfig<T>,
 ) -> tokio::task::JoinHandle<Result<(), GcpError>>
 where
     T: BorshDeserialize + Send + Sync + Debug + 'static,
 {
+    let ReadMessagesConfig {
+        redis_connection,
+        subscription,
+        ack_deadline_secs,
+        channel_capacity,
+        worker_count,
+        metrics,
+        sender,
+        cancel_token,
+    } = config;
+
     let receive_config = ReceiveConfig {
         channel_capacity,
         worker_count,
