@@ -430,6 +430,7 @@ struct Metrics {
     errors_counter: Counter<u64>,
 
     processing_time: Histogram<f64>,
+    #[allow(dead_code, reason = "called by pipes")]
     messages_per_second: ObservableGauge<f64>,
     acks_counter: Counter<u64>,
     nacks_counter: Counter<u64>,
@@ -469,7 +470,7 @@ impl Metrics {
             .with_unit("ms")
             .build();
 
-        let observer_tracker = throughput_tracker.clone();
+        let observer_tracker = Arc::clone(&throughput_tracker);
         let throughput_attr = attributes.clone();
         let messages_per_second = meter
             .f64_observable_gauge("messages.throughput")
@@ -515,9 +516,21 @@ impl Metrics {
         self.received_counter.add(1, &self.attributes);
     }
 
+    #[allow(clippy::as_conversions, reason = "checked")]
+    #[allow(clippy::cast_precision_loss, reason = "checked")]
     fn record_ack(&self, received_timestamp: Instant) {
         let now = Instant::now();
-        let elapsed_ms = now.duration_since(received_timestamp).as_millis() as f64;
+        let elapsed_ms = now.duration_since(received_timestamp).as_millis();
+        let elapsed_ms: f64 = if let Ok(ms_u64) = TryInto::<u64>::try_into(elapsed_ms) {
+            ms_u64 as f64
+        } else {
+            tracing::warn!(
+                "elapsed_ms u128 to f64 conversion overflow: {}ms",
+                elapsed_ms
+            );
+            f64::MAX
+        };
+
         self.processing_time.record(elapsed_ms, &self.attributes);
         self.acks_counter.add(1, &self.attributes);
         self.throughput_tracker.record_processed_message();

@@ -1,15 +1,14 @@
-use core::sync::atomic::AtomicU64;
-use std::sync::atomic::Ordering;
+use core::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
-pub struct ThroughputTracker {
+pub(crate) struct ThroughputTracker {
     processed_count: AtomicU64,
     last_count: AtomicU64,
     last_timestamp_ms: AtomicU64,
 }
 
 impl ThroughputTracker {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             processed_count: AtomicU64::new(0),
             last_count: AtomicU64::new(0),
@@ -17,22 +16,33 @@ impl ThroughputTracker {
         }
     }
 
-    pub fn update_and_get_rate(&self) -> Option<f64> {
+    #[allow(clippy::float_arithmetic, reason = "need floating-point operations")]
+    #[allow(clippy::cast_precision_loss, reason = "necessary in this context")]
+    #[allow(
+        clippy::as_conversions,
+        reason = "Safer alternatives would be more complex here"
+    )]
+    #[allow(
+        clippy::arithmetic_side_effects,
+        reason = "Subtraction is needed for rate calculation"
+    )]
+    pub(crate) fn update_and_get_rate(&self) -> Option<f64> {
+        num_t
         let current_count = self.processed_count.load(Ordering::Relaxed);
         let prev_count = self.last_count.swap(current_count, Ordering::Relaxed);
 
         let now = current_time_millis();
         let last = self.last_timestamp_ms.swap(now, Ordering::Relaxed);
 
-        let elapsed_sec = (now - last) as f64 / 1000.0;
-        if elapsed_sec > 0.0 {
+        let elapsed_sec = (now - last) as f64 / 1000.0_f64;
+        if elapsed_sec > 0.0_f64 {
             return Some((current_count - prev_count) as f64 / elapsed_sec);
         }
 
         None
     }
 
-    pub fn record_processed_message(&self) {
+    pub(crate) fn record_processed_message(&self) {
         self.processed_count.fetch_add(1, Ordering::Relaxed);
     }
 }
