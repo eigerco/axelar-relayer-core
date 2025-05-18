@@ -43,6 +43,8 @@ pub enum Transport {
 ///
 /// # Arguments
 ///
+/// * `service_name` - The name of the service, used as an identifier in traces and metrics.
+/// * `service_version` - The version of the service, included in telemetry data for versioning.
 /// * `config` - A reference to the application configuration containing settings for tracing and
 ///   metrics subsystems.
 ///
@@ -54,8 +56,10 @@ pub enum Transport {
 /// # Errors
 ///
 /// This function may fail if:
-/// * Tracing system initialization fails
-/// * Metrics system initialization fails
+/// * Tracing system initialization fails (exporter creation, tracer setup)
+/// * Metrics system initialization fails (exporter creation, meter setup)
+/// * Invalid configuration values are provided
+/// * Connection to telemetry backends cannot be established
 pub async fn init(service_name: &str, service_version: &str, config: &Config) -> eyre::Result<()> {
     let (span_exporter, metric_exporter) = get_exporters(config)?;
     let service_resource = Resource::builder()
