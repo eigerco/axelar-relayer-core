@@ -6,6 +6,7 @@ use opentelemetry_otlp::{MetricExporter, Protocol, SpanExporter, WithExportConfi
 use opentelemetry_resource_detectors::{K8sResourceDetector, ProcessResourceDetector};
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
+use opentelemetry_sdk::resource::ResourceDetector as _;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_semantic_conventions::resource;
 use opentelemetry_system_metrics::init_process_observer;
@@ -14,7 +15,6 @@ use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
-// use opentelemetry_semantic_conventions::k8s;
 
 /// Configuration for telemetry
 #[derive(Debug, Clone, Deserialize)]
