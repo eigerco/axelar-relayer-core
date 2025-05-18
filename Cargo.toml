@@ -79,7 +79,7 @@ amplifier-subscriber = { path = "crates/amplifier-subscriber" }
 amplifier-ingester = { path = "crates/amplifier-ingester" }
 
 # CLI
-clap = { version = "4", features = ["derive", "env", "string"] }
+clap = { version = "4", features = ["cargo", "derive", "env", "string"] }
 
 # Utils
 arrayvec = "0.7"

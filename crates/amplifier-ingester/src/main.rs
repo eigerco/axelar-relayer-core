@@ -29,7 +29,7 @@ mod config;
 use core::time::Duration;
 
 use bin_util::health_check;
-use clap::Parser;
+use clap::{Parser, crate_name, crate_version};
 use config::Config;
 use tokio_util::sync::CancellationToken;
 
@@ -54,7 +54,9 @@ async fn main() {
     let cli = Cli::parse();
 
     let config: Config = bin_util::try_deserialize(&cli.config_path).expect("config is correct");
-    if let Err(err) = bin_util::telemetry::init(&config.telemetry) {
+    if let Err(err) =
+        bin_util::telemetry::init(crate_name!(), crate_version!(), &config.telemetry).await
+    {
         tracing::error!(?err, "Failed to initialize telemetry");
     }
 
