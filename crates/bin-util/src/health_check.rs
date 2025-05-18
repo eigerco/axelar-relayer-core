@@ -285,7 +285,7 @@ mod tests {
         let cancel_token = CancellationToken::new();
         let token_clone = cancel_token.clone();
 
-        let is_healthy_flag = flag.clone();
+        let is_healthy_flag = Arc::clone(&flag);
         let server = Server::new(port)
             .add_health_check(|| async { Ok(()) })
             .add_health_check(move || {

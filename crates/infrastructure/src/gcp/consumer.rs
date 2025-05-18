@@ -181,8 +181,6 @@ pub struct GcpConsumerConfig {
     pub ack_deadline_secs: i32,
     /// Capacity of underlyng flume channel holding messages to consume
     pub channel_capacity: Option<usize>,
-    /// Capacity of buffer to hold read messages from underlyng GCP provider
-    pub message_buffer_size: usize,
     /// Underlying count of workers reading from GCP pubsub provider subscription
     pub worker_count: usize,
 }
@@ -207,7 +205,7 @@ where
         tracing::info!("initializing GCP PubSub consumer for subscription");
         let subscription = get_subscription(client, subscription).await?;
 
-        let (sender, receiver) = flume::bounded(config.message_buffer_size);
+        let (sender, receiver) = flume::unbounded();
 
         // NOTE: clone for supervised monolithic binary
         let cancel_token = cancel_token.child_token();
@@ -221,7 +219,6 @@ where
 
         tracing::info!(
             worker_count = config.worker_count,
-            buffer_size = config.message_buffer_size,
             "starting message processing task"
         );
 

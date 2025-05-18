@@ -11,7 +11,6 @@ use crate::config::Config;
 
 // TODO: Adsjust based on metrics
 const WORKERS_SCALE_FACTOR: usize = 4;
-const BUFFER_SCALE_FACTOR: usize = 4;
 const CHANNEL_CAPACITY_SCALE_FACTOR: usize = 4;
 
 #[derive(Debug, Deserialize)]
@@ -28,7 +27,6 @@ pub(crate) struct GcpConfig {
     pub events_topic: String,
     pub events_subscription: String,
     pub ack_deadline_secs: i32,
-    pub message_buffer_size: usize,
 }
 
 impl ValidateConfig for GcpSectionConfig {
@@ -58,10 +56,6 @@ impl ValidateConfig for GcpSectionConfig {
             self.gcp.ack_deadline_secs > 0_i32,
             eyre!("gcp nak_deadline_secs should be positive set")
         );
-        ensure!(
-            self.gcp.message_buffer_size > 0,
-            eyre!("gcp message_buffer_size should be set")
-        );
         Ok(())
     }
 }
@@ -79,9 +73,6 @@ pub(crate) async fn new_amplifier_ingester(
         redis_connection: infra_config.gcp.redis_connection.clone(),
         ack_deadline_secs: infra_config.gcp.ack_deadline_secs,
         channel_capacity: num_cpus.checked_mul(CHANNEL_CAPACITY_SCALE_FACTOR),
-        message_buffer_size: num_cpus
-            .checked_mul(BUFFER_SCALE_FACTOR)
-            .unwrap_or(num_cpus),
         worker_count: num_cpus
             .checked_mul(WORKERS_SCALE_FACTOR)
             .unwrap_or(num_cpus),

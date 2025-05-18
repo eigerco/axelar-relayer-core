@@ -26,7 +26,6 @@ pub(crate) struct GcpConfig {
     events_topic: String,
     events_subscription: String,
     nak_deadline_secs: i32,
-    message_buffer_size: usize,
 }
 
 impl ValidateConfig for GcpSectionConfig {
@@ -55,10 +54,6 @@ impl ValidateConfig for GcpSectionConfig {
         ensure!(
             self.gcp.nak_deadline_secs > 0_i32,
             eyre!("gcp nak_deadline_secs should be positive set")
-        );
-        ensure!(
-            self.gcp.message_buffer_size > 0,
-            eyre!("gcp message_buffer_size should be set")
         );
         Ok(())
     }

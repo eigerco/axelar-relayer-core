@@ -79,7 +79,6 @@ use crate::interfaces::publisher::QueueMsgId;
 ///         redis_connection: "redis://redis-server:6379".to_owned(),
 ///         ack_deadline_secs: 10,
 ///         channel_capacity: Some(50),
-///         message_buffer_size: 50,
 ///         worker_count: 5,
 ///     };
 ///
