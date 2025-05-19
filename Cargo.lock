@@ -385,6 +385,7 @@ name = "bin-util"
 version = "0.1.1"
 dependencies = [
  "axum",
+ "color-eyre",
  "config",
  "ctrlc",
  "eyre",

@@ -56,11 +56,13 @@ pub enum Transport {
 /// # Errors
 ///
 /// This function may fail if:
+/// * Coloy eyre failed to install
 /// * Tracing system initialization fails (exporter creation, tracer setup)
 /// * Metrics system initialization fails (exporter creation, meter setup)
 /// * Invalid configuration values are provided
 /// * Connection to telemetry backends cannot be established
 pub async fn init(service_name: &str, service_version: &str, config: &Config) -> eyre::Result<()> {
+    color_eyre::install().wrap_err("color eyre could not be installed")?;
     let (span_exporter, metric_exporter) = get_exporters(config)?;
     let service_resource = Resource::builder()
         .with_service_name(service_name.to_owned())
