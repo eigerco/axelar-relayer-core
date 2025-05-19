@@ -44,7 +44,9 @@ pub fn ensure_backtrace_set() {
 ///
 /// # Returns
 ///
-/// * `eyre::Result<()>` - Ok on successful initialization, Error otherwise.
+/// * `eyre::Result<WorkerGuard>` - A worker guard that must be kept alive for the duration of the
+///   program to ensure logs are properly processed and flushed to `stderr`. When this guard is
+///   dropped, the background worker thread will be shut down.
 ///
 /// # Errors
 ///
@@ -67,7 +69,7 @@ pub fn init_logging(
         }
     }
 
-    let (non_blocking, worker_guard) = tracing_appender::non_blocking(std::io::stdout());
+    let (non_blocking, worker_guard) = tracing_appender::non_blocking(std::io::stderr());
 
     let output_layer = tracing_subscriber::fmt::layer()
         .with_target(true)
