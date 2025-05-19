@@ -34,7 +34,7 @@ pub fn ensure_backtrace_set() {
 ///
 /// # Arguments
 ///
-/// * `filters` - Optional vector of filter directives to control log verbosity. Each directive
+/// * `env_filters` - Optional vector of filter directives to control log verbosity. Each directive
 ///   should follow the tracing filter syntax (e.g., "info", "`starknet_relayer=debug`",
 ///   "`warn,my_module=trace`"). If `None` is provided, a default empty filter will be created.
 ///
@@ -55,7 +55,7 @@ pub fn ensure_backtrace_set() {
 /// * Any of the provided filter directives fail to parse
 /// * The tracing subscriber cannot be initialized
 pub fn init_logging(
-    filters: Option<Vec<String>>,
+    env_filters: Option<Vec<String>>,
     telemetry_tracer: Option<opentelemetry_sdk::trace::Tracer>,
 ) -> eyre::Result<WorkerGuard> {
     if cfg!(debug_assertions) {
@@ -63,7 +63,7 @@ pub fn init_logging(
     }
 
     let mut env_filter = EnvFilter::new("");
-    if let Some(filters) = filters {
+    if let Some(filters) = env_filters {
         for directive in filters {
             env_filter = env_filter.add_directive(directive.parse()?);
         }
