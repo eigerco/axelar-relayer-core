@@ -157,7 +157,6 @@ tracing-subscriber = { version = "0.3", features = [
   "valuable",
   "tracing",
 ] }
-tracing-error = "0.2"
 
 # telemetry
 opentelemetry = { version = "0.29.1", features = ["metrics"] }

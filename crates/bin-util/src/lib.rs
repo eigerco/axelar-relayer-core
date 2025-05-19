@@ -12,6 +12,7 @@ use eyre::Context as _;
 use serde::{Deserialize as _, Deserializer};
 use tokio_util::sync::CancellationToken;
 use tracing_appender::non_blocking::WorkerGuard;
+use tracing_error::ErrorLayer;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::format::FmtSpan;
@@ -79,7 +80,9 @@ pub fn init_logging(
         .with_writer(non_blocking)
         .with_ansi(cfg!(debug_assertions));
 
-    let subscriber = tracing_subscriber::registry().with(env_filter);
+    let subscriber = tracing_subscriber::registry()
+        .with(env_filter)
+        .with(ErrorLayer::default());
     if let Some(telemetry_tracer) = telemetry_tracer {
         if cfg!(debug_assertions) {
             subscriber

@@ -403,6 +403,7 @@ dependencies = [
  "tokio-util",
  "tracing",
  "tracing-appender",
+ "tracing-error",
  "tracing-opentelemetry",
  "tracing-subscriber",
 ]
