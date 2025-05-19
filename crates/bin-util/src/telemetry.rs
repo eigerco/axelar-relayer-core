@@ -19,8 +19,6 @@ use tracing_subscriber::util::SubscriberInitExt as _;
 /// Configuration for telemetry
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
-    /// Service name for metrics and traces
-    pub service_name: String,
     /// Per-crate log levels (e.g. `my_crate` = "debug")
     pub filters: Option<Vec<String>>,
     /// OTLP endpoint URL
@@ -82,7 +80,7 @@ pub async fn init(service_name: &str, service_version: &str, config: &Config) ->
 
     global::set_tracer_provider(tracer_provider.clone());
 
-    let tracer_name = config.service_name.clone();
+    let tracer_name = service_name.to_owned();
     let tracer = tracer_provider.tracer(tracer_name);
 
     let mut filter = EnvFilter::new("");
