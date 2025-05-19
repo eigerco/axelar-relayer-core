@@ -11,6 +11,10 @@ use config::{Config, Environment, File};
 use eyre::Context as _;
 use serde::{Deserialize as _, Deserializer};
 use tokio_util::sync::CancellationToken;
+use tracing_opentelemetry::OpenTelemetryLayer;
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::util::SubscriberInitExt as _;
 
 /// Ensures backtrace is enabled
 #[allow(dead_code, reason = "temporary")]
@@ -19,6 +23,60 @@ pub fn ensure_backtrace_set() {
     unsafe {
         std::env::set_var("RUST_BACKTRACE", "full");
     }
+}
+
+/// Initializes the logging system with optional filtering directives.
+///
+/// This function sets up the `color_eyre` error handling framework and configures
+/// a tracing `EnvFilter` based on the provided filter directives.
+///
+/// # Arguments
+///
+/// * `filters` - Optional vector of filter directives to control log verbosity. Each directive
+///   should follow the tracing filter syntax (e.g., "info", "`starknet_relayer=debug`",
+///   "`warn,my_module=trace`"). If `None` is provided, a default empty filter will be created.
+///
+/// * `telemetry_tracer` - Optional OpenTelemetry SDK tracer for distributed tracing integration.
+///   When provided, spans and events will be exported to the configured OpenTelemetry backend.
+///
+///
+/// # Returns
+///
+/// * `eyre::Result<()>` - Ok on successful initialization, Error otherwise.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// * `color_eyre` cannot be installed
+/// * Any of the provided filter directives fail to parse
+/// * The tracing subscriber cannot be initialized
+pub fn init_logging(
+    filters: Option<Vec<String>>,
+    telemetry_tracer: Option<opentelemetry_sdk::trace::Tracer>,
+) -> eyre::Result<()> {
+    color_eyre::install().wrap_err("color eyre could not be installed")?;
+
+    let mut env_filter = EnvFilter::new("");
+    if let Some(filters) = filters {
+        for directive in filters {
+            env_filter = env_filter.add_directive(directive.parse()?);
+        }
+    }
+
+    let subscriber = tracing_subscriber::registry().with(env_filter).with(
+        tracing_subscriber::fmt::layer()
+            .with_ansi(true)
+            .with_line_number(true),
+    );
+    if let Some(telemetry_tracer) = telemetry_tracer {
+        subscriber
+            .with(OpenTelemetryLayer::new(telemetry_tracer))
+            .try_init()?;
+    } else {
+        subscriber.try_init()?;
+    }
+
+    Ok(())
 }
 
 /// Register cancel token and ctrl+c handler

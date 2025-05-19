@@ -11,16 +11,10 @@ use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_semantic_conventions::resource;
 use opentelemetry_system_metrics::init_process_observer;
 use serde::Deserialize;
-use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::EnvFilter;
-use tracing_subscriber::layer::SubscriberExt as _;
-use tracing_subscriber::util::SubscriberInitExt as _;
 
 /// Configuration for telemetry
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
-    /// Per-crate log levels (e.g. `my_crate` = "debug")
-    pub filters: Option<Vec<String>>,
     /// OTLP endpoint URL
     pub otlp_endpoint: String,
     /// Protocol to use for OTLP (grpc or http)
@@ -48,19 +42,21 @@ pub enum Transport {
 ///
 /// # Returns
 ///
-/// * `Ok(())` - If initialization was successful.
-/// * `Err(...)` - If any initialization step failed, with the underlying error.
+/// * `eyre::Result<opentelemetry_sdk::trace::Tracer>` - The configured OpenTelemetry tracer on
+///   success, which can be used for creating spans and integrating with the tracing system.
 ///
 /// # Errors
 ///
 /// This function may fail if:
-/// * Coloy eyre failed to install
-/// * Tracing system initialization fails (exporter creation, tracer setup)
-/// * Metrics system initialization fails (exporter creation, meter setup)
-/// * Invalid configuration values are provided
-/// * Connection to telemetry backends cannot be established
-pub async fn init(service_name: &str, service_version: &str, config: &Config) -> eyre::Result<()> {
-    color_eyre::install().wrap_err("color eyre could not be installed")?;
+/// * Trace or metric exporters cannot be created from configuration
+/// * Global tracer or meter provider cannot be set
+/// * Process metrics observer registration fails
+/// * Required telemetry configuration is missing or invalid
+pub async fn init(
+    service_name: &str,
+    service_version: &str,
+    config: &Config,
+) -> eyre::Result<opentelemetry_sdk::trace::Tracer> {
     let (span_exporter, metric_exporter) = get_exporters(config)?;
     let service_resource = Resource::builder()
         .with_service_name(service_name.to_owned())
@@ -80,22 +76,6 @@ pub async fn init(service_name: &str, service_version: &str, config: &Config) ->
 
     global::set_tracer_provider(tracer_provider.clone());
 
-    let tracer_name = service_name.to_owned();
-    let tracer = tracer_provider.tracer(tracer_name);
-
-    let mut filter = EnvFilter::new("");
-    if let Some(filters) = &config.filters {
-        for directive in filters {
-            filter = filter.add_directive(directive.parse()?);
-        }
-    }
-
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(tracing_subscriber::fmt::layer().with_ansi(true))
-        .with(OpenTelemetryLayer::new(tracer))
-        .try_init()?;
-
     let meter_provider = SdkMeterProvider::builder()
         .with_periodic_exporter(metric_exporter)
         .with_resource(service_resource)
@@ -110,7 +90,9 @@ pub async fn init(service_name: &str, service_version: &str, config: &Config) ->
         .await
         .wrap_err("system metrics did not register in telemetry")?;
 
-    Ok(())
+    let tracer_name = service_name.to_owned();
+    let tracer = tracer_provider.tracer(tracer_name);
+    Ok(tracer)
 }
 
 fn get_exporters(config: &Config) -> eyre::Result<(SpanExporter, MetricExporter)> {
