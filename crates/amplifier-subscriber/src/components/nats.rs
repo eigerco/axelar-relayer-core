@@ -1,6 +1,6 @@
 use core::time::Duration;
 
-use bin_util::{ValidateConfig, deserialize_duration_from_secs};
+use bin_util::ValidateConfig;
 use eyre::{Context as _, ensure, eyre};
 use infrastructure::nats::publisher::NatsPublisher;
 use infrastructure::nats::{self, StreamArgs};
@@ -18,10 +18,6 @@ pub(crate) struct NatsSectionConfig {
 #[derive(Debug, Deserialize, PartialEq)]
 pub(crate) struct NatsConfig {
     pub urls: Vec<Url>,
-    #[serde(rename = "connection_timeout_secs")]
-    #[serde(deserialize_with = "deserialize_duration_from_secs")]
-    pub connection_timeout: Duration,
-
     pub stream_name: String,
     pub stream_subject: String,
     pub stream_description: String,
