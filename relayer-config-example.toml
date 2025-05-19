@@ -1,5 +1,13 @@
 tickrate_secs = 5
 
+env_filters = [
+  "common=info",
+  "storage_bus=info",
+  "supervisor=info",
+  "amplifier_ingester=info",
+  "amplifier_subscriber=info",
+]
+
 [nats]
 urls = ["nats://localhost:4222"]
 connection_timeout_secs = 30
