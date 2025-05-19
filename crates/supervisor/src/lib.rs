@@ -40,7 +40,7 @@ pub fn run(
     if cfg!(debug_assertions) {
         if let Ok(pipe_path) = std::env::var(READY_PIPE_PATH_ENV) {
             tracing::warn!("[Test mode] deleting pipe file: {pipe_path}");
-            if std::fs::exists(&pipe_path).is_ok() {
+            if std::fs::exists(&pipe_path).expect("pipe existance checked") {
                 std::fs::remove_file(pipe_path).expect("pipe file deleted");
             }
         }
