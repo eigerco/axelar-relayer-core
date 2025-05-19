@@ -11,8 +11,10 @@ use config::{Config, Environment, File};
 use eyre::Context as _;
 use serde::{Deserialize as _, Deserializer};
 use tokio_util::sync::CancellationToken;
+use tracing_appender::non_blocking::WorkerGuard;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 
@@ -53,8 +55,10 @@ pub fn ensure_backtrace_set() {
 pub fn init_logging(
     filters: Option<Vec<String>>,
     telemetry_tracer: Option<opentelemetry_sdk::trace::Tracer>,
-) -> eyre::Result<()> {
-    color_eyre::install().wrap_err("color eyre could not be installed")?;
+) -> eyre::Result<WorkerGuard> {
+    if cfg!(debug_assertions) {
+        color_eyre::install().wrap_err("color eyre could not be installed")?;
+    }
 
     let mut env_filter = EnvFilter::new("");
     if let Some(filters) = filters {
@@ -63,20 +67,36 @@ pub fn init_logging(
         }
     }
 
-    let subscriber = tracing_subscriber::registry().with(env_filter).with(
-        tracing_subscriber::fmt::layer()
-            .with_ansi(true)
-            .with_line_number(true),
-    );
+    let (non_blocking, worker_guard) = tracing_appender::non_blocking(std::io::stdout());
+
+    let output_layer = tracing_subscriber::fmt::layer()
+        .with_target(true)
+        .with_file(true)
+        .with_line_number(true)
+        .with_span_events(FmtSpan::CLOSE)
+        .with_writer(non_blocking)
+        .with_ansi(cfg!(debug_assertions));
+
+    let subscriber = tracing_subscriber::registry().with(env_filter);
     if let Some(telemetry_tracer) = telemetry_tracer {
-        subscriber
-            .with(OpenTelemetryLayer::new(telemetry_tracer))
-            .try_init()?;
+        if cfg!(debug_assertions) {
+            subscriber
+                .with(output_layer)
+                .with(OpenTelemetryLayer::new(telemetry_tracer))
+                .try_init()?;
+        } else {
+            subscriber
+                .with(output_layer.json())
+                .with(OpenTelemetryLayer::new(telemetry_tracer))
+                .try_init()?;
+        }
+    } else if cfg!(debug_assertions) {
+        subscriber.with(output_layer).try_init()?;
     } else {
-        subscriber.try_init()?;
+        subscriber.with(output_layer.json()).try_init()?;
     }
 
-    Ok(())
+    Ok(worker_guard)
 }
 
 /// Register cancel token and ctrl+c handler
