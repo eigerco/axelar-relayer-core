@@ -11,6 +11,7 @@ use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_semantic_conventions::resource;
 use opentelemetry_system_metrics::init_process_observer;
 use serde::Deserialize;
+use tokio::task::JoinHandle;
 
 /// Configuration for telemetry
 #[derive(Debug, Clone, Deserialize)]
@@ -42,8 +43,11 @@ pub enum Transport {
 ///
 /// # Returns
 ///
-/// * `eyre::Result<opentelemetry_sdk::trace::Tracer>` - The configured OpenTelemetry tracer on
-///   success, which can be used for creating spans and integrating with the tracing system.
+/// * `eyre::Result<(opentelemetry_sdk::trace::Tracer, JoinHandle<eyre::Result<()>>)>` - A tuple
+///   containing:
+///   - The configured OpenTelemetry tracer that can be used for creating spans
+///   - A ``JoinHandle`` for the process metrics observer task
+///
 ///
 /// # Errors
 ///
@@ -53,11 +57,14 @@ pub enum Transport {
 /// * Process metrics observer registration fails
 /// * Required telemetry configuration is missing or invalid
 #[allow(clippy::print_stdout, reason = "starts before tracing is initialized")]
-pub async fn init(
+pub fn init(
     service_name: &str,
     service_version: &str,
     config: &Config,
-) -> eyre::Result<opentelemetry_sdk::trace::Tracer> {
+) -> eyre::Result<(
+    opentelemetry_sdk::trace::Tracer,
+    JoinHandle<eyre::Result<()>>,
+)> {
     println!("connecting telemetry");
 
     let (span_exporter, metric_exporter) = get_exporters(config)?;
@@ -92,15 +99,14 @@ pub async fn init(
 
     println!("meter provider set");
 
-    let meter = global::meter("process");
-    init_process_observer(meter)
-        .await
-        .wrap_err("system metrics did not register in telemetry")?;
+    let handle = tokio::spawn({
+        let meter = global::meter("process");
+        init_process_observer(meter)
+    });
 
-    println!("process provider running");
     let tracer_name = service_name.to_owned();
     let tracer = tracer_provider.tracer(tracer_name);
-    Ok(tracer)
+    Ok((tracer, handle))
 }
 
 fn get_exporters(config: &Config) -> eyre::Result<(SpanExporter, MetricExporter)> {
