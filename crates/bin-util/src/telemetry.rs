@@ -52,11 +52,14 @@ pub enum Transport {
 /// * Global tracer or meter provider cannot be set
 /// * Process metrics observer registration fails
 /// * Required telemetry configuration is missing or invalid
+#[allow(clippy::print_stdout, reason = "starts before tracing is initialized")]
 pub async fn init(
     service_name: &str,
     service_version: &str,
     config: &Config,
 ) -> eyre::Result<opentelemetry_sdk::trace::Tracer> {
+    println!("connecting telemetry");
+
     let (span_exporter, metric_exporter) = get_exporters(config)?;
     let service_resource = Resource::builder()
         .with_service_name(service_name.to_owned())
@@ -76,6 +79,8 @@ pub async fn init(
 
     global::set_tracer_provider(tracer_provider.clone());
 
+    println!("tracer provider set");
+
     let meter_provider = SdkMeterProvider::builder()
         .with_periodic_exporter(metric_exporter)
         .with_resource(service_resource)
@@ -85,11 +90,14 @@ pub async fn init(
 
     global::set_meter_provider(meter_provider);
 
+    println!("meter provider set");
+
     let meter = global::meter("process");
     init_process_observer(meter)
         .await
         .wrap_err("system metrics did not register in telemetry")?;
 
+    println!("process provider running");
     let tracer_name = service_name.to_owned();
     let tracer = tracer_provider.tracer(tracer_name);
     Ok(tracer)
