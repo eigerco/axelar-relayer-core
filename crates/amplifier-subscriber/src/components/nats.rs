@@ -1,5 +1,3 @@
-use core::time::Duration;
-
 use bin_util::ValidateConfig;
 use eyre::{Context as _, ensure, eyre};
 use infrastructure::nats::publisher::NatsPublisher;
