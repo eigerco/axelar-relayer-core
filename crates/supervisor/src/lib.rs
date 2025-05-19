@@ -3,14 +3,20 @@ use core::panic::AssertUnwindSafe;
 use core::pin::Pin;
 use core::time::Duration;
 use std::collections::BTreeMap;
+use std::fs::OpenOptions;
+use std::io::Write as _;
 use std::{panic, thread};
 
 use eyre::Context as _;
+use nix::sys::stat::Mode;
 use tokio_util::sync::CancellationToken;
 
 const SHUTDOWN_SIGNAL_CHECK_INTERVAL_MS: u64 = 500;
 const WORKER_GRACEFUL_SHUTDOWN_MS: u64 = 2000;
 const WORKER_CRASH_CHECK_MS: u64 = 2000;
+
+/// ENV var to set pipe path triggered when supervisor starts everything
+pub const READY_PIPE_PATH_ENV: &str = "READY_PIPE_PATH";
 
 type WorkerName = String;
 
@@ -31,6 +37,15 @@ pub fn run(
     cancel_token: &CancellationToken,
     tickrate: Duration,
 ) -> eyre::Result<()> {
+    if cfg!(debug_assertions) {
+        if let Ok(pipe_path) = std::env::var(READY_PIPE_PATH_ENV) {
+            tracing::warn!("[Test mode] deleting pipe file: {pipe_path}");
+            if std::fs::exists(&pipe_path).is_ok() {
+                std::fs::remove_file(pipe_path).expect("pipe file deleted");
+            }
+        }
+    }
+
     _ = std::thread::scope(|scope| {
         let (worker_crashed_tx, worker_crashed_rx) = std::sync::mpsc::channel();
         let mut active_workers = BTreeMap::new();
@@ -64,7 +79,27 @@ pub fn run(
                     active_workers.insert(worker_name.clone(), Some(worker_handle));
                 }
 
-                tracing::info!("started");
+                if cfg!(debug_assertions) {
+                    if let Ok(pipe_path) = std::env::var(READY_PIPE_PATH_ENV) {
+                        tracing::warn!("[Test mode] signaling readiness");
+                        // Owner: read(S_IRUSR) + write(S_IWUSR)
+                        // Group: read(S_IRGRP)
+                        // Others: read(S_IROTH)
+                        let mode = Mode::S_IRUSR | Mode::S_IWUSR | Mode::S_IRGRP | Mode::S_IROTH;
+                        nix::unistd::mkfifo(pipe_path.as_str(), mode).expect("named fife created");
+
+                        OpenOptions::new()
+                            .write(true)
+                            .open(pipe_path)
+                            .expect("open ready pipe")
+                            .write_all(b"READY")
+                            .expect("write READY to ready pipe");
+
+                        tracing::warn!("Readiness signal sent");
+                    }
+                }
+
+                tracing::info!("all workers are running");
 
                 let mut interval = tokio::time::interval(Duration::from_millis(SHUTDOWN_SIGNAL_CHECK_INTERVAL_MS));
                 loop {
@@ -134,6 +169,14 @@ pub fn run(
             .map_err(|err| eyre::eyre!(format!("Supervisor thread panicked: {err:?}")))?;
 
         tracing::info!("Supervisor shutting down");
+
+        if cfg!(debug_assertions) {
+            if let Ok(pipe_path) = std::env::var(READY_PIPE_PATH_ENV) {
+                tracing::warn!("[Test mode] deleting ready pipe");
+                std::fs::remove_file(pipe_path).expect("pipe file deleted");
+            }
+        }
+
         eyre::Ok(())
     });
 

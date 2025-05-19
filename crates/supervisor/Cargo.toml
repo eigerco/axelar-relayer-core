@@ -8,6 +8,7 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
+nix = { version = "0.30.1", features = ["fs"] }
 eyre.workspace = true
 tokio.workspace = true
 tracing.workspace = true
