@@ -20,7 +20,6 @@ rustls = { workspace = true, features = ["std"], optional = true }
 uuid.workspace = true
 opentelemetry.workspace = true
 
-hostname = "0.4.1"
 async-nats = { version = "0.41", optional = true }
 google-cloud-pubsub = { package = "gcloud-pubsub", version = "1.2", optional = true }
 google-cloud-gax = { package = "gcloud-gax", version = "1.2", optional = true }
