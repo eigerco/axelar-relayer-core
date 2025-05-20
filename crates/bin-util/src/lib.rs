@@ -10,6 +10,7 @@ use core::time::Duration;
 use config::{Config, Environment, File};
 use eyre::Context as _;
 use opentelemetry::global;
+use opentelemetry::metrics::Counter;
 use serde::{Deserialize as _, Deserializer};
 use tokio_util::sync::CancellationToken;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -30,7 +31,10 @@ pub fn ensure_backtrace_set() {
 }
 
 /// export telemetry components for custom metrics
-pub use opentelemetry::metrics::*;
+pub mod telemetry_components {
+    pub use opentelemetry::metrics::*;
+    pub use opentelemetry::*;
+}
 
 /// Initializes the logging system with optional filtering directives.
 ///
