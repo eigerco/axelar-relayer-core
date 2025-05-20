@@ -140,7 +140,7 @@ struct Metrics {
 
 impl Metrics {
     fn new(key: &str) -> Self {
-        let meter = global::meter("pubsub_consumer");
+        let meter = global::meter("redis_kvstore");
 
         let attributes = [KeyValue::new("kvstore.key.name", key.to_owned())];
 

@@ -9,6 +9,8 @@ use core::time::Duration;
 
 use config::{Config, Environment, File};
 use eyre::Context as _;
+use opentelemetry::global;
+use opentelemetry::metrics::Counter;
 use serde::{Deserialize as _, Deserializer};
 use tokio_util::sync::CancellationToken;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -212,4 +214,39 @@ where
 {
     let seconds = u64::deserialize(deserializer)?;
     Ok(Duration::from_secs(seconds))
+}
+
+/// Global metrics
+pub struct GlobalMetrics {
+    /// global count of errors
+    errors_counter: Counter<u64>,
+}
+
+impl GlobalMetrics {
+    /// Creates a new set of global metrics with the specified meter name.
+    ///
+    /// # Parameters
+    ///
+    /// * `name` - A static string that identifies the meter. This should be a descriptive name for
+    ///   the component or subsystem being monitored.
+    ///
+    /// # Returns
+    ///
+    /// A new `Metrics` instance with initialized counters and other metrics.
+    #[must_use]
+    pub fn new(name: &'static str) -> Self {
+        let meter = global::meter(name);
+
+        let errors_counter = meter
+            .u64_counter("global.errors")
+            .with_description("Total number of errors encountered during operation and not tracked by inner components")
+            .build();
+
+        Self { errors_counter }
+    }
+
+    /// Record error
+    pub fn record_error(&self) {
+        self.errors_counter.add(1, &[]);
+    }
 }

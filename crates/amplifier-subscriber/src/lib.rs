@@ -1,6 +1,7 @@
 //! Crate with amplifier subscriber component
 use amplifier_api::requests::WithTrailingSlash;
 use amplifier_api::{AmplifierApiClient, requests};
+use bin_util::GlobalMetrics;
 use eyre::Context as _;
 use infrastructure::interfaces::publisher::{PeekMessage, PublishMessage, Publisher};
 
@@ -9,6 +10,7 @@ pub struct Subscriber<TaskQueuePublisher> {
     amplifier_client: AmplifierApiClient,
     task_queue_publisher: TaskQueuePublisher,
     chain: String,
+    metrics: GlobalMetrics,
 }
 
 impl<TaskQueuePublisher> Subscriber<TaskQueuePublisher>
@@ -17,15 +19,17 @@ where
         Publisher<amplifier_api::types::TaskItem> + PeekMessage<amplifier_api::types::TaskItem>,
 {
     /// create subscriber
-    pub const fn new(
+    pub fn new(
         amplifier_client: AmplifierApiClient,
         task_queue_publisher: TaskQueuePublisher,
         chain: String,
     ) -> Self {
+        let metrics = GlobalMetrics::new("amplifier-subscriber");
         Self {
             amplifier_client,
             task_queue_publisher,
             chain,
+            metrics,
         }
     }
 
@@ -35,63 +39,71 @@ where
         tracing::trace!("refresh");
         let chain_with_trailing_slash = WithTrailingSlash::new(self.chain.clone());
 
-        let last_task_id = self
-            .task_queue_publisher
-            .peek_last()
-            .await
-            .wrap_err("could not get last retrieved task id")?;
+        let res: eyre::Result<()> = {
+            let last_task_id = self
+                .task_queue_publisher
+                .peek_last()
+                .await
+                .wrap_err("could not get last retrieved task id")?;
 
-        tracing::trace!(?last_task_id, "last retrieved task");
+            tracing::trace!(?last_task_id, "last retrieved task");
 
-        let request = requests::GetChains::builder()
-            .chain(&chain_with_trailing_slash)
-            .limit(100_u8)
-            .after(last_task_id)
-            .build();
+            let request = requests::GetChains::builder()
+                .chain(&chain_with_trailing_slash)
+                .limit(100_u8)
+                .after(last_task_id)
+                .build();
 
-        tracing::trace!(?request, "request for amplifier api created");
+            tracing::trace!(?request, "request for amplifier api created");
 
-        let request = self
-            .amplifier_client
-            .build_request(&request)
-            .wrap_err("could not build amplifier request")?;
+            let request = self
+                .amplifier_client
+                .build_request(&request)
+                .wrap_err("could not build amplifier request")?;
 
-        tracing::trace!(?request, "sending");
+            tracing::trace!(?request, "sending");
 
-        let response = request
-            .execute()
-            .await
-            .wrap_err("could not sent amplifier api request")?;
+            let response = request
+                .execute()
+                .await
+                .wrap_err("could not sent amplifier api request")?;
 
-        tracing::trace!("sent");
+            tracing::trace!("sent");
 
-        let response = response
-            .json()
-            .await
-            .map_err(|err| eyre::Report::new(err).wrap_err("amplifier api failed"))?
-            .map_err(|err| eyre::Report::new(err).wrap_err("failed to decode response"))?;
+            let response = response
+                .json()
+                .await
+                .map_err(|err| eyre::Report::new(err).wrap_err("amplifier api failed"))?
+                .map_err(|err| eyre::Report::new(err).wrap_err("failed to decode response"))?;
 
-        tracing::trace!(?response, "amplifier response");
+            tracing::trace!(?response, "amplifier response");
 
-        let mut tasks = response.tasks;
-        tasks.sort_unstable_by_key(|task| task.timestamp);
+            let mut tasks = response.tasks;
+            tasks.sort_unstable_by_key(|task| task.timestamp);
 
-        if tasks.is_empty() {
-            tracing::trace!("no amplifier tasks");
-            return Ok(());
+            if tasks.is_empty() {
+                tracing::trace!("no amplifier tasks");
+                return Ok(());
+            }
+
+            tracing::info!(count = tasks.len(), "got amplifier tasks");
+
+            let batch = tasks.into_iter().map(PublishMessage::from).collect();
+
+            tracing::trace!("sending to queue");
+            self.task_queue_publisher
+                .publish_batch(batch)
+                .await
+                .wrap_err("could not publish tasks to queue")?;
+            tracing::info!("sent to queue");
+            Ok(())
+        };
+
+        if res.is_err() {
+            self.metrics.record_error();
         }
 
-        tracing::info!(count = tasks.len(), "got amplifier tasks");
-
-        let batch = tasks.into_iter().map(PublishMessage::from).collect();
-
-        tracing::trace!("sending to queue");
-        self.task_queue_publisher
-            .publish_batch(batch)
-            .await
-            .wrap_err("could not publish tasks to queue")?;
-        tracing::info!("sent to queue");
-        Ok(())
+        res
     }
 
     /// Checks the health of the subscriber.
@@ -111,6 +123,7 @@ where
             }
             Err(err) => {
                 tracing::warn!(%err, "task queue publisher health check failed");
+                self.metrics.record_error();
                 return Err(err.into());
             }
         }
@@ -127,6 +140,7 @@ where
                 tracing::trace!("amplifier client is healthy");
             }
             Err(err) => {
+                self.metrics.record_error();
                 tracing::warn!(%err, "amplifier client health check failed");
                 return Err(err.into());
             }

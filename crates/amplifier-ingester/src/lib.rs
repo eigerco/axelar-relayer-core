@@ -1,6 +1,7 @@
 //! Crate with amplifier ingester component
 use std::sync::Arc;
 
+use bin_util::GlobalMetrics;
 use eyre::Context as _;
 use futures::StreamExt as _;
 use infrastructure::interfaces::consumer::{AckKind, Consumer, QueueMessage};
@@ -19,6 +20,7 @@ pub struct Ingester<EventQueueConsumer> {
     event_queue_consumer: Arc<EventQueueConsumer>,
     concurrent_queue_items: usize,
     chain: String,
+    metrics: GlobalMetrics,
 }
 
 impl<EventQueueConsumer> Ingester<EventQueueConsumer>
@@ -36,11 +38,14 @@ where
         let concurrent_queue_items = num_cpus
             .checked_mul(CONCURRENCY_SCALE_FACTOR)
             .unwrap_or(num_cpus);
+
+        let metrics = GlobalMetrics::new("amplifier-ingester");
         Self {
             ampf_client: amplifier_client,
             event_queue_consumer,
             concurrent_queue_items,
             chain,
+            metrics,
         }
     }
 
@@ -89,15 +94,18 @@ where
         match result {
             Ok(()) => {
                 if let Err(err) = queue_msg.ack(AckKind::Ack).await {
-                    tracing::error!(%event, %err, "could not ack message");
+                    self.metrics.record_error();
+                    tracing::error!(%event, ?err, "could not ack message, skipping...");
                 }
 
                 tracing::info!(event_id = %event.id(), "event ack'ed");
             }
             Err(err) => {
-                tracing::error!(%event, %err, "error during task processing");
+                self.metrics.record_error();
+                tracing::error!(%event, ?err, "error during task processing");
                 if let Err(err) = queue_msg.ack(AckKind::Nak).await {
-                    tracing::error!(%event, %err, "could not nak message");
+                    self.metrics.record_error();
+                    tracing::error!(%event, ?err, "could not nak message, skipping...");
                 }
             }
         }
@@ -111,11 +119,17 @@ where
         self.event_queue_consumer
             .messages()
             .await
-            .wrap_err("could not retrieve messages from queue")?
+            .wrap_err("could not retrieve messages from queue")
+            .inspect_err(|_| {
+                self.metrics.record_error();
+            })?
             .for_each_concurrent(self.concurrent_queue_items, |queue_msg| async {
                 match queue_msg {
                     Ok(msg) => self.process_queue_msg(msg).await,
-                    Err(err) => tracing::error!(?err, "could not receive queue msg"),
+                    Err(err) => {
+                        self.metrics.record_error();
+                        tracing::error!(?err, "could not receive queue msg, skipping...");
+                    }
                 }
             })
             .instrument(tracing::info_span!("processing messages"))
