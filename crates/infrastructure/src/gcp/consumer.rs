@@ -77,6 +77,7 @@ impl<T: BorshDeserialize + BorshSerialize + Sync + Debug> GcpMessage<T> {
         let span = tracing::Span::current();
         let context = message_content.extract_context();
         span.set_parent(context);
+        span.record("received_at", Instant::now());
 
         tracing::debug!(?message_content, "successfully decoded message payload");
 

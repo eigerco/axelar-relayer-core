@@ -9,6 +9,7 @@ use google_cloud_pubsub::client::Client;
 use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
 use interfaces::kv_store::KvStore as _;
 use opentelemetry::metrics::{Counter, Histogram};
+use opentelemetry::propagation::Injector;
 use opentelemetry::{KeyValue, global};
 
 use super::GcpError;
@@ -74,6 +75,8 @@ where
     let deduplication_id = msg.deduplication_id.clone();
     let mut message = MessageContent::new(msg.data);
     message.inject_context();
+    message.set("correlation-id", deduplication_id.clone());
+
     let encoded = borsh::to_vec(&message).map_err(GcpError::Serialize)?;
     let mut attributes = HashMap::new();
     attributes.insert(MSG_ID.to_owned(), deduplication_id.clone());
