@@ -1,7 +1,6 @@
 tickrate_secs = 5
 
 env_filters = [
-  "common=info",
   "storage_bus=info",
   "supervisor=info",
   "amplifier_ingester=info",
