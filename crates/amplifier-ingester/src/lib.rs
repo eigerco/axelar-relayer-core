@@ -103,7 +103,7 @@ where
     }
 
     /// consume queue messages and ingest to amplifier api
-    #[tracing::instrument(skip_all, name = "[amplifier-ingester]")]
+    #[tracing::instrument(skip_all, name = "amplifier-ingest-refresh")]
     pub async fn ingest(&self) -> eyre::Result<()> {
         tracing::debug!("refresh");
 

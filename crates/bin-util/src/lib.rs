@@ -74,6 +74,7 @@ pub fn init_logging(
 
     let output_layer = tracing_subscriber::fmt::layer()
         .with_target(true)
+        .log_internal_errors(true)
         .with_file(true)
         .with_line_number(true)
         .with_span_events(FmtSpan::CLOSE)
@@ -87,20 +88,12 @@ pub fn init_logging(
         if cfg!(debug_assertions) {
             subscriber
                 .with(output_layer)
-                .with(
-                    OpenTelemetryLayer::new(telemetry_tracer)
-                        .with_location(true)
-                        .with_tracked_inactivity(true),
-                )
+                .with(OpenTelemetryLayer::new(telemetry_tracer).with_level(true))
                 .try_init()?;
         } else {
             subscriber
                 .with(output_layer.json())
-                .with(
-                    OpenTelemetryLayer::new(telemetry_tracer)
-                        .with_location(true)
-                        .with_tracked_inactivity(true),
-                )
+                .with(OpenTelemetryLayer::new(telemetry_tracer).with_level(true))
                 .try_init()?;
         }
     } else if cfg!(debug_assertions) {
