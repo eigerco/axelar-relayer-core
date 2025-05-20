@@ -60,9 +60,12 @@ where
 
     pub(crate) async fn upsert(&self, value: &T) -> Result<(), GcpError> {
         tracing::trace!(%value, "upserting value");
-        let bytes = borsh::to_vec(value).map_err(|err| GcpError::RedisSerialize {
-            value: value.to_string(),
-            err,
+        let bytes = borsh::to_vec(value).map_err(|err| {
+            self.metrics.record_error();
+            GcpError::RedisSerialize {
+                value: value.to_string(),
+                err,
+            }
         })?;
 
         let _: () = self
