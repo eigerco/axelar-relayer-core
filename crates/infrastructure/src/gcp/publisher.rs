@@ -268,16 +268,10 @@ where
         );
 
         let res = self.publisher.publish_batch(batch).await?;
-        tracing::trace!(
-            last_message_id = %last_msg_id,
-            "updating last message ID in Redis after batch publish"
-        );
+        tracing::trace!("updating last message ID in Redis after batch publish");
         self.last_message_id_store.upsert(&last_msg_id).await?;
 
-        tracing::info!(
-            last_message_id = %last_msg_id,
-            "batch successfully published and last ID stored"
-        );
+        tracing::info!("batch successfully published and last ID stored");
 
         Ok(res)
     }
