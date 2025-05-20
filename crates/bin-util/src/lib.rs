@@ -59,9 +59,7 @@ pub fn init_logging(
     env_filters: Option<Vec<String>>,
     telemetry_tracer: Option<opentelemetry_sdk::trace::Tracer>,
 ) -> eyre::Result<WorkerGuard> {
-    if cfg!(debug_assertions) {
-        color_eyre::install().wrap_err("color eyre could not be installed")?;
-    }
+    color_eyre::install().wrap_err("color eyre could not be installed")?;
 
     let mut env_filter = EnvFilter::new("");
     if let Some(filters) = env_filters {
