@@ -291,13 +291,13 @@ where
                 "publishing batch with peekable publisher"
             );
 
-            let res = self.publisher.publish_batch(batch).await?;
+            let published = self.publisher.publish_batch(batch).await?;
             tracing::trace!("updating last message ID in Redis after batch publish");
             self.last_message_id_store.upsert(&last_msg_id).await?;
 
             tracing::info!("batch successfully published and last ID stored");
 
-            Ok(res)
+            Ok(published)
         };
 
         if res.is_err() {
