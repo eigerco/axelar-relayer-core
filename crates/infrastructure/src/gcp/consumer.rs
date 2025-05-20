@@ -285,6 +285,7 @@ where
             // The task has completed, which means the consumer is not healthy
             // We can't await the handle directly since we only have a shared reference
             tracing::error!("GCP consumer task has exited unexpectedly");
+            self.metrics.record_error();
             return Err(GcpError::ConsumerReadTaskExited);
         }
 

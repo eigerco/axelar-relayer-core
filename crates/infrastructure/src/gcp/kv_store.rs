@@ -2,6 +2,8 @@ use core::fmt::{Debug, Display};
 use core::marker::PhantomData;
 
 use borsh::{BorshDeserialize, BorshSerialize};
+use opentelemetry::metrics::Counter;
+use opentelemetry::{KeyValue, global};
 use redis::aio::MultiplexedConnection;
 use redis::{AsyncCommands as _, Client};
 
@@ -13,6 +15,7 @@ use crate::interfaces::kv_store::WithRevision;
 pub struct RedisClient<T> {
     key: String,
     connection: MultiplexedConnection,
+    metrics: Metrics,
     _phantom: PhantomData<T>,
 }
 
@@ -30,9 +33,12 @@ where
             .await
             .map_err(GcpError::Connection)?;
 
+        let metrics = Metrics::new(&key);
+
         Ok(Self {
             key,
             connection,
+            metrics,
             _phantom: PhantomData,
         })
     }
@@ -42,7 +48,14 @@ where
     ///  on connection issues
     pub async fn ping(&self) -> Result<(), redis::RedisError> {
         let mut connection = self.connection.clone();
-        redis::cmd("PING").query_async(&mut connection).await
+        redis::cmd("PING")
+            .query_async(&mut connection)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "redis healthcheck error");
+                self.metrics.record_error();
+                err
+            })
     }
 
     pub(crate) async fn upsert(&self, value: &T) -> Result<(), GcpError> {
@@ -57,8 +70,12 @@ where
             .clone()
             .set(&self.key, bytes)
             .await
-            .map_err(GcpError::RedisSave)?;
+            .map_err(|err| {
+                self.metrics.record_error();
+                GcpError::RedisSave(err)
+            })?;
 
+        self.metrics.record_write();
         Ok(())
     }
 }
@@ -105,8 +122,59 @@ where
 
                 tracing::trace!(?value, "got value");
 
+                self.metrics.record_read();
+
                 Ok(interfaces::kv_store::WithRevision { value, revision: 0 })
             })
             .transpose()
+    }
+}
+
+#[derive(Clone)]
+struct Metrics {
+    errors_counter: Counter<u64>,
+    writes_counter: Counter<u64>,
+    reads_counter: Counter<u64>,
+    attributes: [KeyValue; 1],
+}
+
+impl Metrics {
+    fn new(key: &str) -> Self {
+        let meter = global::meter("pubsub_consumer");
+
+        let attributes = [KeyValue::new("kvstore.key.name", key.to_owned())];
+
+        let errors_counter = meter
+            .u64_counter("kvstore.errors")
+            .with_description("Total number of errors encountered during key-value operations")
+            .build();
+
+        let writes_counter = meter
+            .u64_counter("kvstore.writes")
+            .with_description("Total number of write operations")
+            .build();
+
+        let reads_counter = meter
+            .u64_counter("kvstore.reads")
+            .with_description("Total number of read operations")
+            .build();
+
+        Self {
+            errors_counter,
+            writes_counter,
+            reads_counter,
+            attributes,
+        }
+    }
+
+    fn record_read(&self) {
+        self.reads_counter.add(1, &self.attributes);
+    }
+
+    fn record_write(&self) {
+        self.writes_counter.add(1, &self.attributes);
+    }
+    fn record_error(&self) {
+        self.errors_counter.add(1, &self.attributes);
     }
 }
