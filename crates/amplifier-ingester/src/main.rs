@@ -56,7 +56,7 @@ async fn main() {
     let config: Config = bin_util::try_deserialize(&cli.config_path).expect("config is correct");
     let (telemetry_tracer, _observer_handle) = if let Some(ref telemetry_cfg) = config.telemetry {
         let (tracer, observer_handle) =
-            bin_util::telemetry::init("axelar<>starknet dev relayer", "dev", telemetry_cfg)
+            bin_util::telemetry::init(crate_name!(), crate_version!(), telemetry_cfg)
                 .expect("telemetry wired up");
         (Some(tracer), Some(observer_handle))
     } else {
