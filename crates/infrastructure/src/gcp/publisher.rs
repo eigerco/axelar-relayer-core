@@ -9,7 +9,7 @@ use google_cloud_pubsub::client::Client;
 use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
 use interfaces::kv_store::KvStore as _;
 use opentelemetry::metrics::{Counter, Histogram};
-use opentelemetry::propagation::Injector;
+use opentelemetry::propagation::Injector as _;
 use opentelemetry::{KeyValue, global};
 
 use super::GcpError;
