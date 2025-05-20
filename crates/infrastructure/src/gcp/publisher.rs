@@ -8,10 +8,9 @@ use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use google_cloud_pubsub::client::Client;
 use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
 use interfaces::kv_store::KvStore as _;
-use opentelemetry::baggage::Baggage;
 use opentelemetry::metrics::{Counter, Histogram};
 use opentelemetry::propagation::Injector as _;
-use opentelemetry::{Context, KeyValue, global};
+use opentelemetry::{KeyValue, global};
 
 use super::GcpError;
 use super::kv_store::RedisClient;
