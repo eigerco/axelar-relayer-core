@@ -37,15 +37,8 @@ where
         })
     }
 
-    /// Ping the Redis server to check connectivity
-    /// # Errors
-    ///  on connection issues
-    pub async fn ping(&self) -> Result<(), redis::RedisError> {
-        let mut connection = self.connection.clone();
-        redis::cmd("PING").query_async(&mut connection).await
-    }
-
     pub(crate) async fn upsert(&self, value: &T) -> Result<(), GcpError> {
+        tracing::debug!(%value, "upserting value");
         let bytes = borsh::to_vec(value).map_err(|err| GcpError::RedisSerialize {
             value: value.to_string(),
             err,
@@ -87,6 +80,7 @@ where
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip(self))]
     async fn get(&self) -> Result<Option<WithRevision<T>>, GcpError> {
+        tracing::debug!("getting value");
         let mut connection = self.connection.clone();
         let value: Option<Vec<u8>> = connection
             .get(&self.key)
@@ -100,6 +94,8 @@ where
                         value: hex::encode(bytes),
                         err,
                     })?;
+
+                tracing::debug!(?value, "got value");
 
                 Ok(interfaces::kv_store::WithRevision { value, revision: 0 })
             })
