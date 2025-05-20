@@ -64,7 +64,6 @@ impl<T: Debug + BorshSerialize + BorshDeserialize> Extractor for MessageContent<
     }
 }
 
-// Implement injector for outgoing messages
 impl<T: Debug + BorshSerialize + BorshDeserialize> Injector for MessageContent<T> {
     fn set(&mut self, key: &str, value: String) {
         self.headers.insert(key.to_owned(), value);
