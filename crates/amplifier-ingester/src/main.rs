@@ -39,12 +39,7 @@ const MAX_ERRORS: i32 = 20;
 #[derive(Parser, Debug)]
 #[command(author = "Eiger", name = "Axelar Relayer(amplifier-ingester)")]
 pub(crate) struct Cli {
-    #[arg(
-        long,
-        short,
-        default_value = "relayer-config.toml",
-        help = "Config path"
-    )]
+    #[arg(long, short, default_value = "relayer-config", help = "Config path")]
     pub config_path: String,
 }
 
