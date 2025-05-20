@@ -152,13 +152,14 @@ where
 
         // NOTE: await until all messages are sent
         let mut output = Vec::new();
+        let messages_len = publish_handles.len();
         for (index, handle) in publish_handles.into_iter().enumerate() {
             let res = handle
                 .get()
                 .await
                 .map_err(|err| GcpError::Publish(Box::new(err)))?;
             self.metrics.record_publish(start_time);
-            tracing::trace!(message_index = index, message_id = %res, "message confirmed");
+            tracing::trace!(message_index = index, total_messages_len = messages_len, message_id = %res, "message confirmed");
             output.push(res);
         }
 
