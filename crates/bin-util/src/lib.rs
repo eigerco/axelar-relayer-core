@@ -224,8 +224,8 @@ where
 
 /// Global metrics
 pub struct SimpleMetrics {
-    errors_counter: Counter<u64>,
-    skipped_counter: Counter<u64>,
+    error_raised: Counter<u64>,
+    skipped: Counter<u64>,
     attributes: Vec<KeyValue>,
 }
 
@@ -246,7 +246,7 @@ impl SimpleMetrics {
         let meter = global::meter(name);
 
         let errors_counter = meter
-            .u64_counter("global.errors")
+            .u64_counter("errors")
             .with_description("Total number of errors encountered during operation and not tracked by inner components")
             .build();
 
@@ -256,33 +256,69 @@ impl SimpleMetrics {
             .build();
 
         Self {
-            errors_counter,
-            skipped_counter,
+            error_raised: errors_counter,
+            skipped: skipped_counter,
             attributes,
         }
     }
 
     /// Record error
     pub fn record_error(&self) {
-        self.errors_counter.add(1, &self.attributes);
+        self.error_raised.add(1, &self.attributes);
     }
 
     /// Records a skipped task.
     pub fn record_skipped(&self) {
-        self.skipped_counter.add(1, &self.attributes);
+        self.skipped.add(1, &self.attributes);
     }
 }
 
-/// Metrics for tracking the processing of various amplifier api tasks in the ingester of
+/// Metrics for tracking the processing of various amplifier API tasks in the ingester of
 /// counterparty chain.
+///
+/// This struct provides standardized instrumentation for cross-chain amplifier components,
+/// tracking different task types processed by blockchain ingesters. It maintains counters
+/// for gateway transactions, executions, verifications, refunds, proof construction,
+/// errors, and skipped tasks.
+///
+/// All metrics share the same attributes provided during initialization, allowing for
+/// consistent dimensions across different metric types.
+////// # Examples
+///
+/// ```
+/// use opentelemetry::KeyValue;
+/// use bin_util::BlockChainIngesterMetrics;
+///
+/// // Create metrics for a Solana counterparty ingester
+/// let metrics = BlockChainIngesterMetrics::new(
+///     "solana_ingester",
+///     vec![
+///         KeyValue::new("type", "10"),
+///     ]
+/// );
+///
+/// metrics.record_gateway_tx_approved();
+/// ```
+///
+/// // If you need to extend metrics simply add couter to "owner struct"" i.e.
+/// ```
+/// use opentelemetry::metrics::Counter;
+/// use bin_util::BlockChainIngesterMetrics;
+///
+/// struct Ingester {
+///     metrics: BlockChainIngesterMetrics,
+///     counter: Counter<u64>
+/// }
+/// ```
+/// // Or create another metrics struct
 pub struct BlockChainIngesterMetrics {
-    gateway_tx_counter: Counter<u64>,
-    execute_counter: Counter<u64>,
-    verify_counter: Counter<u64>,
-    refund_counter: Counter<u64>,
-    construct_proof_counter: Counter<u64>,
-    errors_counter: Counter<u64>,
-    skipped_counter: Counter<u64>,
+    gateway_tx_approved_task: Counter<u64>,
+    executed_task: Counter<u64>,
+    verified_stak: Counter<u64>,
+    refunded_task: Counter<u64>,
+    constructed_proof_task: Counter<u64>,
+    error_raised: Counter<u64>,
+    skipped_task: Counter<u64>,
     attributes: Vec<KeyValue>,
 }
 
@@ -302,85 +338,71 @@ impl BlockChainIngesterMetrics {
     #[must_use]
     pub fn new(name: &'static str, attributes: Vec<KeyValue>) -> Self {
         let meter = global::meter(name);
-        let gateway_tx_counter = meter
+        let gateway_tx_tasks_approved = meter
             .u64_counter("tasks.processed.gateway_tx.count")
             .with_description("Number of processed GatewayTx tasks")
             .build();
-
-        let execute_counter = meter
+        let executed_task = meter
             .u64_counter("tasks.processed.execute.count")
             .with_description("Number of processed Execute tasks")
             .build();
-
-        let verify_counter = meter
+        let verified_stak = meter
             .u64_counter("tasks.processed.verify.count")
             .with_description("Number of processed Verify tasks")
             .build();
-
-        let refund_counter = meter
+        let refunded_task = meter
             .u64_counter("tasks.processed.refund.count")
             .with_description("Number of processed Refund tasks")
             .build();
-
-        let construct_proof_counter = meter
+        let constructed_proof_task = meter
             .u64_counter("tasks.processed.construct_proof.count")
             .with_description("Number of processed ConstructProof tasks")
             .build();
-
-        let errors_counter = meter
+        let error_raised = meter
             .u64_counter("errors.count")
             .with_description("Total number of errors encountered during operation")
             .build();
-
-        let skipped_counter = meter
+        let skipped_task = meter
             .u64_counter("skipped.count")
             .with_description("Total number of skipped tasks")
             .build();
-
         Self {
-            gateway_tx_counter,
-            execute_counter,
-            verify_counter,
-            refund_counter,
-            construct_proof_counter,
-            errors_counter,
-            skipped_counter,
+            gateway_tx_approved_task: gateway_tx_tasks_approved,
+            executed_task,
+            verified_stak,
+            refunded_task,
+            constructed_proof_task,
+            error_raised,
+            skipped_task,
             attributes,
         }
     }
-
     /// Records the processing of a gateway transaction task.
-    pub fn record_gateway_tx(&self) {
-        self.gateway_tx_counter.add(1, &self.attributes);
+    pub fn record_gateway_tx_approved(&self) {
+        self.gateway_tx_approved_task.add(1, &self.attributes);
     }
-
     /// Records the processing of an execute task.
-    pub fn record_execute(&self) {
-        self.execute_counter.add(1, &self.attributes);
+    pub fn record_executed(&self) {
+        self.executed_task.add(1, &self.attributes);
     }
-
     /// Records the processing of a verify task.
-    pub fn record_verify(&self) {
-        self.verify_counter.add(1, &self.attributes);
+    pub fn record_verified(&self) {
+        self.verified_stak.add(1, &self.attributes);
     }
-
     /// Records the processing of a refund task.
-    pub fn record_refund(&self) {
-        self.refund_counter.add(1, &self.attributes);
+    pub fn record_refunded(&self) {
+        self.refunded_task.add(1, &self.attributes);
     }
-
     /// Records the processing of a proof construction task.
-    pub fn record_construct_proof(&self) {
-        self.construct_proof_counter.add(1, &self.attributes);
+    pub fn record_constructed_proof(&self) {
+        self.constructed_proof_task.add(1, &self.attributes);
     }
-
     /// Records an error encountered during task processing.
     pub fn record_error(&self) {
-        self.errors_counter.add(1, &self.attributes);
+        self.error_raised.add(1, &self.attributes);
     }
-
     /// Records a skipped task.
     pub fn record_skipped(&self) {
-        self.skipped_counter.add(1, &self.attributes);
+        self.skipped_task.add(1, &self.attributes);
     }
 }

@@ -136,9 +136,9 @@ where
 
 #[derive(Clone)]
 struct Metrics {
-    errors_counter: Counter<u64>,
-    writes_counter: Counter<u64>,
-    reads_counter: Counter<u64>,
+    writes: Counter<u64>,
+    reads: Counter<u64>,
+    error_raised: Counter<u64>,
     attributes: [KeyValue; 1],
 }
 
@@ -164,22 +164,22 @@ impl Metrics {
             .build();
 
         Self {
-            errors_counter,
-            writes_counter,
-            reads_counter,
+            error_raised: errors_counter,
+            writes: writes_counter,
+            reads: reads_counter,
             attributes,
         }
     }
 
     fn record_read(&self) {
-        self.reads_counter.add(1, &self.attributes);
+        self.reads.add(1, &self.attributes);
     }
 
     fn record_write(&self) {
-        self.writes_counter.add(1, &self.attributes);
+        self.writes.add(1, &self.attributes);
     }
 
     fn record_error(&self) {
-        self.errors_counter.add(1, &self.attributes);
+        self.error_raised.add(1, &self.attributes);
     }
 }

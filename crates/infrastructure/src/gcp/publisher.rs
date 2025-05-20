@@ -350,9 +350,9 @@ where
 }
 
 struct Metrics {
-    published_count: Counter<u64>,
+    published: Counter<u64>,
     publish_duration: Histogram<f64>,
-    errors_count: Counter<u64>,
+    error_raised: Counter<u64>,
     attributes: [KeyValue; 1],
 }
 
@@ -379,20 +379,20 @@ impl Metrics {
         let attributes = [KeyValue::new("topic.name", topic_name.to_owned())];
 
         Self {
-            published_count,
+            published: published_count,
             publish_duration,
-            errors_count,
+            error_raised: errors_count,
             attributes,
         }
     }
 
     fn record_publish(&self, start_time: std::time::Instant) {
-        self.published_count.add(1, &[]);
+        self.published.add(1, &[]);
         self.publish_duration
             .record(start_time.elapsed().as_secs_f64(), &self.attributes);
     }
 
     fn record_error(&self) {
-        self.errors_count.add(1, &self.attributes);
+        self.error_raised.add(1, &self.attributes);
     }
 }

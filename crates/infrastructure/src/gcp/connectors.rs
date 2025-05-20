@@ -164,7 +164,7 @@ where
 /// use crate::infrastructure::interfaces::publisher::{Publisher, PublishMessage};
 ///
 ///
-/// #[derive(Debug, borsh::BorshSerialize)]
+/// #[derive(Debug, borsh::BorshDeserialize, borsh::BorshSerialize)]
 /// struct EventMessage {
 ///     id: String,
 ///     timestamp: u64,
@@ -255,7 +255,7 @@ pub async fn connect_publisher<T>(
 /// use crate::infrastructure::interfaces::publisher::PeekMessage;
 ///
 ///
-/// #[derive(Clone, Debug, borsh::BorshSerialize)]
+/// #[derive(Clone, Debug, borsh::BorshDeserialize, borsh::BorshSerialize)]
 /// struct EventMessage {
 ///     id: String,
 ///     timestamp: u64,

@@ -443,16 +443,16 @@ impl<T> Drop for GcpConsumer<T> {
 #[derive(Clone)]
 struct Metrics {
     throughput_tracker: Arc<ThroughputTracker>,
-    received_counter: Counter<u64>,
-    duplicates_counter: Counter<u64>,
-    errors_counter: Counter<u64>,
+    received: Counter<u64>,
+    duplicates: Counter<u64>,
+    error_raised: Counter<u64>,
 
     processing_time: Histogram<f64>,
     #[allow(dead_code, reason = "called by pipes")]
     messages_per_second: ObservableGauge<f64>,
-    acks_counter: Counter<u64>,
-    nacks_counter: Counter<u64>,
-    deadline_extensions_counter: Counter<u64>,
+    acks: Counter<u64>,
+    nacks: Counter<u64>,
+    deadline_extensions: Counter<u64>,
 
     attributes: [KeyValue; 1],
 }
@@ -518,20 +518,20 @@ impl Metrics {
 
         Self {
             throughput_tracker,
-            received_counter,
-            duplicates_counter,
-            errors_counter,
+            received: received_counter,
+            duplicates: duplicates_counter,
+            error_raised: errors_counter,
             processing_time,
             messages_per_second,
-            acks_counter,
-            nacks_counter,
-            deadline_extensions_counter,
+            acks: acks_counter,
+            nacks: nacks_counter,
+            deadline_extensions: deadline_extensions_counter,
             attributes,
         }
     }
 
     fn record_received(&self) {
-        self.received_counter.add(1, &self.attributes);
+        self.received.add(1, &self.attributes);
     }
 
     #[allow(clippy::as_conversions, reason = "checked")]
@@ -550,23 +550,23 @@ impl Metrics {
         };
 
         self.processing_time.record(elapsed_ms, &self.attributes);
-        self.acks_counter.add(1, &self.attributes);
+        self.acks.add(1, &self.attributes);
         self.throughput_tracker.record_processed_message();
     }
 
     fn record_nack(&self) {
-        self.nacks_counter.add(1, &self.attributes);
+        self.nacks.add(1, &self.attributes);
     }
 
     fn record_deadline_extension(&self) {
-        self.deadline_extensions_counter.add(1, &self.attributes);
+        self.deadline_extensions.add(1, &self.attributes);
     }
 
     fn record_duplicate(&self) {
-        self.duplicates_counter.add(1, &self.attributes);
+        self.duplicates.add(1, &self.attributes);
     }
 
     fn record_error(&self) {
-        self.errors_counter.add(1, &self.attributes);
+        self.error_raised.add(1, &self.attributes);
     }
 }
