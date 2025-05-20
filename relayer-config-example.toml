@@ -8,6 +8,10 @@ env_filters = [
   "amplifier_subscriber=info",
 ]
 
+[telemetry]
+otlp_endpoint = "http://localhost:4317"
+otlp_transport = "grpc"
+
 [nats]
 urls = ["nats://localhost:4222"]
 connection_timeout_secs = 30
