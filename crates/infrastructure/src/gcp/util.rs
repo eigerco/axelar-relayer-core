@@ -44,6 +44,7 @@ pub(crate) async fn get_subscription(
     Ok(subscription)
 }
 
+/// Holds opentelemetry metadata
 #[derive(Debug, BorshDeserialize, BorshSerialize)]
 pub(crate) struct MessageContent<T: Debug> {
     headers: HashMap<String, String>,
