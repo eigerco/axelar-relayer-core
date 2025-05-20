@@ -119,12 +119,15 @@ Before running the components, you need to create a configuration file. An examp
 cp relayer-config-example.toml relayer-config.toml
 ```
 
-Edit the `relayer-config.toml` file to configure:
+Edit the `config-example.toml` file to configure:
 
-- Amplifier API configuration
+- Amplifier API configuration (notably your chain name)
 - Backend configuration (NATS or GCP Pub/Sub)
 - Tickrate for processing events
 - Health check endpoints
+
+Config file is fully optional and app could be configured via env vars with prefix `RELAYER_`
+
 
 ### Running Amplifier Ingester
 

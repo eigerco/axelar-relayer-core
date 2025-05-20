@@ -14,14 +14,6 @@ otlp_transport = "grpc"
 
 [nats]
 urls = ["nats://localhost:4222"]
-connection_timeout_secs = 30
-
-stream_name = "events"
-stream_subject = "events.>"
-stream_description = "Stream for all system events"
-
-consumer_description = "Event processor"
-deliver_group = "event-processors"
 
 [gcp]
 redis_connection = "redis://127.0.0.1/"
@@ -31,6 +23,15 @@ events_topic = "amplifier-events"
 events_subscription = "amplifier-events-sub"
 ack_deadline_secs = 10
 
+[gcp]
+redis_connection = "redis://127.0.0.1/"
+tasks_topic = "amplifier-tasks"
+tasks_subscription = "amplifier-tasks-sub"
+events_topic = "amplifier-events"
+events_subscription = "amplifier-events-sub"
+ack_deadline_secs = 10
+
+# tls key for amplifier api secured by gcp kms
 [gcp.kms]
 project_id = "axelar-relayer"
 location = "global"
@@ -44,6 +45,8 @@ tls_public_certificate = '''
 ...
 -----END CERTIFICATE-----
 '''
+# NOTE: DEVELOPMENT ONLY
+# cert + private key
 # pem format cert
 identity = '''
 -----BEGIN CERTIFICATE-----
@@ -54,7 +57,7 @@ identity = '''
 -----END PRIVATE KEY-----
 '''
 url = "https://amplifier-devnet-amplifier.devnet.axelar.dev/"
-chain = "starknet-devnet-v1"
+chain = "" # NOTE: Your chain name in axelar
 get_chains_limit = 100
 invalid_healthchecks_before_shutdown = 100
 
