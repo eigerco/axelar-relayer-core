@@ -1712,6 +1712,7 @@ version = "0.1.1"
 dependencies = [
  "async-nats",
  "borsh",
+ "chrono",
  "flume",
  "futures",
  "gcloud-gax",

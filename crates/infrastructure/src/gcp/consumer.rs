@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use borsh::{BorshDeserialize, BorshSerialize};
+use chrono::Utc;
 use google_cloud_pubsub::client::Client;
 use google_cloud_pubsub::subscriber::{ReceivedMessage, SubscriberConfig};
 use google_cloud_pubsub::subscription::{ReceiveConfig, Subscription};
@@ -31,7 +32,7 @@ pub struct GcpMessage<T> {
     subscription_name: String,
     msg: ReceivedMessage,
     redis_connection: MultiplexedConnection,
-    received_timestamp: Instant,
+    received_instant: Instant,
     ack_deadline_secs: i32,
     metrics: Arc<Metrics>,
 }
@@ -62,7 +63,8 @@ impl<T: BorshDeserialize + BorshSerialize + Sync + Debug> GcpMessage<T> {
         metrics: Arc<Metrics>,
         ack_deadline_secs: i32,
     ) -> Result<Self, GcpError> {
-        let received_timestamp = Instant::now();
+        let received_instant = Instant::now();
+        let timestamp = Utc::now();
         tracing::debug!(?msg, "decoding msg");
         let id = msg
             .message
@@ -77,7 +79,7 @@ impl<T: BorshDeserialize + BorshSerialize + Sync + Debug> GcpMessage<T> {
         let span = tracing::Span::current();
         let context = message_content.extract_context();
         span.set_parent(context);
-        span.record("received_at", Instant::now());
+        span.record("received_at", timestamp.to_rfc3339());
 
         tracing::debug!(?message_content, "successfully decoded message payload");
 
@@ -87,7 +89,7 @@ impl<T: BorshDeserialize + BorshSerialize + Sync + Debug> GcpMessage<T> {
             subscription_name,
             msg,
             redis_connection,
-            received_timestamp,
+            received_instant,
             ack_deadline_secs,
             metrics,
         })
@@ -121,7 +123,7 @@ impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for GcpMessag
                     .await
                     .map_err(|err| GcpError::Ack(Box::new(err)))?;
 
-                self.metrics.record_ack(self.received_timestamp);
+                self.metrics.record_ack(self.received_instant);
                 tracing::debug!("acknowledged, storing message ID in Redis for deduplication...");
 
                 // NOTE: regard this message with its id to be processed for the next 10 minutes

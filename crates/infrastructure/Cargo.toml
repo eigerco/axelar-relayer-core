@@ -37,6 +37,7 @@ rustls-gcp-kms = { git = "https://github.com/eigerco/rustls-gcp-kms.git", option
 ] }
 tonic = { version = "0.13", optional = true }
 tracing-opentelemetry = { workspace = true, optional = true }
+chrono = { workspace = true, optional = true }
 
 [lints]
 workspace = true
@@ -61,6 +62,7 @@ gcp = [
   "dep:rustls",
   "dep:rustls-gcp-kms",
   "dep:webpki-roots",
+  "dep:chrono",
   "dep:flume",
   "dep:tracing-opentelemetry",
   "dep:google-cloud-gax",
