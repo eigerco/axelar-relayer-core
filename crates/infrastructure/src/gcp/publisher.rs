@@ -71,7 +71,6 @@ fn to_pubsub_message<T>(msg: PublishMessage<T>) -> Result<PubsubMessage, GcpErro
 where
     T: BorshSerialize + BorshDeserialize + Debug,
 {
-    tracing::trace!("serializing message to PubSub format");
     let deduplication_id = msg.deduplication_id.clone();
     tracing::span::Span::current().record("message_id", deduplication_id.clone());
 
@@ -79,6 +78,7 @@ where
     message.inject_context();
     message.set("correlation-id", deduplication_id.clone());
 
+    tracing::trace!("serializing message to PubSub format");
     let encoded = borsh::to_vec(&message).map_err(GcpError::Serialize)?;
     let mut attributes = HashMap::new();
     attributes.insert(MSG_ID.to_owned(), deduplication_id.clone());
