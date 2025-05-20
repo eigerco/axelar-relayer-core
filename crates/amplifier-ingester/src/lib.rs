@@ -1,7 +1,7 @@
 //! Crate with amplifier ingester component
 use std::sync::Arc;
 
-use bin_util::GlobalMetrics;
+use bin_util::SimpleMetrics;
 use eyre::Context as _;
 use futures::StreamExt as _;
 use infrastructure::interfaces::consumer::{AckKind, Consumer, QueueMessage};
@@ -20,7 +20,7 @@ pub struct Ingester<EventQueueConsumer> {
     event_queue_consumer: Arc<EventQueueConsumer>,
     concurrent_queue_items: usize,
     chain: String,
-    metrics: GlobalMetrics,
+    metrics: SimpleMetrics,
 }
 
 impl<EventQueueConsumer> Ingester<EventQueueConsumer>
@@ -39,7 +39,7 @@ where
             .checked_mul(CONCURRENCY_SCALE_FACTOR)
             .unwrap_or(num_cpus);
 
-        let metrics = GlobalMetrics::new("amplifier-ingester");
+        let metrics = SimpleMetrics::new("amplifier-ingester", vec![]);
         Self {
             ampf_client: amplifier_client,
             event_queue_consumer,
@@ -95,6 +95,7 @@ where
             Ok(()) => {
                 if let Err(err) = queue_msg.ack(AckKind::Ack).await {
                     self.metrics.record_error();
+                    self.metrics.record_skipped();
                     tracing::error!(%event, ?err, "could not ack message, skipping...");
                 }
 
@@ -105,6 +106,7 @@ where
                 tracing::error!(%event, ?err, "error during task processing");
                 if let Err(err) = queue_msg.ack(AckKind::Nak).await {
                     self.metrics.record_error();
+                    self.metrics.record_skipped();
                     tracing::error!(%event, ?err, "could not nak message, skipping...");
                 }
             }

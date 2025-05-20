@@ -9,8 +9,8 @@ use core::time::Duration;
 
 use config::{Config, Environment, File};
 use eyre::Context as _;
-use opentelemetry::global;
 use opentelemetry::metrics::Counter;
+use opentelemetry::{KeyValue, global};
 use serde::{Deserialize as _, Deserializer};
 use tokio_util::sync::CancellationToken;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -223,24 +223,26 @@ where
 }
 
 /// Global metrics
-pub struct GlobalMetrics {
-    /// global count of errors
+pub struct SimpleMetrics {
     errors_counter: Counter<u64>,
+    skipped_counter: Counter<u64>,
+    attributes: Vec<KeyValue>,
 }
 
-impl GlobalMetrics {
+impl SimpleMetrics {
     /// Creates a new set of global metrics with the specified meter name.
     ///
     /// # Parameters
     ///
-    /// * `name` - A static string that identifies the meter. This should be a descriptive name for
-    ///   the component or subsystem being monitored.
+    /// * `name` - The name to use for the OpenTelemetry meter, typically identifying the component
+    ///   or service (e.g., `"solana_ingester"`).
+    /// * `attributes` - Common key-value pairs to attach to all metrics
     ///
     /// # Returns
     ///
-    /// A new `Metrics` instance with initialized counters and other metrics.
+    /// A new `SimpleMetrics` instance with initialized counters.
     #[must_use]
-    pub fn new(name: &'static str) -> Self {
+    pub fn new(name: &'static str, attributes: Vec<KeyValue>) -> Self {
         let meter = global::meter(name);
 
         let errors_counter = meter
@@ -248,11 +250,137 @@ impl GlobalMetrics {
             .with_description("Total number of errors encountered during operation and not tracked by inner components")
             .build();
 
-        Self { errors_counter }
+        let skipped_counter = meter
+            .u64_counter("skipped.count")
+            .with_description("Total number of skipped operations")
+            .build();
+
+        Self {
+            errors_counter,
+            skipped_counter,
+            attributes,
+        }
     }
 
     /// Record error
     pub fn record_error(&self) {
-        self.errors_counter.add(1, &[]);
+        self.errors_counter.add(1, &self.attributes);
+    }
+
+    /// Records a skipped task.
+    pub fn record_skipped(&self) {
+        self.skipped_counter.add(1, &self.attributes);
+    }
+}
+
+/// Metrics for tracking the processing of various amplifier api tasks in the ingester of
+/// counterparty chain.
+pub struct BlockChainIngesterMetrics {
+    gateway_tx_counter: Counter<u64>,
+    execute_counter: Counter<u64>,
+    verify_counter: Counter<u64>,
+    refund_counter: Counter<u64>,
+    construct_proof_counter: Counter<u64>,
+    errors_counter: Counter<u64>,
+    skipped_counter: Counter<u64>,
+    attributes: Vec<KeyValue>,
+}
+
+impl BlockChainIngesterMetrics {
+    /// Creates a new `BlockChainIngesterMetrics` instance with the specified meter name and
+    /// attributes.
+    ///
+    /// # Parameters
+    ///
+    /// * `name` - The name to use for the OpenTelemetry meter, typically identifying the component
+    ///   or service (e.g., `"solana_ingester"`).
+    /// * `attributes` - Common key-value pairs to attach to all metrics
+    ///
+    /// # Returns
+    ///
+    /// A new `BlockChainIngesterMetrics` instance with all counters initialized.
+    #[must_use]
+    pub fn new(name: &'static str, attributes: Vec<KeyValue>) -> Self {
+        let meter = global::meter(name);
+        let gateway_tx_counter = meter
+            .u64_counter("tasks.processed.gateway_tx.count")
+            .with_description("Number of processed GatewayTx tasks")
+            .build();
+
+        let execute_counter = meter
+            .u64_counter("tasks.processed.execute.count")
+            .with_description("Number of processed Execute tasks")
+            .build();
+
+        let verify_counter = meter
+            .u64_counter("tasks.processed.verify.count")
+            .with_description("Number of processed Verify tasks")
+            .build();
+
+        let refund_counter = meter
+            .u64_counter("tasks.processed.refund.count")
+            .with_description("Number of processed Refund tasks")
+            .build();
+
+        let construct_proof_counter = meter
+            .u64_counter("tasks.processed.construct_proof.count")
+            .with_description("Number of processed ConstructProof tasks")
+            .build();
+
+        let errors_counter = meter
+            .u64_counter("errors.count")
+            .with_description("Total number of errors encountered during operation")
+            .build();
+
+        let skipped_counter = meter
+            .u64_counter("skipped.count")
+            .with_description("Total number of skipped tasks")
+            .build();
+
+        Self {
+            gateway_tx_counter,
+            execute_counter,
+            verify_counter,
+            refund_counter,
+            construct_proof_counter,
+            errors_counter,
+            skipped_counter,
+            attributes,
+        }
+    }
+
+    /// Records the processing of a gateway transaction task.
+    pub fn record_gateway_tx(&self) {
+        self.gateway_tx_counter.add(1, &self.attributes);
+    }
+
+    /// Records the processing of an execute task.
+    pub fn record_execute(&self) {
+        self.execute_counter.add(1, &self.attributes);
+    }
+
+    /// Records the processing of a verify task.
+    pub fn record_verify(&self) {
+        self.verify_counter.add(1, &self.attributes);
+    }
+
+    /// Records the processing of a refund task.
+    pub fn record_refund(&self) {
+        self.refund_counter.add(1, &self.attributes);
+    }
+
+    /// Records the processing of a proof construction task.
+    pub fn record_construct_proof(&self) {
+        self.construct_proof_counter.add(1, &self.attributes);
+    }
+
+    /// Records an error encountered during task processing.
+    pub fn record_error(&self) {
+        self.errors_counter.add(1, &self.attributes);
+    }
+
+    /// Records a skipped task.
+    pub fn record_skipped(&self) {
+        self.skipped_counter.add(1, &self.attributes);
     }
 }

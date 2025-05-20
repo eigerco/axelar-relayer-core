@@ -1,7 +1,7 @@
 //! Crate with amplifier subscriber component
 use amplifier_api::requests::WithTrailingSlash;
 use amplifier_api::{AmplifierApiClient, requests};
-use bin_util::GlobalMetrics;
+use bin_util::SimpleMetrics;
 use eyre::Context as _;
 use infrastructure::interfaces::publisher::{PeekMessage, PublishMessage, Publisher};
 
@@ -10,7 +10,7 @@ pub struct Subscriber<TaskQueuePublisher> {
     amplifier_client: AmplifierApiClient,
     task_queue_publisher: TaskQueuePublisher,
     chain: String,
-    metrics: GlobalMetrics,
+    metrics: SimpleMetrics,
 }
 
 impl<TaskQueuePublisher> Subscriber<TaskQueuePublisher>
@@ -24,7 +24,7 @@ where
         task_queue_publisher: TaskQueuePublisher,
         chain: String,
     ) -> Self {
-        let metrics = GlobalMetrics::new("amplifier-subscriber");
+        let metrics = SimpleMetrics::new("amplifier-subscriber", vec![]);
         Self {
             amplifier_client,
             task_queue_publisher,
