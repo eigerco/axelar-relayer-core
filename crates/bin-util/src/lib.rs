@@ -1,6 +1,6 @@
 //! Binary utils
 
-const ENV_APP_PREFIX: &str = "RELAYER_";
+const ENV_APP_PREFIX: &str = "RELAYER";
 const SEPARATOR: &str = "_";
 
 pub mod health_check;
