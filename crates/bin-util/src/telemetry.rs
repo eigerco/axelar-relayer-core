@@ -11,7 +11,6 @@ use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_semantic_conventions::resource;
 use opentelemetry_system_metrics::init_process_observer;
 use serde::Deserialize;
-use tokio::task::JoinHandle;
 
 /// Configuration for telemetry
 #[derive(Debug, Clone, Deserialize)]
@@ -56,6 +55,7 @@ pub enum Transport {
 /// * Global tracer or meter provider cannot be set
 /// * Process metrics observer registration fails
 /// * Required telemetry configuration is missing or invalid
+/// * Could not start process observer thread
 #[allow(clippy::print_stdout, reason = "starts before tracing is initialized")]
 pub fn init(
     service_name: &str,
@@ -63,7 +63,7 @@ pub fn init(
     config: &Config,
 ) -> eyre::Result<(
     opentelemetry_sdk::trace::Tracer,
-    JoinHandle<eyre::Result<()>>,
+    std::thread::JoinHandle<eyre::Result<()>>,
 )> {
     println!("connecting telemetry");
 
@@ -98,15 +98,17 @@ pub fn init(
     global::set_meter_provider(meter_provider);
 
     println!("meter provider set");
-
-    let handle = tokio::spawn({
-        let meter = global::meter("process");
-        init_process_observer(meter)
-    });
+    let observer_handle = std::thread::Builder::new()
+        .name("process-observer".into())
+        .spawn(move || {
+            let meter = global::meter("process");
+            futures::executor::block_on(init_process_observer(meter))
+        })
+        .wrap_err("could not start process obverver thread")?;
 
     let tracer_name = service_name.to_owned();
     let tracer = tracer_provider.tracer(tracer_name);
-    Ok((tracer, handle))
+    Ok((tracer, observer_handle))
 }
 
 fn get_exporters(config: &Config) -> eyre::Result<(SpanExporter, MetricExporter)> {
