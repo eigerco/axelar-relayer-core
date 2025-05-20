@@ -1,0 +1,51 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    version: 1
+    editable: true
+    isDefault: true
+    jsonData:
+      timeInterval: 15s
+      httpMethod: GET
+      exemplarTraceIdDestinations:
+        - name: traceID
+          datasourceUid: tempo
+          urlDisplayLabel: "View Trace"
+
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo:3200
+    version: 1
+    editable: true
+    jsonData:
+      httpMethod: GET
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true
+      tracesToMetrics:
+        datasourceUid: prometheus
+        spanStartTimeShift: "-1h"
+        spanEndTimeShift: "1h"
+        tags: ["service.name", "job"]
+
+  # - name: Loki
+  #   type: loki
+  #   uid: loki
+  #   access: proxy
+  #   url: http://loki:3100
+  #   version: 1
+  #   editable: true
+  #   jsonData:
+  #     derivedFields:
+  #       - datasourceUid: tempo
+  #         matcherRegex: "traceID=(\\w+)"
+  #         name: TraceID
+  #         url: "$${__value.raw}"

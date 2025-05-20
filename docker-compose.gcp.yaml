@@ -17,6 +17,8 @@ services:
       # Optional: GCP-specific environment variables
       # - GOOGLE_APPLICATION_CREDENTIALS=/home/relayer/.config/gcloud/application_default_credentials.json
     restart: unless-stopped
+    depends_on:
+      - otel-collector
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
       interval: 30s
@@ -40,27 +42,14 @@ services:
       # Optional: GCP-specific environment variables
       # - GOOGLE_APPLICATION_CREDENTIALS=/home/relayer/.config/gcloud/application_default_credentials.json
     restart: unless-stopped
+    depends_on:
+      - otel-collector
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 5s
-
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    container_name: jaeger
-    restart: unless-stopped
-    ports:
-      - "6831:6831/udp" # Jaeger agent (UDP thrift)
-      - "6832:6832/udp" # Jaeger agent (UDP compact thrift)
-      - "5778:5778" # Agent HTTP endpoint
-      - "16686:16686" # Jaeger UI
-      - "14250:14250" # Collector (GRPC)
-      - "14268:14268" # Collector (HTTP)
-
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
@@ -73,12 +62,29 @@ services:
       - "4317:4317" # OTLP gRPC
       - "4318:4318" # OTLP HTTP
       - "8889:8889" # Prometheus metrics
+    depends_on:
+      - tempo
+
+  tempo:
+    image: grafana/tempo:latest
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./telemetry/tempo.yaml:/etc/tempo/tempo.yaml
+    ports:
+      - "3200:3200"
+      - "4317:4317"  # OTLP gRPC
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus.yaml
+      - --web.enable-remote-write-receiver
+      - --enable-feature=exemplar-storage
+      - --enable-feature=native-histograms
     restart: unless-stopped
     volumes:
-      - ./telemetry/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./telemetry/prometheus.yml:/etc/prometheus.yml:ro
     ports:
       - "9090:9090"
     depends_on:
@@ -89,7 +95,9 @@ services:
     container_name: grafana
     restart: unless-stopped
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=secret
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
     ports:
       - "3000:3000"
     volumes:
@@ -97,6 +105,7 @@ services:
       - ./telemetry/grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
       - prometheus
+      - tempo
 
 networks:
   default:
