@@ -33,6 +33,7 @@ impl AmplifierApiClient {
     /// # Errors
     ///
     /// This function will return an error if the underlying reqwest client cannot be constructed
+    #[tracing::instrument(skip(tls_type), name = "creating amplifier api client")]
     pub fn new(url: url::Url, tls_type: TlsType) -> Result<Self, AmplifierApiError> {
         let authenticated_client = authenticated_client(tls_type)?;
         Ok(Self {
