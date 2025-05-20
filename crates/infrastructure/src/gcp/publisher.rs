@@ -129,7 +129,7 @@ where
     }
 
     #[allow(refining_impl_trait, reason = "simplification")]
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(batch_len = batch.len()))]
     async fn publish_batch(
         &self,
         batch: Vec<PublishMessage<T>>,
@@ -139,7 +139,7 @@ where
             return Ok(Vec::new());
         }
 
-        tracing::info!("publishing batch of {} messages to PubSub", batch.len());
+        tracing::info!("publishing");
         let bulk = batch
             .into_iter()
             .map(to_pubsub_message)
@@ -163,7 +163,7 @@ where
             output.push(res);
         }
 
-        tracing::info!("successfully published batch of {} messages", output.len());
+        tracing::info!("successfully published");
 
         Ok(output)
     }
