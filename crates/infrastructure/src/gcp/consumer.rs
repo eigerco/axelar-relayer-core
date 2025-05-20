@@ -137,10 +137,10 @@ impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for GcpMessag
             }
             interfaces::consumer::AckKind::Nak => {
                 tracing::trace!("sending negative acknowledgment to PubSub");
-                self.msg
-                    .nack()
-                    .await
-                    .map_err(|err| GcpError::Nak(Box::new(err)))?;
+                self.msg.nack().await.map_err(|err| {
+                    self.metrics.record_error();
+                    GcpError::Nak(Box::new(err))
+                })?;
                 self.metrics.record_nack();
                 tracing::info!(
                     "message negatively acknowledged - might get redelivered based on configuration"
@@ -161,7 +161,10 @@ impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for GcpMessag
                 self.msg
                     .modify_ack_deadline(self.ack_deadline_secs)
                     .await
-                    .map_err(|err| GcpError::ModifyAckDeadline(Box::new(err)))?;
+                    .map_err(|err| {
+                        self.metrics.record_error();
+                        GcpError::ModifyAckDeadline(Box::new(err))
+                    })?;
                 self.metrics.record_deadline_extension();
                 tracing::info!("message deadline extended to allow more processing time");
             }
