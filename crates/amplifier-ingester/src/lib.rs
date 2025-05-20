@@ -8,6 +8,7 @@ use infrastructure::interfaces::publisher::QueueMsgId as _;
 use relayer_amplifier_api_integration::amplifier_api::requests::{self, WithTrailingSlash};
 use relayer_amplifier_api_integration::amplifier_api::types::{Event, PublishEventsRequest};
 use relayer_amplifier_api_integration::amplifier_api::{self, AmplifierApiClient};
+use tracing::Instrument;
 
 // TODO: adjust based on metrics
 const CONCURRENCY_SCALE_FACTOR: usize = 4;
@@ -117,6 +118,7 @@ where
                     Err(err) => tracing::error!(?err, "could not receive queue msg"),
                 }
             })
+            .instrument(tracing::info_span!("processing messages"))
             .await;
 
         Ok(())
