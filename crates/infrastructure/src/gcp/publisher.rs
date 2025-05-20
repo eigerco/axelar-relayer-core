@@ -8,9 +8,10 @@ use google_cloud_googleapis::pubsub::v1::PubsubMessage;
 use google_cloud_pubsub::client::Client;
 use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
 use interfaces::kv_store::KvStore as _;
+use opentelemetry::baggage::Baggage;
 use opentelemetry::metrics::{Counter, Histogram};
 use opentelemetry::propagation::Injector as _;
-use opentelemetry::{KeyValue, global};
+use opentelemetry::{Context, KeyValue, global};
 
 use super::GcpError;
 use super::kv_store::RedisClient;
@@ -73,6 +74,8 @@ where
 {
     tracing::debug!("serializing message to PubSub format");
     let deduplication_id = msg.deduplication_id.clone();
+    tracing::span::Span::current().record("message_id", deduplication_id.clone());
+
     let mut message = MessageContent::new(msg.data);
     message.inject_context();
     message.set("correlation-id", deduplication_id.clone());

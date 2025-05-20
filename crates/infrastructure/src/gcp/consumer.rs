@@ -80,6 +80,7 @@ impl<T: BorshDeserialize + BorshSerialize + Sync + Debug> GcpMessage<T> {
         let context = message_content.extract_context();
         span.set_parent(context);
         span.record("received_at", timestamp.to_rfc3339());
+        span.record("message_id", id.clone());
 
         tracing::debug!(?message_content, "successfully decoded message payload");
 
