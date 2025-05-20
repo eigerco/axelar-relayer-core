@@ -1,22 +1,7 @@
+
 apiVersion: 1
 
 datasources:
-  - name: Prometheus
-    type: prometheus
-    uid: prometheus
-    access: proxy
-    url: http://prometheus:9090
-    version: 1
-    editable: true
-    isDefault: true
-    jsonData:
-      timeInterval: 15s
-      httpMethod: GET
-      exemplarTraceIdDestinations:
-        - name: traceID
-          datasourceUid: tempo
-          urlDisplayLabel: "View Trace"
-
   - name: Tempo
     type: tempo
     uid: tempo
