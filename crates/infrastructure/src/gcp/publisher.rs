@@ -172,29 +172,8 @@ where
     async fn check_health(&self) -> Result<(), GcpError> {
         tracing::trace!("checking health for GCP publisher");
 
-        // Create a small health check message
-        let health_attributes = HashMap::from([("health_check".to_owned(), "true".to_owned())]);
-
-        let health_message = PubsubMessage {
-            data: Vec::from("health_check"),
-            attributes: health_attributes,
-            ..Default::default()
-        };
-        tracing::trace!("sending health check message to PubSub");
-        // Try to publish the message and await the result
-        let awaiter = self.publisher.publish(health_message).await;
-
-        // Check if we can get a result from the awaiter
-        match awaiter.get().await {
-            Ok(_) => {
-                tracing::trace!("GCP publisher health check successful");
-                Ok(())
-            }
-            Err(err) => {
-                tracing::error!("GCP publisher health check failed: {}", err);
-                Err(GcpError::Publish(Box::new(err)))
-            }
-        }
+        // TODO: wait till google has sdk with client check
+        Ok(())
     }
 }
 
