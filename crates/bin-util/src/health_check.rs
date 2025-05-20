@@ -59,7 +59,6 @@ pub type HealthCheck =
 #[derive(Debug, Deserialize)]
 pub struct Config {
     /// Port for the health check server
-    #[serde(rename = "port")]
     pub port: u16,
 }
 
