@@ -127,6 +127,9 @@ where
                 Ok(interfaces::kv_store::WithRevision { value, revision: 0 })
             })
             .transpose()
+            .inspect_err(|_| {
+                self.metrics.record_error();
+            })
     }
 }
 
