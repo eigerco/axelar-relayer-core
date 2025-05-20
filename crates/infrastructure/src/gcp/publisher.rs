@@ -327,7 +327,10 @@ where
         self.last_message_id_store
             .get()
             .await?
-            .map(|data| Ok(data.value))
+            .map(|data| {
+                tracing::trace!(?data, "got value");
+                Ok(data.value)
+            })
             .transpose()
     }
 }
