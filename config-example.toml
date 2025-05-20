@@ -23,14 +23,6 @@ events_topic = "amplifier-events"
 events_subscription = "amplifier-events-sub"
 ack_deadline_secs = 10
 
-[gcp]
-redis_connection = "redis://127.0.0.1/"
-tasks_topic = "amplifier-tasks"
-tasks_subscription = "amplifier-tasks-sub"
-events_topic = "amplifier-events"
-events_subscription = "amplifier-events-sub"
-ack_deadline_secs = 10
-
 # tls key for amplifier api secured by gcp kms
 [gcp.kms]
 project_id = "axelar-relayer"
