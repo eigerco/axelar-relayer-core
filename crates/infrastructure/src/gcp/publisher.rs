@@ -110,22 +110,30 @@ where
     )]
     async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, GcpError> {
         tracing::trace!(?msg.deduplication_id, ?msg.data, "preparing to publish message to PubSub");
-        let msg = to_pubsub_message(msg)?;
-        tracing::trace!("publishing message to PubSub queue");
+        let res = {
+            let msg = to_pubsub_message(msg)?;
+            tracing::trace!("publishing message to PubSub queue");
 
-        let start_time = std::time::Instant::now();
+            let start_time = std::time::Instant::now();
 
-        let awaiter = self.publisher.publish(msg).await;
-        tracing::trace!("waiting for publish confirmation");
+            let awaiter = self.publisher.publish(msg).await;
+            tracing::trace!("waiting for publish confirmation");
 
-        // NOTE: await until message is sent
-        let result = awaiter
-            .get()
-            .await
-            .map_err(|err| GcpError::Publish(Box::new(err)))?;
-        self.metrics.record_publish(start_time);
-        tracing::info!(message_id = %result, "message successfully published to PubSub");
-        Ok(result)
+            // NOTE: await until message is sent
+            let result = awaiter
+                .get()
+                .await
+                .map_err(|err| GcpError::Publish(Box::new(err)))?;
+            self.metrics.record_publish(start_time);
+            tracing::info!(message_id = %result, "message successfully published to PubSub");
+            Ok(result)
+        };
+
+        if res.is_err() {
+            self.metrics.record_error();
+        }
+
+        res
     }
 
     #[allow(refining_impl_trait, reason = "simplification")]
@@ -140,32 +148,40 @@ where
         }
 
         tracing::info!("publishing");
-        let bulk = batch
-            .into_iter()
-            .map(to_pubsub_message)
-            .collect::<Result<Vec<PubsubMessage>, GcpError>>()?;
+        let res = {
+            let bulk = batch
+                .into_iter()
+                .map(to_pubsub_message)
+                .collect::<Result<Vec<PubsubMessage>, GcpError>>()?;
 
-        tracing::trace!("submitting batch to publish queue");
-        let start_time = std::time::Instant::now();
-        let publish_handles = self.publisher.publish_bulk(bulk).await;
-        tracing::trace!("waiting for batch publish confirmations");
+            tracing::trace!("submitting batch to publish queue");
+            let start_time = std::time::Instant::now();
+            let publish_handles = self.publisher.publish_bulk(bulk).await;
+            tracing::trace!("waiting for batch publish confirmations");
 
-        // NOTE: await until all messages are sent
-        let mut output = Vec::new();
-        let messages_len = publish_handles.len();
-        for (index, handle) in publish_handles.into_iter().enumerate() {
-            let res = handle
-                .get()
-                .await
-                .map_err(|err| GcpError::Publish(Box::new(err)))?;
-            self.metrics.record_publish(start_time);
-            tracing::trace!(message_index = index, total_messages_len = messages_len, message_id = %res, "message confirmed");
-            output.push(res);
+            // NOTE: await until all messages are sent
+            let mut output = Vec::new();
+            let messages_len = publish_handles.len();
+            for (index, handle) in publish_handles.into_iter().enumerate() {
+                let res = handle
+                    .get()
+                    .await
+                    .map_err(|err| GcpError::Publish(Box::new(err)))?;
+                self.metrics.record_publish(start_time);
+                tracing::trace!(message_index = index, total_messages_len = messages_len, message_id = %res, "message confirmed");
+                output.push(res);
+            }
+
+            tracing::info!("successfully published");
+
+            Ok(output)
+        };
+
+        if res.is_err() {
+            self.metrics.record_error();
         }
 
-        tracing::info!("successfully published");
-
-        Ok(output)
+        res
     }
 
     #[allow(refining_impl_trait, reason = "simplification")]
@@ -229,17 +245,24 @@ where
             last_message_id = %last_msg_id,
             "publishing message with peekable publisher"
         );
-        let res = self.publisher.publish(msg).await?;
-        tracing::trace!(
-            last_message_id = %last_msg_id,
-            "updating last message ID in Redis"
-        );
-        self.last_message_id_store.upsert(&last_msg_id).await?;
-        tracing::info!(
-            last_message_id = %last_msg_id,
-            "message published and ID stored in Redis"
-        );
-        Ok(res)
+        let res = {
+            let published = self.publisher.publish(msg).await?;
+            tracing::trace!(
+                last_message_id = %last_msg_id,
+                "updating last message ID in Redis"
+            );
+            self.last_message_id_store.upsert(&last_msg_id).await?;
+            tracing::info!(
+                last_message_id = %last_msg_id,
+                "message published and ID stored in Redis"
+            );
+            Ok(published)
+        };
+
+        if res.is_err() {
+            self.publisher.metrics.record_error();
+        }
+        res
     }
 
     // NOTE: all messages are batched and sent independently via workers, on success last message
@@ -257,35 +280,51 @@ where
         &self,
         batch: Vec<PublishMessage<T>>,
     ) -> Result<Vec<Self::Return>, GcpError> {
-        let Some(last_msg) = batch.last() else {
-            return Err(GcpError::NoMsgToPublish);
+        let res = {
+            let Some(last_msg) = batch.last() else {
+                return Err(GcpError::NoMsgToPublish);
+            };
+
+            let last_msg_id = last_msg.data.id();
+            tracing::info!(
+                last_message_id = %last_msg_id,
+                "publishing batch with peekable publisher"
+            );
+
+            let res = self.publisher.publish_batch(batch).await?;
+            tracing::trace!("updating last message ID in Redis after batch publish");
+            self.last_message_id_store.upsert(&last_msg_id).await?;
+
+            tracing::info!("batch successfully published and last ID stored");
+
+            Ok(res)
         };
 
-        let last_msg_id = last_msg.data.id();
-        tracing::info!(
-            last_message_id = %last_msg_id,
-            "publishing batch with peekable publisher"
-        );
+        if res.is_err() {
+            self.publisher.metrics.record_error();
+        }
 
-        let res = self.publisher.publish_batch(batch).await?;
-        tracing::trace!("updating last message ID in Redis after batch publish");
-        self.last_message_id_store.upsert(&last_msg_id).await?;
-
-        tracing::info!("batch successfully published and last ID stored");
-
-        Ok(res)
+        res
     }
 
     #[allow(refining_impl_trait, reason = "simplification")]
     async fn check_health(&self) -> Result<(), GcpError> {
         tracing::trace!("checking health for PeekableGcpPublisher");
 
-        self.publisher.check_health().await?;
+        let res = {
+            self.publisher.check_health().await?;
 
-        self.last_message_id_store
-            .ping()
-            .await
-            .map_err(GcpError::RedisPing)
+            self.last_message_id_store
+                .ping()
+                .await
+                .map_err(GcpError::RedisPing)
+        };
+
+        if res.is_err() {
+            self.publisher.metrics.record_error();
+        }
+
+        res
     }
 }
 
@@ -300,7 +339,8 @@ where
         tracing::trace!("retrieving last message ID from Redis");
         self.last_message_id_store
             .get()
-            .await?
+            .await
+            .inspect_err(|_| self.publisher.metrics.record_error())?
             .map(|data| {
                 tracing::trace!(?data, "got value");
                 Ok(data.value)
@@ -312,6 +352,7 @@ where
 struct Metrics {
     published_count: Counter<u64>,
     publish_duration: Histogram<f64>,
+    errors_count: Counter<u64>,
     attributes: [KeyValue; 1],
 }
 
@@ -320,14 +361,19 @@ impl Metrics {
         let meter = global::meter("pubsub_publisher");
 
         let published_count = meter
-            .u64_counter("messages.count")
+            .u64_counter("published.count")
             .with_description("Total number of messages published to PubSub")
             .build();
 
         let publish_duration = meter
-            .f64_histogram("publisher.duration")
+            .f64_histogram("published.duration")
             .with_description("Time taken to publish messages to PubSub in seconds")
             .with_unit("s")
+            .build();
+
+        let errors_count = meter
+            .u64_counter("errors.count")
+            .with_description("Total number of errors encountered during publish")
             .build();
 
         let attributes = [KeyValue::new("topic.name", topic_name.to_owned())];
@@ -335,6 +381,7 @@ impl Metrics {
         Self {
             published_count,
             publish_duration,
+            errors_count,
             attributes,
         }
     }
@@ -343,5 +390,9 @@ impl Metrics {
         self.published_count.add(1, &[]);
         self.publish_duration
             .record(start_time.elapsed().as_secs_f64(), &self.attributes);
+    }
+
+    fn record_error(&self) {
+        self.errors_count.add(1, &self.attributes);
     }
 }
