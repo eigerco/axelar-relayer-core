@@ -70,7 +70,7 @@ where
             .clone()
             .set(&self.key, bytes)
             .await
-            .map_err(|err| GcpError::RedisSave(err))?;
+            .map_err(GcpError::RedisSave)?;
 
         self.metrics.record_write();
         Ok(())
