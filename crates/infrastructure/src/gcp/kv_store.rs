@@ -60,12 +60,9 @@ where
 
     pub(crate) async fn upsert(&self, value: &T) -> Result<(), GcpError> {
         tracing::trace!(%value, "upserting value");
-        let bytes = borsh::to_vec(value).map_err(|err| {
-            self.metrics.record_error();
-            GcpError::RedisSerialize {
-                value: value.to_string(),
-                err,
-            }
+        let bytes = borsh::to_vec(value).map_err(|err| GcpError::RedisSerialize {
+            value: value.to_string(),
+            err,
         })?;
 
         let _: () = self
@@ -73,10 +70,7 @@ where
             .clone()
             .set(&self.key, bytes)
             .await
-            .map_err(|err| {
-                self.metrics.record_error();
-                GcpError::RedisSave(err)
-            })?;
+            .map_err(|err| GcpError::RedisSave(err))?;
 
         self.metrics.record_write();
         Ok(())
@@ -93,7 +87,9 @@ where
     #[tracing::instrument(skip(self))]
     async fn update(&self, data: &WithRevision<T>) -> Result<u64, GcpError> {
         tracing::trace!(?data, "updating");
-        self.upsert(&data.value).await?;
+        self.upsert(&data.value)
+            .await
+            .inspect_err(|_| self.metrics.record_error())?;
         Ok(0)
     }
 
@@ -101,7 +97,9 @@ where
     #[tracing::instrument(skip(self))]
     async fn put(&self, value: &T) -> Result<u64, GcpError> {
         tracing::trace!(?value, "updating");
-        self.upsert(value).await?;
+        self.upsert(value)
+            .await
+            .inspect_err(|_| self.metrics.record_error())?;
         Ok(0)
     }
 
@@ -110,10 +108,10 @@ where
     async fn get(&self) -> Result<Option<WithRevision<T>>, GcpError> {
         tracing::trace!("getting value");
         let mut connection = self.connection.clone();
-        let value: Option<Vec<u8>> = connection
-            .get(&self.key)
-            .await
-            .map_err(GcpError::RedisGet)?;
+        let value: Option<Vec<u8>> = connection.get(&self.key).await.map_err({
+            self.metrics.record_error();
+            GcpError::RedisGet
+        })?;
 
         value
             .map(|bytes| {
