@@ -102,7 +102,11 @@ pub fn init(
         .name("process-observer".into())
         .spawn(move || {
             let meter = global::meter("process");
-            futures::executor::block_on(init_process_observer(meter))
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .wrap_err("could not create tokio runtime")?;
+            rt.block_on(init_process_observer(meter))
         })
         .wrap_err("could not start process obverver thread")?;
 
