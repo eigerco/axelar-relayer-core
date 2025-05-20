@@ -67,8 +67,6 @@ pub fn init(
 )> {
     println!("connecting telemetry");
 
-    let instance_id = format!("{service_name}-{}", uuid::Uuid::new_v4());
-
     let (span_exporter, metric_exporter) = get_exporters(config)?;
     let service_resource = Resource::builder()
         .with_service_name(service_name.to_owned())
@@ -76,7 +74,10 @@ pub fn init(
             resource::SERVICE_VERSION,
             service_version.to_owned(),
         ))
-        .with_attribute(KeyValue::new(resource::SERVICE_INSTANCE_ID, instance_id))
+        .with_attribute(KeyValue::new(
+            resource::SERVICE_INSTANCE_ID,
+            uuid::Uuid::new_v4().to_string(),
+        ))
         .build();
     let process_resource = ProcessResourceDetector.detect();
     let k8s_resource = K8sResourceDetector.detect();
