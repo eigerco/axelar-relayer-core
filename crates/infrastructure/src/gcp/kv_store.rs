@@ -174,6 +174,7 @@ impl Metrics {
     fn record_write(&self) {
         self.writes_counter.add(1, &self.attributes);
     }
+
     fn record_error(&self) {
         self.errors_counter.add(1, &self.attributes);
     }
