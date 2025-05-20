@@ -242,7 +242,7 @@ where
         Ok(res)
     }
 
-    // NOTE: all messages are batched and send independently via workers, on success last message
+    // NOTE: all messages are batched and sent independently via workers, on success last message
     // task id is SAVED as last processed in redis so ORDER IN THE BATCH ARG MATTERS. If any of them
     // fail entire batch is regarded failed and will be retried. Deduplication happens on
     // consumers side per gcp recommendation
