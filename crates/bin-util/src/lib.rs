@@ -10,7 +10,6 @@ use core::time::Duration;
 use config::{Config, Environment, File};
 use eyre::Context as _;
 use opentelemetry::global;
-use opentelemetry::metrics::Counter;
 use serde::{Deserialize as _, Deserializer};
 use tokio_util::sync::CancellationToken;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -29,6 +28,9 @@ pub fn ensure_backtrace_set() {
         std::env::set_var("RUST_BACKTRACE", "full");
     }
 }
+
+/// export telemetry components for custom metrics
+pub use opentelemetry::metrics::*;
 
 /// Initializes the logging system with optional filtering directives.
 ///
