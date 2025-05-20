@@ -95,7 +95,6 @@ where
             Ok(()) => {
                 if let Err(err) = queue_msg.ack(AckKind::Ack).await {
                     self.metrics.record_error();
-                    self.metrics.record_skipped();
                     tracing::error!(%event, ?err, "could not ack message, skipping...");
                 }
 
@@ -106,7 +105,6 @@ where
                 tracing::error!(%event, ?err, "error during task processing");
                 if let Err(err) = queue_msg.ack(AckKind::Nak).await {
                     self.metrics.record_error();
-                    self.metrics.record_skipped();
                     tracing::error!(%event, ?err, "could not nak message, skipping...");
                 }
             }
@@ -130,7 +128,7 @@ where
                     Ok(msg) => self.process_queue_msg(msg).await,
                     Err(err) => {
                         self.metrics.record_error();
-                        tracing::error!(?err, "could not receive queue msg, skipping...");
+                        tracing::error!(?err, "could not receive queue msg...");
                     }
                 }
             })
