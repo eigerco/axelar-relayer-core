@@ -54,11 +54,17 @@ async fn main() {
     let cli = Cli::parse();
 
     let config: Config = bin_util::try_deserialize(&cli.config_path).expect("config is correct");
-    if let Err(err) =
-        bin_util::telemetry::init(crate_name!(), crate_version!(), &config.telemetry).await
-    {
-        tracing::error!(?err, "Failed to initialize telemetry");
-    }
+    let (telemetry_tracer, _observer_handle) = if let Some(ref telemetry_cfg) = config.telemetry {
+        let (tracer, observer_handle) =
+            bin_util::telemetry::init("axelar<>starknet dev relayer", "dev", telemetry_cfg)
+                .expect("telemetry wired up");
+        (Some(tracer), Some(observer_handle))
+    } else {
+        (None, None)
+    };
+
+    let _stderr_logging_guard =
+        bin_util::init_logging(config.env_filters, telemetry_tracer).expect("logging wired up");
 
     let cancel_token = bin_util::register_cancel();
     tokio::try_join!(
