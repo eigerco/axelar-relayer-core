@@ -1728,6 +1728,7 @@ dependencies = [
  "tokio-util",
  "tonic 0.13.1",
  "tracing",
+ "tracing-opentelemetry",
  "url",
  "uuid",
  "webpki-roots 1.0.0",

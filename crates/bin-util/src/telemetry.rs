@@ -7,7 +7,7 @@ use opentelemetry_resource_detectors::{K8sResourceDetector, ProcessResourceDetec
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::resource::ResourceDetector as _;
-use opentelemetry_sdk::trace::SdkTracerProvider;
+use opentelemetry_sdk::trace::{RandomIdGenerator, SdkTracerProvider};
 use opentelemetry_semantic_conventions::resource;
 use opentelemetry_system_metrics::init_process_observer;
 use serde::Deserialize;
@@ -79,6 +79,7 @@ pub fn init(
     let k8s_resource = K8sResourceDetector.detect();
     let tracer_provider = SdkTracerProvider::builder()
         .with_batch_exporter(span_exporter)
+        .with_id_generator(RandomIdGenerator::default())
         .with_resource(service_resource.clone())
         .with_resource(process_resource.clone())
         .with_resource(k8s_resource.clone())

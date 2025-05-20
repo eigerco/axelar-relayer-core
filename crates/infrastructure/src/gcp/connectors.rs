@@ -54,7 +54,7 @@ use crate::interfaces::publisher::QueueMsgId;
 ///
 /// ```
 /// use std::time::Duration;
-/// use borsh::BorshDeserialize;
+/// use borsh::{BorshDeserialize, BorshSerialize};
 /// use tokio_util::sync::CancellationToken;
 /// use infrastructure::gcp::connectors::connect_consumer;
 /// use infrastructure::gcp::GcpError;
@@ -64,7 +64,7 @@ use crate::interfaces::publisher::QueueMsgId;
 /// use infrastructure::interfaces::consumer::AckKind;
 /// use crate::infrastructure::interfaces::consumer::QueueMessage;
 ///
-/// #[derive(Debug, BorshDeserialize)]
+/// #[derive(Debug, BorshDeserialize, BorshSerialize)]
 /// struct EventMessage {
 ///     id: String,
 ///     timestamp: u64,
@@ -120,7 +120,7 @@ pub async fn connect_consumer<T>(
     cancel_token: CancellationToken,
 ) -> Result<GcpConsumer<T>, GcpError>
 where
-    T: BorshDeserialize + Send + Sync + Debug + 'static,
+    T: BorshDeserialize + BorshSerialize + Send + Sync + Debug + 'static,
 {
     let client = connect_pubsub_client().await?;
     let consumer = GcpConsumer::new(&client, subscription, config, cancel_token).await?;

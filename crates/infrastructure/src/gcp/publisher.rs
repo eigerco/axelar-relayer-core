@@ -14,6 +14,7 @@ use opentelemetry::{KeyValue, global};
 use super::GcpError;
 use super::kv_store::RedisClient;
 use super::util::get_topic;
+use crate::gcp::util::MessageContent;
 use crate::interfaces;
 use crate::interfaces::publisher::{PublishMessage, QueueMsgId};
 
@@ -67,19 +68,22 @@ impl<T> GcpPublisher<T> {
 #[tracing::instrument(skip_all, level = "debug")]
 fn to_pubsub_message<T>(msg: PublishMessage<T>) -> Result<PubsubMessage, GcpError>
 where
-    T: BorshSerialize + Debug,
+    T: BorshSerialize + BorshDeserialize + Debug,
 {
     tracing::debug!("serializing message to PubSub format");
-    let encoded = borsh::to_vec(&msg.data).map_err(GcpError::Serialize)?;
+    let deduplication_id = msg.deduplication_id.clone();
+    let mut message = MessageContent::new(msg.data);
+    message.inject_context();
+    let encoded = borsh::to_vec(&message).map_err(GcpError::Serialize)?;
     let mut attributes = HashMap::new();
-    attributes.insert(MSG_ID.to_owned(), msg.deduplication_id.clone());
+    attributes.insert(MSG_ID.to_owned(), deduplication_id.clone());
     let message = PubsubMessage {
         data: encoded,
         attributes,
         ..Default::default()
     };
     tracing::debug!(
-        deduplication_id = %msg.deduplication_id,
+        deduplication_id = %deduplication_id,
         message_size = message.data.len(),
         "message prepared for publishing"
     );
@@ -88,7 +92,7 @@ where
 
 impl<T> interfaces::publisher::Publisher<T> for GcpPublisher<T>
 where
-    T: BorshSerialize + Debug + Send + Sync,
+    T: BorshSerialize + BorshDeserialize + Debug + Send + Sync,
 {
     type Return = String;
 
@@ -222,7 +226,7 @@ where
 
 impl<T> interfaces::publisher::Publisher<T> for PeekableGcpPublisher<T>
 where
-    T: QueueMsgId + BorshSerialize + Debug + Clone + Send + Sync,
+    T: QueueMsgId + BorshSerialize + BorshDeserialize + Debug + Clone + Send + Sync,
     T::MessageId: BorshSerialize + BorshDeserialize + Debug + Display + Send + Sync,
 {
     type Return = String;

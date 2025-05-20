@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Instant;
 
-use borsh::BorshDeserialize;
+use borsh::{BorshDeserialize, BorshSerialize};
 use google_cloud_pubsub::client::Client;
 use google_cloud_pubsub::subscriber::{ReceivedMessage, SubscriberConfig};
 use google_cloud_pubsub::subscription::{ReceiveConfig, Subscription};
@@ -12,10 +12,12 @@ use opentelemetry::{KeyValue, global};
 use redis::AsyncCommands as _;
 use redis::aio::MultiplexedConnection;
 use tokio_util::sync::CancellationToken;
+use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
 use super::GcpError;
 use super::util::get_subscription;
 use crate::gcp::publisher::MSG_ID;
+use crate::gcp::util::MessageContent;
 use crate::interfaces;
 use crate::tracking::ThroughputTracker;
 
@@ -51,7 +53,7 @@ impl<T> GcpMessage<T> {
     }
 }
 
-impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
+impl<T: BorshDeserialize + BorshSerialize + Sync + Debug> GcpMessage<T> {
     #[tracing::instrument(skip_all)]
     fn decode(
         subscription_name: String,
@@ -69,16 +71,18 @@ impl<T: BorshDeserialize + Send + Sync + Debug> GcpMessage<T> {
             .ok_or(GcpError::MsgIdNotSet)?
             .clone();
 
-        let span = tracing::Span::current();
-        span.record("message_id", &id);
+        let message_content = MessageContent::<T>::deserialize(&mut msg.message.data.as_ref())
+            .map_err(GcpError::Deserialize)?;
 
-        let decoded =
-            T::deserialize(&mut msg.message.data.as_ref()).map_err(GcpError::Deserialize)?;
-        tracing::debug!(?decoded, "successfully decoded message payload");
+        let span = tracing::Span::current();
+        let context = message_content.extract_context();
+        span.set_parent(context);
+
+        tracing::debug!(?message_content, "successfully decoded message payload");
 
         Ok(Self {
             id,
-            decoded,
+            decoded: message_content.data(),
             subscription_name,
             msg,
             redis_connection,
@@ -187,7 +191,7 @@ pub struct GcpConsumerConfig {
 
 impl<T> GcpConsumer<T>
 where
-    T: BorshDeserialize + Send + Sync + Debug + 'static,
+    T: BorshDeserialize + BorshSerialize + Send + Sync + Debug + 'static,
 {
     #[tracing::instrument(
         name = "create_gcp_consumer",
@@ -303,7 +307,7 @@ fn start_read_messages_task<T>(
     config: ReadMessagesConfig<T>,
 ) -> tokio::task::JoinHandle<Result<(), GcpError>>
 where
-    T: BorshDeserialize + Send + Sync + Debug + 'static,
+    T: BorshDeserialize + BorshSerialize + Send + Sync + Debug + 'static,
 {
     let ReadMessagesConfig {
         redis_connection,

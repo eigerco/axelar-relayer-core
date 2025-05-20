@@ -87,12 +87,20 @@ pub fn init_logging(
         if cfg!(debug_assertions) {
             subscriber
                 .with(output_layer)
-                .with(OpenTelemetryLayer::new(telemetry_tracer))
+                .with(
+                    OpenTelemetryLayer::new(telemetry_tracer)
+                        .with_location(true)
+                        .with_tracked_inactivity(true),
+                )
                 .try_init()?;
         } else {
             subscriber
                 .with(output_layer.json())
-                .with(OpenTelemetryLayer::new(telemetry_tracer))
+                .with(
+                    OpenTelemetryLayer::new(telemetry_tracer)
+                        .with_location(true)
+                        .with_tracked_inactivity(true),
+                )
                 .try_init()?;
         }
     } else if cfg!(debug_assertions) {

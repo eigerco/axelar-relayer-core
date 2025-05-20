@@ -160,7 +160,7 @@ tracing-subscriber = { version = "0.3", features = [
 
 # telemetry
 opentelemetry = { version = "0.29.1", features = ["metrics"] }
-
+tracing-opentelemetry = "0.30"
 # health-check server
 
 [profile.release]

@@ -16,6 +16,7 @@ serde_json.workspace = true
 serde = { workspace = true, features = ["derive"] }
 futures.workspace = true
 opentelemetry.workspace = true
+tracing-opentelemetry.workspace = true
 color-eyre.workspace = true
 
 axum = "0.8"
@@ -36,7 +37,6 @@ tracing-subscriber = { version = "0.3", features = [
   "registry",
 ] }
 tracing-appender = "0.2.3"
-tracing-opentelemetry = "0.30"
 tracing-error = "0.2"
 
 [dev-dependencies]
