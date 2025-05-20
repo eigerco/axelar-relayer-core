@@ -59,6 +59,8 @@ pub enum GcpError {
     Connection(RedisError),
     #[error("redis operation failed {0}")]
     Redis(RedisError),
+    #[error("redis ping operation failed {0}")]
+    RedisPing(RedisError),
     #[error("error serializing data `{value}` to redis {err}")]
     RedisSerialize { value: String, err: std::io::Error },
     #[error("error saving data to redis {0}")]

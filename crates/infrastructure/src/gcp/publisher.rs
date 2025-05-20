@@ -306,20 +306,12 @@ where
     async fn check_health(&self) -> Result<(), GcpError> {
         tracing::trace!("checking health for PeekableGcpPublisher");
 
-        // Check the GCP publisher health first
         self.publisher.check_health().await?;
 
-        // Check Redis client health by performing a simple operation
-        match self.last_message_id_store.ping().await {
-            Ok(()) => {
-                tracing::trace!("Redis client health check successful");
-                Ok(())
-            }
-            Err(err) => {
-                tracing::error!("Redis client health check failed: {}", err);
-                Err(GcpError::Redis(err))
-            }
-        }
+        self.last_message_id_store
+            .ping()
+            .await
+            .map_err(GcpError::RedisPing)
     }
 }
 
