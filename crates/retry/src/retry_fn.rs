@@ -34,7 +34,7 @@ where
 
     // you can use a macro to reduce copy-paste
     // but this will reduce readability
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, name = "retry if fails")]
     pub async fn retry(self) -> Result<T, RetryError<Err>> {
         for (retry_attempt, duration) in self.backoff.enumerate().take(self.max_attempts) {
             tokio::time::sleep(duration).await;
