@@ -71,7 +71,6 @@ services:
       - ./telemetry/tempo.yaml:/etc/tempo/tempo.yaml
     ports:
       - "3200:3200"
-      - "4320:4317"
 
   prometheus:
     image: prom/prometheus:latest
