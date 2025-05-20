@@ -65,14 +65,14 @@ where
                 .build_request(&request)
                 .wrap_err("could not build amplifier request")?;
 
-            tracing::debug!(?request, "request sending");
+            tracing::trace!(?request, "request sending");
 
             let response = request
                 .execute()
                 .await
                 .wrap_err("could not send amplifier request")?;
 
-            tracing::debug!("reading response");
+            tracing::trace!("reading response");
 
             let response = response
                 .json()
@@ -80,7 +80,7 @@ where
                 .map_err(|err| eyre::Report::new(err).wrap_err("amplifier api failed"))?
                 .map_err(|err| eyre::Report::new(err).wrap_err("failed to decode response"))?;
 
-            tracing::debug!(?response, "response from amplifier api");
+            tracing::trace!(?response, "response from amplifier api");
 
             Ok(())
         }
@@ -106,7 +106,7 @@ where
     /// consume queue messages and ingest to amplifier api
     #[tracing::instrument(skip_all, name = "amplifier-ingest-refresh")]
     pub async fn ingest(&self) -> eyre::Result<()> {
-        tracing::debug!("refresh");
+        tracing::trace!("refresh");
 
         self.event_queue_consumer
             .messages()
@@ -132,12 +132,12 @@ where
     ///
     /// This function will return an error if any of the health checks fail.
     pub async fn check_health(&self) -> eyre::Result<()> {
-        tracing::debug!("checking health");
+        tracing::trace!("checking health");
 
         // Check if the event queue consumer is healthy
         match self.event_queue_consumer.check_health().await {
             Ok(()) => {
-                tracing::debug!("event queue consumer is healthy");
+                tracing::trace!("event queue consumer is healthy");
             }
             Err(err) => {
                 tracing::warn!(%err, "event queue consumer health check failed");
@@ -154,7 +154,7 @@ where
             .await
         {
             Ok(_) => {
-                tracing::debug!("amplifier client is healthy");
+                tracing::trace!("amplifier client is healthy");
             }
             Err(err) => {
                 tracing::warn!(%err, "amplifier client health check failed");

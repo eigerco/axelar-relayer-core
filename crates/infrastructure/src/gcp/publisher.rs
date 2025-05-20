@@ -71,7 +71,7 @@ fn to_pubsub_message<T>(msg: PublishMessage<T>) -> Result<PubsubMessage, GcpErro
 where
     T: BorshSerialize + BorshDeserialize + Debug,
 {
-    tracing::debug!("serializing message to PubSub format");
+    tracing::trace!("serializing message to PubSub format");
     let deduplication_id = msg.deduplication_id.clone();
     tracing::span::Span::current().record("message_id", deduplication_id.clone());
 
@@ -87,7 +87,7 @@ where
         attributes,
         ..Default::default()
     };
-    tracing::debug!(
+    tracing::trace!(
         deduplication_id = %deduplication_id,
         message_size = message.data.len(),
         "message prepared for publishing"
@@ -109,14 +109,14 @@ where
         )
     )]
     async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, GcpError> {
-        tracing::debug!(?msg.deduplication_id, ?msg.data, "preparing to publish message to PubSub");
+        tracing::trace!(?msg.deduplication_id, ?msg.data, "preparing to publish message to PubSub");
         let msg = to_pubsub_message(msg)?;
-        tracing::debug!("publishing message to PubSub queue");
+        tracing::trace!("publishing message to PubSub queue");
 
         let start_time = std::time::Instant::now();
 
         let awaiter = self.publisher.publish(msg).await;
-        tracing::debug!("waiting for publish confirmation");
+        tracing::trace!("waiting for publish confirmation");
 
         // NOTE: await until message is sent
         let result = awaiter
@@ -145,10 +145,10 @@ where
             .map(to_pubsub_message)
             .collect::<Result<Vec<PubsubMessage>, GcpError>>()?;
 
-        tracing::debug!("submitting batch to publish queue");
+        tracing::trace!("submitting batch to publish queue");
         let start_time = std::time::Instant::now();
         let publish_handles = self.publisher.publish_bulk(bulk).await;
-        tracing::debug!("waiting for batch publish confirmations");
+        tracing::trace!("waiting for batch publish confirmations");
 
         // NOTE: await until all messages are sent
         let mut output = Vec::new();
@@ -158,7 +158,7 @@ where
                 .await
                 .map_err(|err| GcpError::Publish(Box::new(err)))?;
             self.metrics.record_publish(start_time);
-            tracing::debug!(message_index = index, message_id = %res, "message confirmed");
+            tracing::trace!(message_index = index, message_id = %res, "message confirmed");
             output.push(res);
         }
 
@@ -170,7 +170,7 @@ where
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
     async fn check_health(&self) -> Result<(), GcpError> {
-        tracing::debug!("checking health for GCP publisher");
+        tracing::trace!("checking health for GCP publisher");
 
         // Create a small health check message
         let health_attributes = HashMap::from([("health_check".to_owned(), "true".to_owned())]);
@@ -180,14 +180,14 @@ where
             attributes: health_attributes,
             ..Default::default()
         };
-        tracing::debug!("sending health check message to PubSub");
+        tracing::trace!("sending health check message to PubSub");
         // Try to publish the message and await the result
         let awaiter = self.publisher.publish(health_message).await;
 
         // Check if we can get a result from the awaiter
         match awaiter.get().await {
             Ok(_) => {
-                tracing::debug!("GCP publisher health check successful");
+                tracing::trace!("GCP publisher health check successful");
                 Ok(())
             }
             Err(err) => {
@@ -245,12 +245,12 @@ where
     )]
     async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, GcpError> {
         let last_msg_id = msg.data.id();
-        tracing::debug!(
+        tracing::trace!(
             last_message_id = %last_msg_id,
             "publishing message with peekable publisher"
         );
         let res = self.publisher.publish(msg).await?;
-        tracing::debug!(
+        tracing::trace!(
             last_message_id = %last_msg_id,
             "updating last message ID in Redis"
         );
@@ -288,7 +288,7 @@ where
         );
 
         let res = self.publisher.publish_batch(batch).await?;
-        tracing::debug!(
+        tracing::trace!(
             last_message_id = %last_msg_id,
             "updating last message ID in Redis after batch publish"
         );
@@ -304,7 +304,7 @@ where
 
     #[allow(refining_impl_trait, reason = "simplification")]
     async fn check_health(&self) -> Result<(), GcpError> {
-        tracing::debug!("checking health for PeekableGcpPublisher");
+        tracing::trace!("checking health for PeekableGcpPublisher");
 
         // Check the GCP publisher health first
         self.publisher.check_health().await?;
@@ -312,7 +312,7 @@ where
         // Check Redis client health by performing a simple operation
         match self.last_message_id_store.ping().await {
             Ok(()) => {
-                tracing::debug!("Redis client health check successful");
+                tracing::trace!("Redis client health check successful");
                 Ok(())
             }
             Err(err) => {
@@ -331,7 +331,7 @@ where
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
     async fn peek_last(&mut self) -> Result<Option<T::MessageId>, GcpError> {
-        tracing::debug!("retrieving last message ID from Redis");
+        tracing::trace!("retrieving last message ID from Redis");
         self.last_message_id_store
             .get()
             .await?

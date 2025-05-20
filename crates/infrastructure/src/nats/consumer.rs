@@ -27,9 +27,9 @@ pub struct NatsMessage<T> {
 
 impl<T: BorshDeserialize + Debug> NatsMessage<T> {
     fn decode(msg: jetstream::Message) -> Result<Self, NatsError> {
-        tracing::debug!(?msg, "decoding msg");
+        tracing::trace!(?msg, "decoding msg");
         let decoded = T::deserialize(&mut msg.payload.as_ref()).map_err(NatsError::Deserialize)?;
-        tracing::debug!(?decoded, "decoded msg");
+        tracing::trace!(?decoded, "decoded msg");
         Ok(Self { decoded, msg })
     }
 }
@@ -38,12 +38,12 @@ impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for NatsMessa
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all)]
     async fn ack(&mut self, ack_kind: interfaces::consumer::AckKind) -> Result<(), NatsError> {
-        tracing::debug!(?ack_kind, "sending ack");
+        tracing::trace!(?ack_kind, "sending ack");
         self.msg
             .ack_with(ack_kind.into())
             .await
             .map_err(NatsError::Ack)?;
-        tracing::debug!("ack sent");
+        tracing::trace!("ack sent");
         Ok(())
     }
 
@@ -82,7 +82,7 @@ where
         impl futures::Stream<Item = Result<impl interfaces::consumer::QueueMessage<T>, NatsError>>,
         NatsError,
     > {
-        tracing::debug!("getting message stream");
+        tracing::trace!("getting message stream");
         let stream = self
             .consumer_inner
             .messages()
@@ -101,7 +101,7 @@ where
 
     #[allow(refining_impl_trait, reason = "simplification")]
     async fn check_health(&self) -> Result<(), NatsError> {
-        tracing::debug!("checking health");
+        tracing::trace!("checking health");
 
         // We have to clone the consumer because `info` mutates its state
         self.consumer_inner.clone().info().await?;

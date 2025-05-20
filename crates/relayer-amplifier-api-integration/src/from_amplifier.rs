@@ -107,10 +107,10 @@ where
     let latest_processed_task = state.latest_processed_task_id();
     let latest_queried_task = state.latest_queried_task_id();
     if latest_processed_task != latest_queried_task {
-        tracing::debug!("downstream processor still processing the last batch");
+        tracing::trace!("downstream processor still processing the last batch");
         return Ok(());
     }
-    tracing::debug!(?latest_processed_task, "latest task to query");
+    tracing::trace!(?latest_processed_task, "latest task to query");
     let request = requests::GetChains::builder()
         .chain(chain_with_trailing_slash)
         .limit(config.get_chains_limit)

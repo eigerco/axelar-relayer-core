@@ -94,7 +94,7 @@ fn spawn_subscriber_worker(
                     .await
                     .expect("ingester is created");
 
-            tracing::debug!("Starting amplifier ingester...");
+            tracing::trace!("Starting amplifier ingester...");
 
             cancel_token
                 .run_until_cancelled(async move {
@@ -128,7 +128,7 @@ fn spawn_health_check_server(
     cancel_token: CancellationToken,
 ) -> tokio::task::JoinHandle<()> {
     tokio::task::spawn(async move {
-        tracing::debug!("Starting health check server...");
+        tracing::trace!("Starting health check server...");
 
         let run_token = cancel_token.clone();
         health_check::new(port)

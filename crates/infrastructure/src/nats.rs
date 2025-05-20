@@ -83,7 +83,7 @@ impl Builder {
         let connect_options = async_nats::ConnectOptions::default().retry_on_initial_connect();
         let client = async_nats::connect_with_options(urls, connect_options).await?;
         let inbox = client.new_inbox();
-        tracing::debug!("connected to nats");
+        tracing::trace!("connected to nats");
         let context = jetstream::new(client);
 
         Ok(Self { inbox, context })
@@ -107,9 +107,9 @@ impl Builder {
             allow_direct: true,
             ..Default::default()
         };
-        tracing::debug!(?config, "create or get stream with config");
+        tracing::trace!(?config, "create or get stream with config");
         let stream = self.context.get_or_create_stream(config).await?;
-        tracing::debug!("stream ready");
+        tracing::trace!("stream ready");
 
         Ok(ConfiguredStream {
             inbox: self.inbox,
@@ -155,13 +155,13 @@ impl ConfiguredStream {
             ..Default::default()
         };
 
-        tracing::debug!(?config, "create or get consumer with config");
+        tracing::trace!(?config, "create or get consumer with config");
         let consumer = self
             .stream
             .create_consumer(config)
             .await
             .map_err(NatsError::CreateConsumer)?;
-        tracing::debug!("consumer ready");
+        tracing::trace!("consumer ready");
         let consumer = consumer::NatsConsumer::new(consumer);
         Ok(consumer)
     }

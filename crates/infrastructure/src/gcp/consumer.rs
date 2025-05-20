@@ -65,7 +65,7 @@ impl<T: BorshDeserialize + BorshSerialize + Sync + Debug> GcpMessage<T> {
     ) -> Result<Self, GcpError> {
         let received_instant = Instant::now();
         let timestamp = Utc::now();
-        tracing::debug!(?msg, "decoding msg");
+        tracing::trace!(?msg, "decoding msg");
         let id = msg
             .message
             .attributes
@@ -82,7 +82,7 @@ impl<T: BorshDeserialize + BorshSerialize + Sync + Debug> GcpMessage<T> {
         span.record("received_at", timestamp.to_rfc3339());
         span.record("message_id", id.clone());
 
-        tracing::debug!(?message_content, "successfully decoded message payload");
+        tracing::trace!(?message_content, "successfully decoded message payload");
 
         Ok(Self {
             id,
@@ -97,7 +97,7 @@ impl<T: BorshDeserialize + BorshSerialize + Sync + Debug> GcpMessage<T> {
     }
 
     async fn is_processed(&mut self) -> Result<bool, GcpError> {
-        tracing::debug!(message_id = %self.id, "checking if message was already processed");
+        tracing::trace!(message_id = %self.id, "checking if message was already processed");
         let exists: bool = self.redis_connection.exists(self.redis_id_key()).await?;
         if exists {
             tracing::info!(message_id = %self.id, "message already processed - will be skipped");
@@ -114,18 +114,18 @@ impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for GcpMessag
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip_all, fields(message_id = %self.id, subscription = %self.subscription_name))]
     async fn ack(&mut self, ack_kind: interfaces::consumer::AckKind) -> Result<(), GcpError> {
-        tracing::debug!(?ack_kind, "processing acknowledgment");
+        tracing::trace!(?ack_kind, "processing acknowledgment");
 
         match ack_kind {
             interfaces::consumer::AckKind::Ack => {
-                tracing::debug!("sending positive acknowledgment to PubSub");
+                tracing::trace!("sending positive acknowledgment to PubSub");
                 self.msg
                     .ack()
                     .await
                     .map_err(|err| GcpError::Ack(Box::new(err)))?;
 
                 self.metrics.record_ack(self.received_instant);
-                tracing::debug!("acknowledged, storing message ID in Redis for deduplication...");
+                tracing::trace!("acknowledged, storing message ID in Redis for deduplication...");
 
                 // NOTE: regard this message with its id to be processed for the next 10 minutes
                 let _: String = self
@@ -136,7 +136,7 @@ impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for GcpMessag
                 tracing::info!("message successfully acknowledged and marked as processed");
             }
             interfaces::consumer::AckKind::Nak => {
-                tracing::debug!("sending negative acknowledgment to PubSub");
+                tracing::trace!("sending negative acknowledgment to PubSub");
                 self.msg
                     .nack()
                     .await
@@ -153,7 +153,7 @@ impl<T: Debug + Send + Sync> interfaces::consumer::QueueMessage<T> for GcpMessag
                     .checked_mul(2)
                     .unwrap_or(self.ack_deadline_secs);
 
-                tracing::debug!(
+                tracing::trace!(
                     old_deadline_seconds = old_deadline,
                     new_deadline_seconds = self.ack_deadline_secs,
                     "extending message acknowledgment deadline"
@@ -218,7 +218,7 @@ where
         // NOTE: clone for supervised monolithic binary
         let cancel_token = cancel_token.child_token();
 
-        tracing::debug!("connecting to Redis");
+        tracing::trace!("connecting to Redis");
         let redis_connection = redis::Client::open(config.redis_connection)
             .map_err(GcpError::Connection)?
             .get_multiplexed_async_connection()
@@ -271,14 +271,14 @@ where
             self.metrics.record_error();
             return Err(GcpError::ConsumerReadTaskExited);
         }
-        tracing::debug!("getting message stream");
+        tracing::trace!("getting message stream");
 
         Ok(self.receiver.stream())
     }
 
     #[allow(refining_impl_trait, reason = "simplification")]
     async fn check_health(&self) -> Result<(), GcpError> {
-        tracing::debug!("checking health for GCP consumer");
+        tracing::trace!("checking health for GCP consumer");
 
         // Check if the read_messages_handle is still running
         if self.read_messages_handle.is_finished() {
@@ -289,7 +289,7 @@ where
         }
 
         // If the join handle is still running, the consumer is healthy
-        tracing::debug!("GCP consumer health check successful");
+        tracing::trace!("GCP consumer health check successful");
         Ok(())
     }
 }
@@ -351,7 +351,7 @@ where
                     let redis_connection = redis_connection.clone();
                     let metrics = Arc::clone(&metrics);
                     async move {
-                        tracing::debug!(?message, "received message from PubSub");
+                        tracing::trace!(?message, "received message from PubSub");
                         match GcpMessage::decode(
                             subscription_name,
                             message,
@@ -380,7 +380,7 @@ where
                                     }
                                 }
                                 Ok(false) => {
-                                    tracing::debug!(
+                                    tracing::trace!(
                                         message_id = %message.id,
                                         "new message, forwarding..."
                                     );

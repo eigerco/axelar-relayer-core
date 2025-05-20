@@ -57,7 +57,7 @@ impl AmplifierApiClient {
         let payload = simd_json::to_vec(&request.payload())?;
 
         let json = String::from_utf8_lossy(payload.as_slice());
-        tracing::debug!(request_body = %json, "Request JSON");
+        tracing::trace!(request_body = %json, "Request JSON");
 
         let reqwest_req = client.request(method, endpoint.as_str()).body(payload);
 
@@ -150,7 +150,7 @@ impl<T, E> AmplifierResponse<T, E> {
         let mut bytes = self.response.bytes().await?.to_vec();
         if status.is_success() {
             let json = String::from_utf8_lossy(bytes.as_ref());
-            tracing::debug!(response_body = %json, "Response JSON");
+            tracing::trace!(response_body = %json, "Response JSON");
 
             let result = simd_json::from_slice::<T>(bytes.as_mut())?;
             Ok(Ok(result))

@@ -32,7 +32,7 @@ where
     /// subscribe and process
     #[tracing::instrument(skip_all, name = "amplifier-subscribe-refresh")]
     pub async fn subscribe(&mut self) -> eyre::Result<()> {
-        tracing::debug!("refresh");
+        tracing::trace!("refresh");
         let chain_with_trailing_slash = WithTrailingSlash::new(self.chain.clone());
 
         let last_task_id = self
@@ -41,7 +41,7 @@ where
             .await
             .wrap_err("could not get last retrieved task id")?;
 
-        tracing::debug!(?last_task_id, "last retrieved task");
+        tracing::trace!(?last_task_id, "last retrieved task");
 
         let request = requests::GetChains::builder()
             .chain(&chain_with_trailing_slash)
@@ -49,21 +49,21 @@ where
             .after(last_task_id)
             .build();
 
-        tracing::debug!(?request, "request for amplifier api created");
+        tracing::trace!(?request, "request for amplifier api created");
 
         let request = self
             .amplifier_client
             .build_request(&request)
             .wrap_err("could not build amplifier request")?;
 
-        tracing::debug!(?request, "sending");
+        tracing::trace!(?request, "sending");
 
         let response = request
             .execute()
             .await
             .wrap_err("could not sent amplifier api request")?;
 
-        tracing::debug!("sent");
+        tracing::trace!("sent");
 
         let response = response
             .json()
@@ -71,13 +71,13 @@ where
             .map_err(|err| eyre::Report::new(err).wrap_err("amplifier api failed"))?
             .map_err(|err| eyre::Report::new(err).wrap_err("failed to decode response"))?;
 
-        tracing::debug!(?response, "amplifier response");
+        tracing::trace!(?response, "amplifier response");
 
         let mut tasks = response.tasks;
         tasks.sort_unstable_by_key(|task| task.timestamp);
 
         if tasks.is_empty() {
-            tracing::debug!("no amplifier tasks");
+            tracing::trace!("no amplifier tasks");
             return Ok(());
         }
 
@@ -85,7 +85,7 @@ where
 
         let batch = tasks.into_iter().map(PublishMessage::from).collect();
 
-        tracing::debug!("sending to queue");
+        tracing::trace!("sending to queue");
         self.task_queue_publisher
             .publish_batch(batch)
             .await
@@ -102,12 +102,12 @@ where
     ///
     /// This function will return an error if any of the health checks fail.
     pub async fn check_health(&self) -> eyre::Result<()> {
-        tracing::debug!("checking health");
+        tracing::trace!("checking health");
 
         // Check if the task queue publisher is healthy
         match self.task_queue_publisher.check_health().await {
             Ok(()) => {
-                tracing::debug!("task queue publisher is healthy");
+                tracing::trace!("task queue publisher is healthy");
             }
             Err(err) => {
                 tracing::warn!(%err, "task queue publisher health check failed");
@@ -124,7 +124,7 @@ where
             .await
         {
             Ok(_) => {
-                tracing::debug!("amplifier client is healthy");
+                tracing::trace!("amplifier client is healthy");
             }
             Err(err) => {
                 tracing::warn!(%err, "amplifier client health check failed");

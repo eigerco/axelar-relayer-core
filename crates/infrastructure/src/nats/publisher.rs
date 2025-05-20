@@ -44,10 +44,10 @@ impl<T: BorshSerialize + Debug + Send + Sync> interfaces::publisher::Publisher<T
     #[tracing::instrument(skip_all)]
     async fn publish(&self, msg: PublishMessage<T>) -> Result<Self::Return, NatsError> {
         let mut headers = async_nats::HeaderMap::new();
-        tracing::debug!(?msg.deduplication_id, ?msg.data, "got message");
+        tracing::trace!(?msg.deduplication_id, ?msg.data, "got message");
         headers.append(NATS_MSG_ID.to_owned(), msg.deduplication_id);
         let data = borsh::to_vec(&msg.data).map_err(NatsError::Serialize)?;
-        tracing::debug!("message encoded");
+        tracing::trace!("message encoded");
         // NOTE: We always await since messages should be sent sequentially
         let publish_ack = self
             .context
@@ -55,7 +55,7 @@ impl<T: BorshSerialize + Debug + Send + Sync> interfaces::publisher::Publisher<T
             .await?
             .await?;
 
-        tracing::debug!("message published");
+        tracing::trace!("message published");
 
         Ok(publish_ack)
     }
@@ -80,7 +80,7 @@ impl<T: BorshSerialize + Debug + Send + Sync> interfaces::publisher::Publisher<T
     #[tracing::instrument(skip_all)]
     #[allow(refining_impl_trait, reason = "simplification")]
     async fn check_health(&self) -> Result<(), NatsError> {
-        tracing::debug!("checking health");
+        tracing::trace!("checking health");
         self.stream.get_info().await?;
         Ok(())
     }
@@ -97,13 +97,13 @@ where
     async fn peek_last(&mut self) -> Result<Option<T::MessageId>, NatsError> {
         let last_sequence = self.stream.info().await?.state.last_sequence;
         if last_sequence == 0 {
-            tracing::debug!("no messages");
+            tracing::trace!("no messages");
             return Ok(None);
         }
-        tracing::debug!(last_sequence, "last sequence is");
+        tracing::trace!(last_sequence, "last sequence is");
         let msg = self.stream.direct_get(last_sequence).await?;
 
-        tracing::debug!(?msg, "found message");
+        tracing::trace!(?msg, "found message");
         let msg = T::deserialize(&mut msg.payload.as_ref()).map_err(NatsError::Deserialize)?;
         Ok(Some(msg.id()))
     }

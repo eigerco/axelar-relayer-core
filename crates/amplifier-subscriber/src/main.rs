@@ -94,7 +94,7 @@ fn spawn_subscriber_worker(
                 .await
                 .expect("subscriber is created");
 
-            tracing::debug!("Starting amplifier subscriber...");
+            tracing::trace!("Starting amplifier subscriber...");
 
             let mut error_count: i32 = 0;
 
@@ -128,7 +128,7 @@ fn spawn_health_check_server(
     cancel_token: CancellationToken,
 ) -> tokio::task::JoinHandle<()> {
     tokio::task::spawn(async move {
-        tracing::debug!("Starting health check server...");
+        tracing::trace!("Starting health check server...");
 
         health_check::new(port)
             .add_health_check(move || {

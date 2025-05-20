@@ -212,10 +212,10 @@ async fn check_and_respond(
 
     let has_error = results.iter().any(core::result::Result::is_err);
     if has_error {
-        tracing::debug!("Health check failed");
+        tracing::trace!("Health check failed");
         (err_status, Json(json!({ "status": err_str })))
     } else {
-        tracing::debug!("Health check succeeded");
+        tracing::trace!("Health check succeeded");
         (ok_status, Json(json!({ "status": ok_str })))
     }
 }

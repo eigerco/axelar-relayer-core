@@ -106,7 +106,7 @@ pub fn run(
                     tokio::select! {
                         _ = interval.tick() => {
                             if cancel_token.is_cancelled() {
-                                tracing::debug!("supervisor detected shutdown signal");
+                                tracing::trace!("supervisor detected shutdown signal");
                                 tokio::time::sleep(Duration::from_millis(WORKER_GRACEFUL_SHUTDOWN_MS)).await;
                                 break;
                             }
@@ -119,14 +119,14 @@ pub fn run(
                                     None
                                 }
                                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                                    tracing::debug!("worker channel disconnected");
+                                    tracing::trace!("worker channel disconnected");
                                     None
                                 }
                             }
                         } => {
                             if let Some(worker_name) = worker_result {
                                 if cancel_token.is_cancelled() {
-                                    tracing::debug!("worker crashed during shutdown, no restarting");
+                                    tracing::trace!("worker crashed during shutdown, no restarting");
                                     continue;
                                 }
                                 tracing::info!(worker_name, "Restarting worker");
@@ -152,7 +152,7 @@ pub fn run(
 
                                 if let Some(Some(old_handle)) = active_workers.remove(&worker_name) {
                                     _ = old_handle.join();
-                                    tracing::debug!(worker_name, "Replaced existing worker handle");
+                                    tracing::trace!(worker_name, "Replaced existing worker handle");
                                 }
                                 active_workers.insert(worker_name.clone(), Some(worker_handle));
                             }
@@ -192,7 +192,7 @@ fn spawn_worker<'scope>(
     scope: &'scope std::thread::Scope<'scope, '_>,
     tickrate: Duration,
 ) -> std::thread::ScopedJoinHandle<'scope, ()> {
-    tracing::debug!(worker_name, "starting worker");
+    tracing::trace!(worker_name, "starting worker");
     let worker_name = worker_name.clone();
 
     scope.spawn(move || {
@@ -250,9 +250,9 @@ fn spawn_worker<'scope>(
         if cancel_token.is_cancelled() {
             thread::sleep(Duration::from_secs(1));
             _ = worker_crashed_tx.send(worker_name.clone());
-            tracing::debug!(worker_name, "Reported worker crash for restart");
+            tracing::trace!(worker_name, "Reported worker crash for restart");
         }
 
-        tracing::debug!("worker exit post crash report");
+        tracing::trace!("worker exit post crash report");
     })
 }

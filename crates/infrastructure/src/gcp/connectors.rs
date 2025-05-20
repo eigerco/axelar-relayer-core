@@ -382,7 +382,7 @@ pub async fn kms_tls_client_config(
     let client = google_cloud_kms::client::Client::new(config)
         .await
         .map_err(GcpError::KmsClient)?;
-    tracing::debug!("client connected");
+    tracing::trace!("client connected");
     let provider = rustls_gcp_kms::provider(client, kms_config).await?;
 
     let cert = CertificateDer::from_pem_slice(public_certificate.iter().as_slice())?;
@@ -396,7 +396,7 @@ pub async fn kms_tls_client_config(
         .with_root_certificates(root_store)
         .with_client_auth_cert(vec![cert], dummy_key())?;
 
-    tracing::debug!("tls client config created");
+    tracing::trace!("tls client config created");
     Ok(Box::new(client_config))
 }
 
