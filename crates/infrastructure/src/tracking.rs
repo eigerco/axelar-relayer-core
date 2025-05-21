@@ -28,11 +28,11 @@ impl ThroughputTracker {
         reason = "Subtraction is needed for rate calculation"
     )]
     pub(crate) fn update_and_get_rate(&self) -> Option<f64> {
-        let current_count = self.processed_count.load(Ordering::Relaxed);
-        let prev_count = self.last_count.swap(current_count, Ordering::Relaxed);
+        let current_count = self.processed_count.load(Ordering::Acquire);
+        let prev_count = self.last_count.swap(current_count, Ordering::AcqRel);
 
         let now = current_time_millis();
-        let last = self.last_timestamp_ms.swap(now, Ordering::Relaxed);
+        let last = self.last_timestamp_ms.swap(now, Ordering::AcqRel);
 
         let elapsed_sec = (now - last) as f64 / 1000.0_f64;
         if elapsed_sec > 0.0_f64 {
