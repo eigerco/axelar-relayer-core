@@ -29,14 +29,6 @@ pub(crate) struct Config {
     pub max_errors: u32,
 }
 
-/// Configuration for health check server
-#[derive(Debug, Deserialize, PartialEq)]
-pub(crate) struct HealthCheckConfig {
-    /// Port for the health check server
-    #[serde(rename = "port")]
-    pub port: u16,
-}
-
 impl ValidateConfig for Config {
     fn validate(&self) -> eyre::Result<()> {
         ensure!(
