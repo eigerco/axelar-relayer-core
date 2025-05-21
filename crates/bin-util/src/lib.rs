@@ -149,7 +149,7 @@ pub fn register_cancel() -> CancellationToken {
 ///
 /// ```
 /// use opentelemetry::KeyValue;
-/// use crate::metrics::SimpleMetrics;
+/// use bin_util::SimpleMetrics;
 ///
 /// // Create metrics with component identification
 /// let metrics = SimpleMetrics::new(
