@@ -17,6 +17,7 @@ impl ThroughputTracker {
         }
     }
 
+    /// Rate of operations i.e. messages/sec
     #[allow(clippy::float_arithmetic, reason = "need floating-point operations")]
     #[allow(clippy::cast_precision_loss, reason = "necessary in this context")]
     #[allow(
