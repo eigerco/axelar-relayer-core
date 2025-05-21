@@ -33,9 +33,6 @@ use clap::{Parser, crate_name, crate_version};
 use config::Config;
 use tokio_util::sync::CancellationToken;
 
-// TODO: Move this to config
-const MAX_ERRORS: i32 = 20;
-
 #[derive(Parser, Debug)]
 #[command(author = "Eiger", name = "Axelar Relayer(amplifier-subscriber)")]
 pub(crate) struct Cli {
@@ -63,7 +60,12 @@ async fn main() {
 
     let cancel_token = bin_util::register_cancel();
     tokio::try_join!(
-        spawn_subscriber_worker(config.tickrate, cli.config_path.clone(), &cancel_token),
+        spawn_subscriber_worker(
+            config.tickrate,
+            config.max_errors,
+            cli.config_path.clone(),
+            &cancel_token
+        ),
         spawn_health_check_server(
             config.health_check.port,
             cli.config_path.clone(),
@@ -77,6 +79,7 @@ async fn main() {
 
 fn spawn_subscriber_worker(
     tickrate: Duration,
+    max_errors: u32,
     config_path: String,
     cancel_token: &CancellationToken,
 ) -> tokio::task::JoinHandle<()> {
@@ -96,7 +99,7 @@ fn spawn_subscriber_worker(
 
             tracing::trace!("Starting amplifier subscriber...");
 
-            let mut error_count: i32 = 0;
+            let mut error_count: u32 = 0;
 
             cancel_token
                 .run_until_cancelled(async move {
@@ -106,12 +109,12 @@ fn spawn_subscriber_worker(
                         if let Err(err) = subscriber.subscribe().await {
                             tracing::error!(?err, "error during ingest, skipping...");
                             error_count = error_count.saturating_add(1);
-                            if error_count >= MAX_ERRORS {
+                            if error_count >= max_errors {
                                 tracing::error!("Max error threshold reached. Exiting loop.");
                                 break;
                             }
                         } else {
-                            error_count = 0_i32;
+                            error_count = 0_u32;
                         }
                     }
                 })

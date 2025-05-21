@@ -1,4 +1,5 @@
 tickrate_secs = 5
+max_errors = 20
 
 env_filters = [
   "storage_bus=info",
