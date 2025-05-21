@@ -1,5 +1,8 @@
 name: Ensure Conventional Commit message
 
+permissions:
+  contents: read
+
 on: pull_request
 
 jobs:
