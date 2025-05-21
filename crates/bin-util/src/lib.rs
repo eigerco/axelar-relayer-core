@@ -301,7 +301,6 @@ impl SimpleMetrics {
 /// ```
 ///
 /// // If you need to extend metrics simply add couter to "owner struct"" i.e.
-/// // or create another metrics struct to hold them
 /// ```
 /// use opentelemetry::metrics::Counter;
 /// use bin_util::BlockChainIngesterMetrics;
