@@ -263,6 +263,7 @@ pub struct BlockChainIngesterMetrics {
     verified_stak: Counter<u64>,
     refunded_task: Counter<u64>,
     constructed_proof_task: Counter<u64>,
+
     error_raised: Counter<u64>,
     skipped_task: Counter<u64>,
     attributes: Vec<KeyValue>,
