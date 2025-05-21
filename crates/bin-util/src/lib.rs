@@ -312,6 +312,13 @@ impl SimpleMetrics {
 /// ```
 /// // Or create another metrics struct
 pub struct BlockChainIngesterMetrics {
+    // received
+    gateway_tx_received_task: Counter<u64>,
+    execute_received_task: Counter<u64>,
+    verify_received_task: Counter<u64>,
+    refund_received_task: Counter<u64>,
+    construct_proof_received_task: Counter<u64>,
+    // processed
     gateway_tx_approved_task: Counter<u64>,
     executed_task: Counter<u64>,
     verified_stak: Counter<u64>,
@@ -329,7 +336,7 @@ impl BlockChainIngesterMetrics {
     /// # Parameters
     ///
     /// * `name` - The name to use for the OpenTelemetry meter, typically identifying the component
-    ///   or service (e.g., `"solana_ingester"`).
+    ///   (e.g., `"solana_ingester"`).
     /// * `attributes` - Common key-value pairs to attach to all metrics
     ///
     /// # Returns
@@ -338,7 +345,35 @@ impl BlockChainIngesterMetrics {
     #[must_use]
     pub fn new(name: &'static str, attributes: Vec<KeyValue>) -> Self {
         let meter = global::meter(name);
-        let gateway_tx_tasks_approved = meter
+
+        // Received task counters
+        let gateway_tx_received_task = meter
+            .u64_counter("tasks.received.gateway_tx.count")
+            .with_description("Number of received GatewayTx tasks")
+            .build();
+
+        let execute_received_task = meter
+            .u64_counter("tasks.received.execute.count")
+            .with_description("Number of received Execute tasks")
+            .build();
+
+        let verify_received_task = meter
+            .u64_counter("tasks.received.verify.count")
+            .with_description("Number of received Verify tasks")
+            .build();
+
+        let refund_received_task = meter
+            .u64_counter("tasks.received.refund.count")
+            .with_description("Number of received Refund tasks")
+            .build();
+
+        let construct_proof_received_task = meter
+            .u64_counter("tasks.received.construct_proof.count")
+            .with_description("Number of received ConstructProof tasks")
+            .build();
+
+        // Processed task counters
+        let gateway_tx_approved_task = meter
             .u64_counter("tasks.processed.gateway_tx.count")
             .with_description("Number of processed GatewayTx tasks")
             .build();
@@ -358,6 +393,7 @@ impl BlockChainIngesterMetrics {
             .u64_counter("tasks.processed.construct_proof.count")
             .with_description("Number of processed ConstructProof tasks")
             .build();
+
         let error_raised = meter
             .u64_counter("errors.count")
             .with_description("Total number of errors encountered during operation")
@@ -366,37 +402,84 @@ impl BlockChainIngesterMetrics {
             .u64_counter("skipped.count")
             .with_description("Total number of skipped tasks")
             .build();
+
         Self {
-            gateway_tx_approved_task: gateway_tx_tasks_approved,
+            // Received tasks
+            gateway_tx_received_task,
+            execute_received_task,
+            verify_received_task,
+            refund_received_task,
+            construct_proof_received_task,
+
+            // Processed tasks
+            gateway_tx_approved_task,
             executed_task,
             verified_stak,
             refunded_task,
             constructed_proof_task,
+
             error_raised,
             skipped_task,
             attributes,
         }
     }
-    /// Records the processing of a gateway transaction task.
+
+    // -- Received task methods
+
+    /// Records the receipt of a gateway transaction task.
+    pub fn record_gateway_tx_received(&self) {
+        self.gateway_tx_received_task.add(1, &self.attributes);
+    }
+
+    /// Records the receipt of an execute task.
+    pub fn record_execute_received(&self) {
+        self.execute_received_task.add(1, &self.attributes);
+    }
+
+    /// Records the receipt of a verify task.
+    pub fn record_verify_received(&self) {
+        self.verify_received_task.add(1, &self.attributes);
+    }
+
+    /// Records the receipt of a refund task.
+    pub fn record_refund_received(&self) {
+        self.refund_received_task.add(1, &self.attributes);
+    }
+
+    /// Records the receipt of a proof construction task.
+    pub fn record_construct_proof_received(&self) {
+        self.construct_proof_received_task.add(1, &self.attributes);
+    }
+
+    // -- Processed task methods
+
+    /// Records the successful completion of a gateway transaction task.
     pub fn record_gateway_tx_approved(&self) {
         self.gateway_tx_approved_task.add(1, &self.attributes);
     }
-    /// Records the processing of an execute task.
+
+    /// Records the successful completion of an execute task.
     pub fn record_executed(&self) {
         self.executed_task.add(1, &self.attributes);
     }
-    /// Records the processing of a verify task.
+
+    /// Records the successful completion of a verify task.
     pub fn record_verified(&self) {
         self.verified_stak.add(1, &self.attributes);
     }
-    /// Records the processing of a refund task.
+
+    /// Records the successful completion of a refund task.
     pub fn record_refunded(&self) {
         self.refunded_task.add(1, &self.attributes);
     }
-    /// Records the processing of a proof construction task.
+
+    /// Records the successful completion of a proof construction task.
     pub fn record_constructed_proof(&self) {
         self.constructed_proof_task.add(1, &self.attributes);
     }
+
+    // -- Etc
+
     /// Records an error encountered during task processing.
     pub fn record_error(&self) {
         self.error_raised.add(1, &self.attributes);
