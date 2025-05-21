@@ -1,6 +1,8 @@
-//! Binary utils
+//! Binary utils for top level ingesters/subscribers
 
-const ENV_APP_PREFIX: &str = "RELAYER";
+/// Env var prefix used to feed config to application
+/// i.e. `RELAYER_ACK_DEADLINE_SECS=10`
+pub const ENV_APP_PREFIX: &str = "RELAYER";
 const SEPARATOR: &str = "_";
 
 pub mod health_check;
@@ -137,92 +139,29 @@ pub fn register_cancel() -> CancellationToken {
     cancel_token
 }
 
-/// Deserializes configuration from a specified file path into a typed structure.
+/// Simple metrics for tracking basic error and skip events.
 ///
-/// This function loads configuration settings from a file and environment variables,
-/// then deserializes them into the specified type `T`.
+/// `SimpleMetrics` provides a lightweight metrics collection system focused on tracking
+/// error occurrences and skipped operations. This is useful for simple applications or
+/// components that need basic observability without the overhead of comprehensive metrics.
 ///
-/// # Type Parameters
+/// # Examples
 ///
-/// * `T` - The target type for deserialization, must implement `DeserializeOwned`
+/// ```
+/// use opentelemetry::KeyValue;
+/// use crate::metrics::SimpleMetrics;
 ///
-/// # Parameters
+/// // Create metrics with component identification
+/// let metrics = SimpleMetrics::new(
+///     "simple_component",
+///     vec![
+///         KeyValue::new("component", "data_processor"),
+///     ]
+/// );
 ///
-/// * `config_path` - Path to the configuration file (without extension)
+/// metrics.record_error();
 ///
-/// # Returns
-///
-/// * `eyre::Result<T>` - The deserialized configuration or an error
-/// # Errors
-///
-/// This function will return an error in the following situations:
-/// * If the configuration file at `config_path` cannot be found or read
-/// * If the configuration format is invalid or corrupted
-/// * If environment variables with the specified prefix cannot be parsed
-/// * If the deserialization to type `T` fails due to missing or type-mismatched fields
-pub fn try_deserialize<T: serde::de::DeserializeOwned + ValidateConfig>(
-    config_path: &str,
-) -> eyre::Result<T> {
-    let cfg_deserializer = Config::builder()
-        .add_source(File::with_name(config_path).required(false))
-        .add_source(Environment::with_prefix(ENV_APP_PREFIX).separator(SEPARATOR))
-        .build()
-        .wrap_err("could not load config")?;
-
-    let config: T = cfg_deserializer
-        .try_deserialize()
-        .wrap_err("could not parse config")?;
-
-    config.validate()?;
-
-    Ok(config)
-}
-
-/// A trait for validating configuration structures.
-pub trait ValidateConfig {
-    /// Validates the configuration data.
-    ///
-    /// # Returns
-    ///
-    /// * `eyre::Result<()>` - Ok if validation passes, or an error with a message describing why
-    ///   validation failed
-    /// # Errors
-    ///
-    /// This function will return an error if config is wrong
-    fn validate(&self) -> eyre::Result<()>;
-}
-
-/// Deserializes a duration value from seconds.
-///
-/// This function deserializes an unsigned 64-bit integer representing seconds
-/// and converts it into a `Duration` type.
-///
-/// # Type Parameters
-///
-/// * `'de` - The lifetime of the deserializer
-/// * `D` - The deserializer type
-///
-/// # Parameters
-///
-/// * `deserializer` - The deserializer to use
-///
-/// # Returns
-///
-/// * `Result<Duration, D::Error>` - The deserialized duration or an error
-///
-/// # Errors
-///
-/// This function will return an error if:
-/// * The value cannot be deserialized as a u64
-pub fn deserialize_duration_from_secs<'de, D>(deserializer: D) -> Result<Duration, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let seconds = u64::deserialize(deserializer)?;
-    Ok(Duration::from_secs(seconds))
-}
-
-/// Global metrics
+/// // Record metrics during operations
 pub struct SimpleMetrics {
     error_raised: Counter<u64>,
     skipped: Counter<u64>,
@@ -230,7 +169,7 @@ pub struct SimpleMetrics {
 }
 
 impl SimpleMetrics {
-    /// Creates a new set of global metrics with the specified meter name.
+    /// Creates a new set of simple metrics with the specified meter name.
     ///
     /// # Parameters
     ///
@@ -488,4 +427,89 @@ impl BlockChainIngesterMetrics {
     pub fn record_skipped(&self) {
         self.skipped_task.add(1, &self.attributes);
     }
+}
+
+/// Deserializes configuration from a specified file path into a typed structure.
+///
+/// This function loads configuration settings from a file and environment variables,
+/// then deserializes them into the specified type `T`.
+///
+/// # Type Parameters
+///
+/// * `T` - The target type for deserialization, must implement `DeserializeOwned`
+///
+/// # Parameters
+///
+/// * `config_path` - Path to the configuration file (without extension)
+///
+/// # Returns
+///
+/// * `eyre::Result<T>` - The deserialized configuration or an error
+/// # Errors
+///
+/// This function will return an error in the following situations:
+/// * If the configuration file at `config_path` cannot be found or read
+/// * If the configuration format is invalid or corrupted
+/// * If environment variables with the specified prefix cannot be parsed
+/// * If the deserialization to type `T` fails due to missing or type-mismatched fields
+pub fn try_deserialize<T: serde::de::DeserializeOwned + ValidateConfig>(
+    config_path: &str,
+) -> eyre::Result<T> {
+    let cfg_deserializer = Config::builder()
+        .add_source(File::with_name(config_path).required(false))
+        .add_source(Environment::with_prefix(ENV_APP_PREFIX).separator(SEPARATOR))
+        .build()
+        .wrap_err("could not load config")?;
+
+    let config: T = cfg_deserializer
+        .try_deserialize()
+        .wrap_err("could not parse config")?;
+
+    config.validate()?;
+
+    Ok(config)
+}
+
+/// A trait for validating configuration structures.
+pub trait ValidateConfig {
+    /// Validates the configuration data.
+    ///
+    /// # Returns
+    ///
+    /// * `eyre::Result<()>` - Ok if validation passes, or an error with a message describing why
+    ///   validation failed
+    /// # Errors
+    ///
+    /// This function will return an error if config is wrong
+    fn validate(&self) -> eyre::Result<()>;
+}
+
+/// Deserializes a duration value from seconds.
+///
+/// This function deserializes an unsigned 64-bit integer representing seconds
+/// and converts it into a `Duration` type.
+///
+/// # Type Parameters
+///
+/// * `'de` - The lifetime of the deserializer
+/// * `D` - The deserializer type
+///
+/// # Parameters
+///
+/// * `deserializer` - The deserializer to use
+///
+/// # Returns
+///
+/// * `Result<Duration, D::Error>` - The deserialized duration or an error
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// * The value cannot be deserialized as a u64
+pub fn deserialize_duration_from_secs<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let seconds = u64::deserialize(deserializer)?;
+    Ok(Duration::from_secs(seconds))
 }
