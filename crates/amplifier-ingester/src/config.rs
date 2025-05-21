@@ -14,6 +14,7 @@ const fn default_max_errors() -> u32 {
 pub(crate) struct Config {
     /// Per-crate log levels (e.g. `my_crate` = "debug")
     pub env_filters: Option<Vec<String>>,
+    /// Configuration for the Amplifier API processor
     pub amplifier_component: relayer_amplifier_api_integration::Config,
     /// Duration (in seconds) to wait between consecutive polling
     /// operations Used to prevent overwhelming the network with requests
