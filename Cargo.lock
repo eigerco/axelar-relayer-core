@@ -2210,8 +2210,8 @@ checksum = "84b29a9f89f1a954936d5aa92f19b2feec3c8f3971d3e96206640db7f9706ae3"
 
 [[package]]
 name = "opentelemetry-system-metrics"
-version = "0.4.0"
-source = "git+https://github.com/haixuanTao/opentelemetry-system-metrics#4db5246b477f92499b9fdbc20c83464e005c71ce"
+version = "0.4.1"
+source = "git+https://github.com/haixuanTao/opentelemetry-system-metrics#6e8d811a031b0734e085c90851995b5f0e807bb5"
 dependencies = [
  "eyre",
  "nvml-wrapper",
