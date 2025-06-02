@@ -28,9 +28,11 @@ mod config;
 
 use core::time::Duration;
 
-use bin_util::health_check;
+use async_trait::async_trait;
+use bin_util::health_check::{HealthCheck, Server};
 use clap::{Parser, crate_name, crate_version};
 use config::Config;
+use eyre::Result;
 use tokio_util::sync::CancellationToken;
 
 #[derive(Parser, Debug)]
@@ -38,6 +40,33 @@ use tokio_util::sync::CancellationToken;
 pub(crate) struct Cli {
     #[arg(long, short, default_value = "relayer-config", help = "Config path")]
     pub config_path: String,
+}
+
+struct AmplifierHealthChecker {
+    config_path: String,
+}
+
+impl AmplifierHealthChecker {
+    fn new(config_path: String) -> Self {
+        Self { config_path }
+    }
+}
+
+#[async_trait]
+impl HealthCheck for AmplifierHealthChecker {
+    async fn check(&self) -> Result<bool> {
+        #[cfg(feature = "nats")]
+        let subscriber = components::nats::new_amplifier_subscriber(&self.config_path)
+            .await
+            .expect("subscriber is created");
+
+        #[cfg(feature = "gcp")]
+        let subscriber = components::gcp::new_amplifier_subscriber(&self.config_path)
+            .await
+            .expect("subscriber is created");
+
+        subscriber.check_health().await.map(|_| true)
+    }
 }
 
 #[tokio::main]
@@ -134,24 +163,10 @@ fn spawn_health_check_server(
     tokio::task::spawn(async move {
         tracing::trace!("Starting health check server...");
 
-        health_check::new(port)
-            .add_health_check(move || {
-                let config_path = config_path.clone();
-                async move {
-                    #[cfg(feature = "nats")]
-                    let subscriber = components::nats::new_amplifier_subscriber(&config_path)
-                        .await
-                        .expect("subscriber is created");
+        let health_checker = AmplifierHealthChecker::new(config_path);
+        let server = Server::new(port, health_checker);
 
-                    #[cfg(feature = "gcp")]
-                    let subscriber = components::gcp::new_amplifier_subscriber(&config_path)
-                        .await
-                        .expect("subscriber is created");
-                    subscriber.check_health().await
-                }
-            })
-            .run(cancel_token)
-            .await;
+        server.run(cancel_token).await;
 
         tracing::warn!("Shutting down health check server...");
     })

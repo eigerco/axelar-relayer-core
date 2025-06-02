@@ -25,6 +25,7 @@ tokio-util.workspace = true
 serde.workspace = true
 clap.workspace = true
 url.workspace = true
+async-trait.workspace = true
 
 [features]
 default = ["gcp"]

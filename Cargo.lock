@@ -62,6 +62,7 @@ dependencies = [
 name = "amplifier-ingester"
 version = "0.1.1"
 dependencies = [
+ "async-trait",
  "bin-util",
  "clap",
  "eyre",
@@ -81,6 +82,7 @@ name = "amplifier-subscriber"
 version = "0.1.1"
 dependencies = [
  "amplifier-api",
+ "async-trait",
  "bin-util",
  "clap",
  "eyre",
@@ -382,6 +384,7 @@ checksum = "89e25b6adfb930f02d1981565a6e5d9c547ac15a96606256d3b59040e5cd4ca3"
 name = "bin-util"
 version = "0.1.1"
 dependencies = [
+ "async-trait",
  "axum",
  "color-eyre",
  "config",
@@ -4051,14 +4054,16 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.16.0"
+version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "458f7a779bf54acc9f347480ac654f68407d3aab21269a6e3c9f922acd9e2da9"
+checksum = "3cf4199d1e5d15ddd86a694e4d0dffa9c323ce759fea589f00fef9d81cc1931d"
 dependencies = [
  "borsh",
  "borsh-derive",
  "getrandom 0.3.3",
+ "js-sys",
  "serde",
+ "wasm-bindgen",
 ]
 
 [[package]]

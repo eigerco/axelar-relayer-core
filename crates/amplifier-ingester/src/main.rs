@@ -28,9 +28,11 @@ mod config;
 
 use core::time::Duration;
 
-use bin_util::health_check;
+use async_trait::async_trait;
+use bin_util::health_check::{HealthCheck, Server};
 use clap::{Parser, crate_name, crate_version};
 use config::Config;
+use eyre::Result;
 use tokio_util::sync::CancellationToken;
 
 #[derive(Parser, Debug)]
@@ -126,6 +128,34 @@ fn spawn_subscriber_worker(
     })
 }
 
+struct AmplifierHealthChecker {
+    config_path: String,
+}
+
+impl AmplifierHealthChecker {
+    fn new(config_path: String) -> Self {
+        Self { config_path }
+    }
+}
+
+#[async_trait]
+impl HealthCheck for AmplifierHealthChecker {
+    async fn check(&self) -> Result<bool> {
+        #[cfg(feature = "nats")]
+        let ingester = components::nats::new_amplifier_ingester(&self.config_path)
+            .await
+            .expect("ingester is created");
+
+        #[cfg(feature = "gcp")]
+        let ingester =
+            components::gcp::new_amplifier_ingester(&self.config_path, CancellationToken::new())
+                .await
+                .expect("ingester is created");
+
+        ingester.check_health().await.map(|_| true)
+    }
+}
+
 fn spawn_health_check_server(
     port: u16,
     config_path: String,
@@ -134,28 +164,10 @@ fn spawn_health_check_server(
     tokio::task::spawn(async move {
         tracing::trace!("Starting health check server...");
 
-        let run_token = cancel_token.clone();
-        health_check::new(port)
-            .add_health_check(move || {
-                let config_path = config_path.clone();
-                #[allow(unused_variables, reason = "weird bug as cancel token IS USED")]
-                let cancel_token = cancel_token.clone();
-                async move {
-                    #[cfg(feature = "nats")]
-                    let ingester = components::nats::new_amplifier_ingester(&config_path)
-                        .await
-                        .expect("ingester is created");
+        let health_checker = AmplifierHealthChecker::new(config_path);
+        let server = Server::new(port, health_checker);
 
-                    #[cfg(feature = "gcp")]
-                    let ingester =
-                        components::gcp::new_amplifier_ingester(&config_path, cancel_token)
-                            .await
-                            .expect("ingester is created");
-                    ingester.check_health().await
-                }
-            })
-            .run(run_token)
-            .await;
+        server.run(cancel_token).await;
 
         tracing::warn!("Shutting down health check server...");
     })
