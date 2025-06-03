@@ -15,7 +15,10 @@ pub struct NatsKvStore<T> {
     _phantom: PhantomData<T>,
 }
 
-impl<T> NatsKvStore<T> {
+impl<T> NatsKvStore<T>
+where
+    T: Send,
+{
     pub(crate) const fn new(bucket: String, store: kv::Store) -> Self {
         Self {
             bucket,
@@ -27,7 +30,7 @@ impl<T> NatsKvStore<T> {
 
 impl<T> interfaces::kv_store::KvStore<T> for NatsKvStore<T>
 where
-    T: BorshSerialize + BorshDeserialize + Debug,
+    T: BorshSerialize + BorshDeserialize + Send + Sync + Debug,
 {
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip(self))]

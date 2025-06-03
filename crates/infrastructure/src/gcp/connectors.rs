@@ -312,7 +312,8 @@ pub async fn connect_peekable_publisher<T>(
 ) -> Result<PeekableGcpPublisher<T>, GcpError>
 where
     T: QueueMsgId,
-    T::MessageId: BorshSerialize + BorshDeserialize + core::fmt::Display,
+    T::MessageId: BorshSerialize + BorshDeserialize + core::fmt::Display + Send,
+    <T as QueueMsgId>::MessageId: Sync,
 {
     let kv_store = RedisClient::connect(redis_key, redis_connection).await?;
     let client = connect_pubsub_client().await?;

@@ -88,7 +88,7 @@ impl<T: BorshSerialize + Debug + Send + Sync> interfaces::publisher::Publisher<T
 
 impl<T> interfaces::publisher::PeekMessage<T> for NatsPublisher<T>
 where
-    T: BorshDeserialize + QueueMsgId,
+    T: BorshDeserialize + QueueMsgId + Send,
 {
     // TODO: make sure you don't remove message from
     // main stream if moving out to dlq

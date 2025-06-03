@@ -270,7 +270,7 @@ pub async fn connect_publisher<Message: QueueMsgId>(
 /// }
 /// ```
 #[tracing::instrument]
-pub async fn connect_kv_store<T>(
+pub async fn connect_kv_store<T: Send>(
     urls: &[Url],
     bucket: String,
     description: String,
