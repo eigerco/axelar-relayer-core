@@ -62,13 +62,14 @@ pub mod consumer {
 /// Publish interfaces
 #[cfg(feature = "publisher-interfaces")]
 pub mod publisher {
+    use borsh::{BorshDeserialize, BorshSerialize};
     use core::error::Error;
-    use core::fmt::Display;
+    use core::fmt::{Debug, Display};
 
     /// Generic trait for Id on a type
     pub trait QueueMsgId {
         /// type of message id
-        type MessageId: Display;
+        type MessageId: Display + BorshSerialize + BorshDeserialize + Debug + Send + Sync;
         /// return id
         fn id(&self) -> Self::MessageId;
     }
