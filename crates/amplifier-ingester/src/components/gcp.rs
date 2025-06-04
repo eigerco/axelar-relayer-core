@@ -18,9 +18,6 @@ pub(crate) struct GcpSectionConfig {
 pub(crate) struct GcpConfig {
     pub kms: KmsConfig,
     pub redis_connection: String,
-    pub tasks_topic: String,
-    pub tasks_subscription: String,
-    pub events_topic: String,
     pub events_subscription: String,
     pub ack_deadline_secs: i32,
     #[serde(default)]
@@ -34,18 +31,6 @@ impl ValidateConfig for GcpSectionConfig {
         ensure!(
             !self.gcp.redis_connection.is_empty(),
             eyre!("gcp redis_connection should be set")
-        );
-        ensure!(
-            !self.gcp.tasks_topic.is_empty(),
-            eyre!("gcp tasks_topic should be set")
-        );
-        ensure!(
-            !self.gcp.tasks_subscription.is_empty(),
-            eyre!("gcp tasks_subscription should be set")
-        );
-        ensure!(
-            !self.gcp.events_topic.is_empty(),
-            eyre!("gcp events_topic should be set")
         );
         ensure!(
             !self.gcp.events_subscription.is_empty(),

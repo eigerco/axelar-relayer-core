@@ -21,9 +21,6 @@ pub(crate) struct GcpSectionConfig {
 pub(crate) struct GcpConfig {
     redis_connection: String,
     tasks_topic: String,
-    tasks_subscription: String,
-    events_topic: String,
-    events_subscription: String,
     nak_deadline_secs: i32,
     #[serde(default = "default_worker_count")]
     worker_count: usize,
@@ -41,18 +38,6 @@ impl ValidateConfig for GcpSectionConfig {
         ensure!(
             !self.gcp.tasks_topic.is_empty(),
             eyre!("gcp tasks_topic should be set")
-        );
-        ensure!(
-            !self.gcp.tasks_subscription.is_empty(),
-            eyre!("gcp tasks_subscription should be set")
-        );
-        ensure!(
-            !self.gcp.events_topic.is_empty(),
-            eyre!("gcp events_topic should be set")
-        );
-        ensure!(
-            !self.gcp.events_subscription.is_empty(),
-            eyre!("gcp events_subscription should be set")
         );
         ensure!(
             self.gcp.nak_deadline_secs > 0_i32,
