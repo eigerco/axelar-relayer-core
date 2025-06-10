@@ -70,7 +70,7 @@ mod id {
 
             let log_index = log_index_str
                 .parse()
-                .map_err(|_| TxEventParseError::InvalidLogIndex)?;
+                .map_err(|err| TxEventParseError::LogIndexNotNumber(err))?;
 
             Ok((tx_hash.to_string(), log_index))
         }
