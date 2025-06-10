@@ -38,6 +38,14 @@ mod id {
     )]
     pub struct TokenId(pub String);
 
+    #[derive(thiserror::Error, Clone, Debug, PartialEq)]
+    pub enum TxEventParseError {
+        #[error("Invalid TxEvent format: missing dash separator")]
+        SeparatorNotFound,
+        #[error("Invalid log index: failed to parse as number, err {}")]
+        LogIndexNotNumber(std::num::ParseIntError),
+    }
+
     /// Indicates a type in format of `TxHash-LogIndex`
     ///
     /// TxHash-LogIndex. for in-depth docs reference [this document](https://bright-ambert-2bd.notion.site/Amplifier-GMP-API-EXTERNAL-911e740b570b4017826c854338b906c8#e8a7398607bd496eb0b8e95e887d6574)
@@ -50,6 +58,20 @@ mod id {
         #[must_use]
         pub fn new(tx_hash: &str, log_index: usize) -> Self {
             Self(format!("{tx_hash}-{log_index}"))
+        }
+
+        #[must_use]
+        pub fn hash_and_index(&self) -> Result<(String, usize), TxEventParseError> {
+            let (tx_hash, log_index_str) = self
+                .0
+                .rsplit_once('-')
+                .ok_or(TxEventParseError::SeparatorNotFound)?;
+
+            let log_index = log_index_str
+                .parse()
+                .map_err(|_| TxEventParseError::InvalidLogIndex)?;
+
+            Ok((tx_hash.to_string(), log_index))
         }
 
         /// Construct a new event id for a [`CannotExecuteMessageEvent`]
@@ -1655,5 +1677,16 @@ mod tests {
         .into_bytes();
 
         let _deserialized: GetTasksResult = from_slice(json_data.as_mut_slice()).unwrap();
+    }
+
+    #[test]
+    fn text_hash_and_index_on_tx_event() {
+        let tx_hash =
+            "0x1b3dd6b6962fa79d571f60128b0f492274883543c4d4089a7c36fb474af45deb".to_owned();
+        let log_index = 12;
+        let event = TxEvent::new(&tx_hash, log_index);
+        let (hash, index) = event.hash_and_index().unwrap();
+        assert_eq!(hash, tx_hash);
+        assert_eq!(index, log_index);
     }
 }
