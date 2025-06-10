@@ -1697,7 +1697,7 @@ mod tests {
     }
 
     #[test]
-    fn text_hash_and_index_on_tx_event() {
+    fn test_hash_and_index_on_tx_event() {
         let tx_hash =
             "0x1b3dd6b6962fa79d571f60128b0f492274883543c4d4089a7c36fb474af45deb".to_owned();
         let log_index = 12;
