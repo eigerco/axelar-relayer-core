@@ -60,6 +60,7 @@ mod id {
             Self(format!("{tx_hash}-{log_index}"))
         }
 
+        /// extracts hash and log index from tx event
         #[must_use]
         pub fn hash_and_index(&self) -> Result<(String, usize), TxEventParseError> {
             let (tx_hash, log_index_str) = self
