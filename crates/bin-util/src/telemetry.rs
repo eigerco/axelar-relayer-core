@@ -22,7 +22,7 @@ pub struct Config {
 }
 
 /// Tracing/Metrics telemetry transport
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, clap::ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum Transport {
     /// Http (binary)
