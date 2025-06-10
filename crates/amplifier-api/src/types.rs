@@ -63,8 +63,21 @@ mod id {
             Self(format!("{tx_hash}-{log_index}"))
         }
 
-        /// extracts hash and log index from tx event
-        #[must_use]
+        /// Parses the `TxEvent` to extract the transaction hash and log index components.
+        ///
+        /// The `TxEvent` is expected to be in the format `"{tx_hash}-{log_index}"` where:
+        /// - `tx_hash` is the transaction hash (may contain dashes)
+        /// - `log_index` is a numeric index
+        ///
+        /// # Returns
+        ///
+        /// Returns a tuple of `(tx_hash, log_index)` on success.
+        ///
+        /// # Errors
+        ///
+        /// Returns `TxEventParseError::SeparatorNotFound` if no dash separator is found.
+        /// Returns `TxEventParseError::LogIndexNotNumber` if the log index portion cannot be parsed
+        /// as a number.
         pub fn hash_and_index(&self) -> Result<(String, usize), TxEventParseError> {
             let (tx_hash, log_index_str) = self
                 .0
@@ -73,9 +86,9 @@ mod id {
 
             let log_index = log_index_str
                 .parse()
-                .map_err(|err| TxEventParseError::LogIndexNotNumber(err))?;
+                .map_err(TxEventParseError::LogIndexNotNumber)?;
 
-            Ok((tx_hash.to_string(), log_index))
+            Ok((tx_hash.to_owned(), log_index))
         }
 
         /// Construct a new event id for a [`CannotExecuteMessageEvent`]
