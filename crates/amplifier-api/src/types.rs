@@ -38,12 +38,15 @@ mod id {
     )]
     pub struct TokenId(pub String);
 
-    #[derive(thiserror::Error, Clone, Debug, PartialEq)]
+    /// Error raised while parsing tx event for tx hash + log index
+    #[derive(thiserror::Error, Clone, Debug, PartialEq, Eq)]
     pub enum TxEventParseError {
+        /// Dash separator not found
         #[error("Invalid TxEvent format: missing dash separator")]
         SeparatorNotFound,
-        #[error("Invalid log index: failed to parse as number, err {}")]
-        LogIndexNotNumber(std::num::ParseIntError),
+        /// Log index is not a number
+        #[error("Invalid log index: failed to parse as number, err: `{0}`")]
+        LogIndexNotNumber(core::num::ParseIntError),
     }
 
     /// Indicates a type in format of `TxHash-LogIndex`
