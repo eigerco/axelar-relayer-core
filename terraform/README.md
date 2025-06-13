@@ -1,4 +1,4 @@
-# Terraform Infrastructure
+# OpenTofu/Terraform Infrastructure
 
 This directory contains Terraform modules for provisioning the Google Cloud Platform (GCP) infrastructure required by the Axelar Relayer system.
 
@@ -73,7 +73,7 @@ Creates the messaging infrastructure:
 
 1. **Initialize Terraform**:
    ```bash
-   opentofu init
+   tofu init
    ```
 
 2. **Create a variables file** (e.g., `terraform.tfvars`):
@@ -85,12 +85,12 @@ Creates the messaging infrastructure:
 
 3. **Plan the deployment**:
    ```bash
-   opentofu plan
+   tofu plan
    ```
 
 4. **Apply the configuration**:
    ```bash
-   opentofu apply
+   tofu apply
    ```
 
 ## Module Dependencies
@@ -121,5 +121,5 @@ If you encounter issues:
 1. Verify your GCP project has the required APIs enabled
 2. Check that your authentication credentials have sufficient permissions
 3. Review the Terraform state file for any inconsistencies
-4. Use `opentofu destroy` carefully to clean up resources
+4. Use `tofu destroy` carefully to clean up resources
 
