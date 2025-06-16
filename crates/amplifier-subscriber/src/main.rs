@@ -53,8 +53,6 @@ async fn main() {
     let cli = Cli::parse();
 
     let config: Config = bin_util::try_deserialize(&cli.config_path).expect("config is correct");
-    let health_check_cfg: health_check::Config =
-        bin_util::try_deserialize(&cli.config_path).expect("health check config is correct");
     let (telemetry_tracer, _observer_handle) = if let Some(ref telemetry_cfg) = config.telemetry {
         let (tracer, observer_handle) =
             bin_util::telemetry::init(crate_name!(), crate_version!(), telemetry_cfg)
@@ -68,23 +66,12 @@ async fn main() {
 
     let cancel_token = bin_util::register_cancel();
 
-    run_subscriber(
-        &cli.config_path,
-        config,
-        health_check_cfg.health_check.port,
-        cancel_token,
-    )
-    .await;
+    run_subscriber(&cli.config_path, config, cancel_token).await;
 
     tracing::info!("Amplifier subscriber has been shut down");
 }
 
-async fn run_subscriber(
-    config_path: &str,
-    config: Config,
-    health_check_port: u16,
-    cancel_token: CancellationToken,
-) {
+async fn run_subscriber(config_path: &str, config: Config, cancel_token: CancellationToken) {
     // Create the subscriber once and wrap in Arc
     #[cfg(feature = "nats")]
     let subscriber = Arc::new(
@@ -134,15 +121,9 @@ async fn run_subscriber(
         }
     });
 
-    let health_check_handle = tokio::task::spawn(async move {
-        tracing::trace!("Starting health check server...");
-
-        health_check::Server::new(health_check_port, subscriber)
-            .run(cancel_token)
-            .await;
-
-        tracing::warn!("Shutting down health check server...");
-    });
+    let health_check_handle =
+        bin_util::health_check::run_health_check_server(config_path, subscriber, cancel_token)
+            .expect("health check server should start");
 
     tokio::try_join!(worker_handle, health_check_handle)
         .expect("Failed to join main loop and health server tasks");

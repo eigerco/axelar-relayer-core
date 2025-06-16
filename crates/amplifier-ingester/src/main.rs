@@ -36,7 +36,6 @@ compile_error!("Either 'nats' or 'gcp' feature must be enabled. Please choose on
 use std::sync::Arc;
 
 use amplifier_ingester::config::Config;
-use bin_util::health_check;
 use clap::{Parser, crate_name, crate_version};
 use tokio_util::sync::CancellationToken;
 
@@ -62,20 +61,11 @@ async fn main() {
         (None, None)
     };
 
-    let health_check_cfg: health_check::Config =
-        bin_util::try_deserialize(&cli.config_path).expect("health check config is correct");
-
     let _stderr_logging_guard = bin_util::init_logging(telemetry_tracer).expect("logging wired up");
 
     let cancel_token = bin_util::register_cancel();
 
-    run_ingester(
-        &cli.config_path,
-        config,
-        health_check_cfg.health_check.port,
-        cancel_token,
-    )
-    .await;
+    run_ingester(&cli.config_path, config, cancel_token).await;
 
     tracing::info!("Amplifier ingester has been shut down");
 }
@@ -134,15 +124,9 @@ async fn run_ingester(
         }
     });
 
-    let health_check_handle = tokio::task::spawn(async move {
-        tracing::trace!("Starting health check server...");
-
-        health_check::Server::new(health_check_port, ingester)
-            .run(cancel_token)
-            .await;
-
-        tracing::warn!("Shutting down health check server...");
-    });
+    let health_check_handle =
+        bin_util::health_check::run_health_check_server(config_path, ingester, cancel_token)
+            .expect("health check server should start");
 
     tokio::try_join!(worker_handle, health_check_handle)
         .expect("Failed to join main loop and health server tasks");
