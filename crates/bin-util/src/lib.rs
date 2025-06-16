@@ -7,6 +7,7 @@ const SEPARATOR: &str = "_";
 
 pub mod config_defaults;
 pub mod health_check;
+pub mod nats;
 pub mod telemetry;
 use core::time::Duration;
 

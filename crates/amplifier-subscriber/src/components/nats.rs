@@ -1,4 +1,5 @@
 use bin_util::ValidateConfig;
+use bin_util::nats::{TASKS_PUBLISH_SUBJECT, TASKS_STREAM};
 use eyre::{Context as _, ensure, eyre};
 use infrastructure::nats::publisher::NatsPublisher;
 use infrastructure::nats::{self, StreamArgs};
@@ -17,9 +18,6 @@ pub(crate) struct NatsSectionConfig {
 #[derive(Debug, Deserialize, PartialEq)]
 pub(crate) struct NatsConfig {
     pub urls: Vec<Url>,
-    pub stream_name: String,
-    pub stream_subject: String,
-    pub stream_description: String,
 }
 
 impl ValidateConfig for NatsSectionConfig {
@@ -56,9 +54,6 @@ impl ValidateConfig for NatsSectionConfig {
 /// - General subscriber configuration (`limit_per_request`, `amplifier_component`)
 /// - NATS configuration section with:
 ///   - `urls`: List of NATS server URLs
-///   - `stream_name`: Name of the NATS stream to publish to
-///   - `stream_subject`: Subject pattern for publishing messages
-///   - `stream_description`: Description of the stream
 ///
 /// # Errors
 ///
@@ -76,15 +71,15 @@ pub async fn new_amplifier_subscriber(
     let amplifier_client = amplifier_client(&config)?;
 
     let stream = StreamArgs {
-        name: nats_config.nats.stream_name.clone(),
-        subject: nats_config.nats.stream_subject.clone(),
-        description: nats_config.nats.stream_description.clone(),
+        name: TASKS_STREAM.to_owned(),
+        subject: TASKS_PUBLISH_SUBJECT.to_owned(),
+        description: "amplifier tasks for blockchain ingester".to_owned(),
     };
 
     let task_queue_publisher = nats::connectors::connect_publisher(
         &nats_config.nats.urls,
         stream,
-        nats_config.nats.stream_subject,
+        TASKS_PUBLISH_SUBJECT.to_owned(),
     )
     .await
     .wrap_err("task queue publisher connect err")?;

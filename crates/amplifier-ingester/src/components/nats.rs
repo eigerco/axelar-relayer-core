@@ -1,4 +1,5 @@
 use bin_util::ValidateConfig;
+use bin_util::nats::{EVENTS_CONSUME_GROUP, EVENTS_PUBLISH_SUBJECT, EVENTS_STREAM};
 use eyre::{Context as _, ensure, eyre};
 use infrastructure::nats::consumer::NatsConsumer;
 use infrastructure::nats::{self, StreamArgs};
@@ -17,13 +18,6 @@ pub(crate) struct NatsSectionConfig {
 #[derive(Debug, Deserialize, PartialEq)]
 pub(crate) struct NatsConfig {
     pub urls: Vec<Url>,
-
-    pub stream_name: String,
-    pub stream_subject: String,
-    pub stream_description: String,
-
-    pub consumer_description: String,
-    pub deliver_group: String,
 }
 
 impl ValidateConfig for NatsSectionConfig {
@@ -59,11 +53,6 @@ impl ValidateConfig for NatsSectionConfig {
 /// - General ingester configuration (`concurrent_queue_items`, `amplifier_component`)
 /// - NATS configuration section with:
 ///   - `urls`: List of NATS server URLs
-///   - `stream_name`: Name of the NATS stream
-///   - `stream_subject`: Subject pattern for the stream
-///   - `stream_description`: Description of the stream
-///   - `consumer_description`: Description for the consumer
-///   - `deliver_group`: Delivery group name for load balancing
 ///
 /// # Errors
 ///
@@ -81,16 +70,17 @@ pub async fn new_amplifier_ingester(
     let amplifier_client = amplifier_client(&config)?;
 
     let stream = StreamArgs {
-        name: nats_config.nats.stream_name.clone(),
-        subject: nats_config.nats.stream_subject.clone(),
-        description: nats_config.nats.stream_description.clone(),
+        name: EVENTS_STREAM.to_owned(),
+        subject: EVENTS_PUBLISH_SUBJECT.to_owned(),
+        description: "amplifier events for amplifier ingester to include in axelar network"
+            .to_owned(),
     };
 
     let event_queue_consumer = nats::connectors::connect_consumer(
         &nats_config.nats.urls,
         stream,
-        nats_config.nats.consumer_description,
-        nats_config.nats.deliver_group,
+        "amplifier ingesters consume group for amplifier events".to_owned(),
+        EVENTS_CONSUME_GROUP.to_owned(),
     )
     .await
     .wrap_err("event consumer connect err")?;
