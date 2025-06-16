@@ -6,6 +6,7 @@ use eyre::ensure;
 use serde::Deserialize;
 
 /// Top-level configuration for the relayer.
+/// You also need `health_check_port` from `bin_util::health_check::Config`
 #[derive(Debug, Deserialize)]
 pub struct Config {
     /// Configuration for the Amplifier API processor
