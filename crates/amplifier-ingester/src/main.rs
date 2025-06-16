@@ -70,12 +70,7 @@ async fn main() {
     tracing::info!("Amplifier ingester has been shut down");
 }
 
-async fn run_ingester(
-    config_path: &str,
-    config: Config,
-    health_check_port: u16,
-    cancel_token: CancellationToken,
-) {
+async fn run_ingester(config_path: &str, config: Config, cancel_token: CancellationToken) {
     #[cfg(feature = "nats")]
     let ingester = Arc::new(
         amplifier_ingester::nats::new_amplifier_ingester(config_path)

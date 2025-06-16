@@ -36,7 +36,6 @@ compile_error!("Either 'nats' or 'gcp' feature must be enabled. Please choose on
 use std::sync::Arc;
 
 use amplifier_subscriber::config::Config;
-use bin_util::health_check;
 use clap::{Parser, crate_name, crate_version};
 use tokio_util::sync::CancellationToken;
 
