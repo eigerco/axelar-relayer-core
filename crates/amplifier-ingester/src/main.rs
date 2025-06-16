@@ -62,16 +62,30 @@ async fn main() {
         (None, None)
     };
 
+    let health_check_cfg: health_check::Config =
+        bin_util::try_deserialize(&cli.config_path).expect("health check config is correct");
+
     let _stderr_logging_guard = bin_util::init_logging(telemetry_tracer).expect("logging wired up");
 
     let cancel_token = bin_util::register_cancel();
 
-    run_ingester(&cli.config_path, config, cancel_token).await;
+    run_ingester(
+        &cli.config_path,
+        config,
+        health_check_cfg.health_check.port,
+        cancel_token,
+    )
+    .await;
 
     tracing::info!("Amplifier ingester has been shut down");
 }
 
-async fn run_ingester(config_path: &str, config: Config, cancel_token: CancellationToken) {
+async fn run_ingester(
+    config_path: &str,
+    config: Config,
+    health_check_port: u16,
+    cancel_token: CancellationToken,
+) {
     #[cfg(feature = "nats")]
     let ingester = Arc::new(
         amplifier_ingester::nats::new_amplifier_ingester(config_path)
@@ -120,18 +134,14 @@ async fn run_ingester(config_path: &str, config: Config, cancel_token: Cancellat
         }
     });
 
-    let health_check_handle = tokio::task::spawn({
-        let port = config.health_check.port;
+    let health_check_handle = tokio::task::spawn(async move {
+        tracing::trace!("Starting health check server...");
 
-        async move {
-            tracing::trace!("Starting health check server...");
+        health_check::Server::new(health_check_port, ingester)
+            .run(cancel_token)
+            .await;
 
-            health_check::Server::new(port, ingester)
-                .run(cancel_token)
-                .await;
-
-            tracing::warn!("Shutting down health check server...");
-        }
+        tracing::warn!("Shutting down health check server...");
     });
 
     tokio::try_join!(worker_handle, health_check_handle)

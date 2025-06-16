@@ -51,7 +51,6 @@ use axum::extract::Extension;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Json};
 use axum::routing::get;
-use eyre::Result;
 use serde::Deserialize;
 use serde_json::json;
 use tokio_util::sync::CancellationToken;
@@ -69,19 +68,36 @@ pub trait CheckHealth: Send + Sync + 'static {
     ///
     /// * `Ok(())` - If the service is healthy
     /// * `Err(...)` - If there are any issues with the service's health
-    fn check_health(&self) -> impl Future<Output = Result<()>> + Send;
+    fn check_health(&self) -> impl Future<Output = eyre::Result<()>> + Send;
 }
 
 /// Implement `CheckHealth` for `Arc<T>` where T implements `CheckHealth`
 impl<T: CheckHealth> CheckHealth for Arc<T> {
-    async fn check_health(&self) -> Result<()> {
+    async fn check_health(&self) -> eyre::Result<()> {
         T::check_health(self).await
+    }
+}
+
+/// Config
+#[derive(Debug, Deserialize)]
+pub struct Config {
+    /// configuration
+    pub health_check: HealthCheck,
+}
+
+impl crate::ValidateConfig for Config {
+    fn validate(&self) -> eyre::Result<()> {
+        eyre::ensure!(
+            self.health_check.port > 0,
+            "specific port expected for health check"
+        );
+        eyre::Ok(())
     }
 }
 
 /// Healthcheck config
 #[derive(Debug, Deserialize)]
-pub struct Config {
+pub struct HealthCheck {
     /// Port for the health check server
     pub port: u16,
 }
@@ -200,9 +216,9 @@ mod tests {
     impl<F, Fut> CheckHealth for TestChecker<F>
     where
         F: Fn() -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<()>> + Send + 'static,
+        Fut: Future<Output = eyre::Result<()>> + Send + 'static,
     {
-        async fn check_health(&self) -> Result<()> {
+        async fn check_health(&self) -> eyre::Result<()> {
             (self.check_fn)().await
         }
     }
@@ -210,7 +226,7 @@ mod tests {
     async fn run_server<F, Fut>(port: u16, health_check: F) -> CancellationToken
     where
         F: Fn() -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<()>> + Send + 'static,
+        Fut: Future<Output = eyre::Result<()>> + Send + 'static,
     {
         let cancel_token = CancellationToken::new();
         let token_clone = cancel_token.clone();
