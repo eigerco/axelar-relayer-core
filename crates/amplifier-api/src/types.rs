@@ -1272,7 +1272,15 @@ mod tests {
             refund_address: "0xEA12282BaC49497793622d67e2CD43bf1065a819".to_owned(),
             payment: Token {
                 token_id: None,
-                amount: BigInt::from(410_727_029_715_539_i128),
+                amount: {
+                    #[cfg(all(feature = "bigint-u64", not(feature = "bigint-u128")))]
+                    let value = BigInt::from(410_727_029_715_539_u64);
+                    #[cfg(feature = "bigint-u128")]
+                    let value = BigInt::from(410_727_029_715_539_u128);
+                    #[cfg(all(not(feature = "bigint-u64"), not(feature = "bigint-u128")))]
+                    let value = BigInt::from(bnum::types::U256::from(410_727_029_715_539_u128));
+                    value
+                },
             },
         };
 
@@ -1326,7 +1334,15 @@ mod tests {
             refund_address: "0xEA12282BaC49497793622d67e2CD43bf1065a819".to_owned(),
             payment: Token {
                 token_id: None,
-                amount: BigInt::from(410_727_029_715_539_i128),
+                amount: {
+                    #[cfg(all(feature = "bigint-u64", not(feature = "bigint-u128")))]
+                    let value = BigInt::from(410_727_029_715_539_u64);
+                    #[cfg(feature = "bigint-u128")]
+                    let value = BigInt::from(410_727_029_715_539_u128);
+                    #[cfg(all(not(feature = "bigint-u64"), not(feature = "bigint-u128")))]
+                    let value = BigInt::from(bnum::types::U256::from(410_727_029_715_539_u128));
+                    value
+                },
             },
         };
 
