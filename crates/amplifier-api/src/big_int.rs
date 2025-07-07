@@ -30,12 +30,6 @@ Note: Negative values are stored as None.
 pub struct BigInt(Option<InnerType>);
 
 impl BigInt {
-    /// Get underlying value
-    #[must_use]
-    pub const fn inner(self) -> Option<InnerType> {
-        self.0
-    }
-
     /// Get the value, returning None if it's None (negative)
     #[must_use]
     pub const fn value(self) -> Option<InnerType> {
@@ -394,7 +388,7 @@ mod tests {
         let deserialized =
             BigIntContainer::deserialize(&mut serialized.as_slice()).expect("deserize suceeds");
 
-        assert_eq!(Some(value), deserialized.value.inner());
+        assert_eq!(Some(value), deserialized.value.value());
     }
 
     #[test]
