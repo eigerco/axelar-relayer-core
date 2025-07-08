@@ -253,12 +253,31 @@ pub struct BlockChainIngesterMetrics {
     verify_received_task: Counter<u64>,
     refund_received_task: Counter<u64>,
     construct_proof_received_task: Counter<u64>,
+    
+    // Amplifier API specific event counters - received
+    gas_credit_received_task: Counter<u64>,
+    gas_refunded_received_task: Counter<u64>,
+    call_received_task: Counter<u64>,
+    message_approved_received_task: Counter<u64>,
+    message_executed_received_task: Counter<u64>,
+    cannot_execute_message_received_task: Counter<u64>,
+    signers_rotated_received_task: Counter<u64>,
+    
     // processed
     gateway_tx_approved_task: Counter<u64>,
     executed_task: Counter<u64>,
     verified_stak: Counter<u64>,
     refunded_task: Counter<u64>,
     constructed_proof_task: Counter<u64>,
+    
+    // Amplifier API specific event counters - processed
+    gas_credit_processed_task: Counter<u64>,
+    gas_refunded_processed_task: Counter<u64>,
+    call_processed_task: Counter<u64>,
+    message_approved_processed_task: Counter<u64>,
+    message_executed_processed_task: Counter<u64>,
+    cannot_execute_message_processed_task: Counter<u64>,
+    signers_rotated_processed_task: Counter<u64>,
 
     error_raised: Counter<u64>,
     skipped_task: Counter<u64>,
@@ -279,6 +298,7 @@ impl BlockChainIngesterMetrics {
     ///
     /// A new `BlockChainIngesterMetrics` instance with all counters initialized.
     #[must_use]
+    #[allow(clippy::too_many_lines, reason = "initialization of many metrics requires many lines")]
     pub fn new(name: &'static str, attributes: Vec<KeyValue>) -> Self {
         let meter = global::meter(name);
 
@@ -308,6 +328,42 @@ impl BlockChainIngesterMetrics {
             .with_description("Number of received ConstructProof tasks")
             .build();
 
+        // Amplifier API specific event counters - received
+        let gas_credit_received_task = meter
+            .u64_counter("amplifier.received.gas_credit.count")
+            .with_description("Number of received GasCredit events")
+            .build();
+
+        let gas_refunded_received_task = meter
+            .u64_counter("amplifier.received.gas_refunded.count")
+            .with_description("Number of received GasRefunded events")
+            .build();
+
+        let call_received_task = meter
+            .u64_counter("amplifier.received.call.count")
+            .with_description("Number of received Call events")
+            .build();
+
+        let message_approved_received_task = meter
+            .u64_counter("amplifier.received.message_approved.count")
+            .with_description("Number of received MessageApproved events")
+            .build();
+
+        let message_executed_received_task = meter
+            .u64_counter("amplifier.received.message_executed.count")
+            .with_description("Number of received MessageExecuted events")
+            .build();
+
+        let cannot_execute_message_received_task = meter
+            .u64_counter("amplifier.received.cannot_execute_message.count")
+            .with_description("Number of received CannotExecuteMessage events")
+            .build();
+
+        let signers_rotated_received_task = meter
+            .u64_counter("amplifier.received.signers_rotated.count")
+            .with_description("Number of received SignersRotated events")
+            .build();
+
         // Processed task counters
         let gateway_tx_approved_task = meter
             .u64_counter("tasks.processed.gateway_tx.count")
@@ -330,6 +386,42 @@ impl BlockChainIngesterMetrics {
             .with_description("Number of processed ConstructProof tasks")
             .build();
 
+        // Amplifier API specific event counters - processed
+        let gas_credit_processed_task = meter
+            .u64_counter("amplifier.processed.gas_credit.count")
+            .with_description("Number of processed GasCredit events")
+            .build();
+
+        let gas_refunded_processed_task = meter
+            .u64_counter("amplifier.processed.gas_refunded.count")
+            .with_description("Number of processed GasRefunded events")
+            .build();
+
+        let call_processed_task = meter
+            .u64_counter("amplifier.processed.call.count")
+            .with_description("Number of processed Call events")
+            .build();
+
+        let message_approved_processed_task = meter
+            .u64_counter("amplifier.processed.message_approved.count")
+            .with_description("Number of processed MessageApproved events")
+            .build();
+
+        let message_executed_processed_task = meter
+            .u64_counter("amplifier.processed.message_executed.count")
+            .with_description("Number of processed MessageExecuted events")
+            .build();
+
+        let cannot_execute_message_processed_task = meter
+            .u64_counter("amplifier.processed.cannot_execute_message.count")
+            .with_description("Number of processed CannotExecuteMessage events")
+            .build();
+
+        let signers_rotated_processed_task = meter
+            .u64_counter("amplifier.processed.signers_rotated.count")
+            .with_description("Number of processed SignersRotated events")
+            .build();
+
         let error_raised = meter
             .u64_counter("errors.count")
             .with_description("Total number of errors encountered during operation")
@@ -347,12 +439,30 @@ impl BlockChainIngesterMetrics {
             refund_received_task,
             construct_proof_received_task,
 
+            // Amplifier API specific - received
+            gas_credit_received_task,
+            gas_refunded_received_task,
+            call_received_task,
+            message_approved_received_task,
+            message_executed_received_task,
+            cannot_execute_message_received_task,
+            signers_rotated_received_task,
+
             // Processed tasks
             gateway_tx_approved_task,
             executed_task,
             verified_stak,
             refunded_task,
             constructed_proof_task,
+
+            // Amplifier API specific - processed
+            gas_credit_processed_task,
+            gas_refunded_processed_task,
+            call_processed_task,
+            message_approved_processed_task,
+            message_executed_processed_task,
+            cannot_execute_message_processed_task,
+            signers_rotated_processed_task,
 
             error_raised,
             skipped_task,
@@ -387,6 +497,43 @@ impl BlockChainIngesterMetrics {
         self.construct_proof_received_task.add(1, &self.attributes);
     }
 
+    // -- Amplifier API specific received methods
+
+    /// Records the receipt of a `GasCredit` event.
+    pub fn record_gas_credit_received(&self) {
+        self.gas_credit_received_task.add(1, &self.attributes);
+    }
+
+    /// Records the receipt of a `GasRefunded` event.
+    pub fn record_gas_refunded_received(&self) {
+        self.gas_refunded_received_task.add(1, &self.attributes);
+    }
+
+    /// Records the receipt of a Call event.
+    pub fn record_call_received(&self) {
+        self.call_received_task.add(1, &self.attributes);
+    }
+
+    /// Records the receipt of a `MessageApproved` event.
+    pub fn record_message_approved_received(&self) {
+        self.message_approved_received_task.add(1, &self.attributes);
+    }
+
+    /// Records the receipt of a `MessageExecuted` event.
+    pub fn record_message_executed_received(&self) {
+        self.message_executed_received_task.add(1, &self.attributes);
+    }
+
+    /// Records the receipt of a `CannotExecuteMessage` event.
+    pub fn record_cannot_execute_message_received(&self) {
+        self.cannot_execute_message_received_task.add(1, &self.attributes);
+    }
+
+    /// Records the receipt of a `SignersRotated` event.
+    pub fn record_signers_rotated_received(&self) {
+        self.signers_rotated_received_task.add(1, &self.attributes);
+    }
+
     // -- Processed task methods
 
     /// Records the successful completion of a gateway transaction task.
@@ -414,12 +561,50 @@ impl BlockChainIngesterMetrics {
         self.constructed_proof_task.add(1, &self.attributes);
     }
 
-    // -- Etc
+    // -- Amplifier API specific processed methods
+
+    /// Records the successful processing of a `GasCredit` event.
+    pub fn record_gas_credit_processed(&self) {
+        self.gas_credit_processed_task.add(1, &self.attributes);
+    }
+
+    /// Records the successful processing of a `GasRefunded` event.
+    pub fn record_gas_refunded_processed(&self) {
+        self.gas_refunded_processed_task.add(1, &self.attributes);
+    }
+
+    /// Records the successful processing of a Call event.
+    pub fn record_call_processed(&self) {
+        self.call_processed_task.add(1, &self.attributes);
+    }
+
+    /// Records the successful processing of a `MessageApproved` event.
+    pub fn record_message_approved_processed(&self) {
+        self.message_approved_processed_task.add(1, &self.attributes);
+    }
+
+    /// Records the successful processing of a `MessageExecuted` event.
+    pub fn record_message_executed_processed(&self) {
+        self.message_executed_processed_task.add(1, &self.attributes);
+    }
+
+    /// Records the successful processing of a `CannotExecuteMessage` event.
+    pub fn record_cannot_execute_message_processed(&self) {
+        self.cannot_execute_message_processed_task.add(1, &self.attributes);
+    }
+
+    /// Records the successful processing of a `SignersRotated` event.
+    pub fn record_signers_rotated_processed(&self) {
+        self.signers_rotated_processed_task.add(1, &self.attributes);
+    }
+
+    // -- Error and skip tracking
 
     /// Records an error encountered during task processing.
     pub fn record_error(&self) {
         self.error_raised.add(1, &self.attributes);
     }
+
     /// Records a skipped task.
     pub fn record_skipped(&self) {
         self.skipped_task.add(1, &self.attributes);
