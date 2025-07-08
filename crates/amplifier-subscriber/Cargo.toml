@@ -24,6 +24,7 @@ tokio-util.workspace = true
 serde.workspace = true
 clap.workspace = true
 url.workspace = true
+opentelemetry.workspace = true
 
 [features]
 default = ["gcp"]

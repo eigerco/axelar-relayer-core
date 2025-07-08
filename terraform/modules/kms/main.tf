@@ -1,5 +1,5 @@
 resource "google_kms_key_ring" "amplifier_api" {
-  name     = "amplifier_api_keyring"
+  name     = "${var.axelar_implementation}_keyring"
   location = "global"
 }
 

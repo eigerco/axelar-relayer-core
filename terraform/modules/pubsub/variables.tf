@@ -1,3 +1,8 @@
+variable "axelar_implementation" {
+  type        = string
+  description = "Name of axelar project/specific implementation that will be appended to account names"
+}
+
 variable "ack_deadline_seconds" {
   description = "The maximum time after a subscriber receives a message before the subscriber should acknowledge the message"
   type        = number

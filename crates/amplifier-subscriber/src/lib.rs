@@ -1,13 +1,15 @@
 //! Crate with amplifier subscriber component
 use amplifier_api::requests::WithTrailingSlash;
 use amplifier_api::{AmplifierApiClient, requests};
-use bin_util::SimpleMetrics;
 use bin_util::health_check::CheckHealth;
 use eyre::Context as _;
 use infrastructure::interfaces::publisher::{PeekMessage, PublishMessage, Publisher};
 use tokio::sync::Mutex;
 
 mod components;
+mod metrics;
+
+use metrics::AmplifierSubscriberMetrics;
 /// Configs
 pub mod config;
 
@@ -25,7 +27,7 @@ pub struct Subscriber<TaskQueuePublisher> {
     task_queue_publisher: Mutex<TaskQueuePublisher>,
     chain: String,
     limit_items: u8,
-    metrics: SimpleMetrics,
+    metrics: AmplifierSubscriberMetrics,
 }
 
 impl<TaskQueuePublisher> Subscriber<TaskQueuePublisher>
@@ -40,7 +42,7 @@ where
         limit_items: u8,
         chain: String,
     ) -> Self {
-        let metrics = SimpleMetrics::new("amplifier-subscriber", vec![]);
+        let metrics = AmplifierSubscriberMetrics::new("amplifier-subscriber", vec![]);
         Self {
             amplifier_client,
             task_queue_publisher: Mutex::new(task_queue_publisher),
@@ -67,6 +69,9 @@ where
     #[tracing::instrument(skip_all)]
     pub async fn subscribe(&self) -> eyre::Result<()> {
         let chain_with_trailing_slash = WithTrailingSlash::new(self.chain.clone());
+
+        // Record that we're making a fetch request
+        self.metrics.record_fetch_request();
 
         let res: eyre::Result<()> = {
             let last_task_id = {
@@ -97,24 +102,37 @@ where
             let response = request
                 .execute()
                 .await
-                .wrap_err("could not sent amplifier api request")?;
+                .wrap_err("could not sent amplifier api request")
+                .inspect_err(|_| {
+                    self.metrics.record_fetch_error();
+                })?;
 
             let response = response
                 .json()
                 .await
-                .map_err(|err| eyre::Report::new(err).wrap_err("amplifier api failed"))?
-                .map_err(|err| eyre::Report::new(err).wrap_err("failed to decode response"))?;
+                .map_err(|err| eyre::Report::new(err).wrap_err("amplifier api failed"))
+                .and_then(|r| {
+                    r.map_err(|err| eyre::Report::new(err).wrap_err("failed to decode response"))
+                })
+                .inspect_err(|_| {
+                    self.metrics.record_fetch_error();
+                })?;
 
             tracing::trace!(?response, "amplifier response");
 
             let mut tasks = response.tasks;
             tasks.sort_unstable_by_key(|task| task.timestamp);
 
+            let task_count = u64::try_from(tasks.len()).unwrap_or(0);
+
             if tasks.is_empty() {
+                self.metrics.record_empty_response();
                 tracing::trace!("no amplifier tasks");
                 return Ok(());
             }
 
+            // Record the number of tasks fetched
+            self.metrics.record_tasks_fetched(task_count);
             tracing::info!(count = tasks.len(), "got amplifier tasks");
 
             let batch = tasks.into_iter().map(PublishMessage::from).collect();
@@ -125,7 +143,14 @@ where
                 .await
                 .publish_batch(batch)
                 .await
-                .wrap_err("could not publish tasks to queue")?;
+                .wrap_err("could not publish tasks to queue")
+                .inspect_err(|_| {
+                    self.metrics.record_publish_error();
+                })?;
+
+            // Record successful publishing
+            self.metrics.record_tasks_published(task_count);
+            self.metrics.record_publish_batch();
             tracing::info!("sent to queue");
             Ok(())
         };
@@ -151,7 +176,7 @@ where
         let publisher_health = self.task_queue_publisher.lock().await.check_health().await;
         if let Err(err) = publisher_health {
             tracing::error!(?err, "task queue publisher health check failed");
-            self.metrics.record_error();
+            self.metrics.record_health_check_error();
             return Err(err.into());
         }
 
@@ -162,7 +187,7 @@ where
             .execute()
             .await
         {
-            self.metrics.record_error();
+            self.metrics.record_health_check_error();
             tracing::error!(?err, "amplifier client health check failed");
             return Err(err.into());
         }
