@@ -1,10 +1,10 @@
 locals {
-  amplifier_events_topic     = "amplifier-events"
-  amplifier_events_sub       = "amplifier-events-sub"
-  amplifier_events_dlq_topic = "amplifier-events-dlq"
-  amplifier_tasks_topic      = "amplifier-tasks"
-  amplifier_tasks_sub        = "amplifier-tasks-sub"
-  amplifier_tasks_dlq_topic  = "amplifier-tasks-dlq"
+  amplifier_events_topic     = "${var.axelar_implementation}-amplifier-events"
+  amplifier_events_sub       = "${var.axelar_implementation}-amplifier-events-sub"
+  amplifier_events_dlq_topic = "${var.axelar_implementation}-amplifier-events-dlq"
+  amplifier_tasks_topic      = "${var.axelar_implementation}-amplifier-tasks"
+  amplifier_tasks_sub        = "${var.axelar_implementation}-amplifier-tasks-sub"
+  amplifier_tasks_dlq_topic  = "${var.axelar_implementation}-amplifier-tasks-dlq"
 }
 
 resource "google_pubsub_topic" "amplifier_events" {
