@@ -4,7 +4,6 @@ use std::sync::Arc;
 use amplifier_api::requests::{self, WithTrailingSlash};
 use amplifier_api::types::{Event, PublishEventsRequest};
 use amplifier_api::{self, AmplifierApiClient};
-use bin_util::SimpleMetrics;
 use bin_util::health_check::CheckHealth;
 use eyre::Context as _;
 use futures::StreamExt as _;
@@ -12,6 +11,9 @@ use infrastructure::interfaces::consumer::{AckKind, Consumer, QueueMessage};
 use tracing::Instrument as _;
 
 mod components;
+mod metrics;
+
+use metrics::AmplifierIngesterMetrics;
 
 /// Configs
 pub mod config;
@@ -30,7 +32,7 @@ pub struct Ingester<EventQueueConsumer> {
     event_queue_consumer: Arc<EventQueueConsumer>,
     concurrent_queue_items: usize,
     chain: String,
-    metrics: SimpleMetrics,
+    metrics: AmplifierIngesterMetrics,
 }
 
 impl<EventQueueConsumer> Ingester<EventQueueConsumer>
@@ -45,7 +47,7 @@ where
         chain: String,
     ) -> Self {
         let event_queue_consumer = Arc::new(event_queue_consumer);
-        let metrics = SimpleMetrics::new("amplifier-ingester", vec![]);
+        let metrics = AmplifierIngesterMetrics::new("amplifier-ingester", vec![]);
         Self {
             ampf_client: amplifier_client,
             event_queue_consumer,
@@ -64,6 +66,8 @@ where
 
         let event = queue_msg.decoded().clone();
         tracing::Span::current().record("event", tracing::field::display(&event));
+
+        self.record_event_received(&event);
 
         let payload = PublishEventsRequest {
             events: vec![event.clone()],
@@ -100,6 +104,8 @@ where
 
         match result {
             Ok(()) => {
+                self.record_event_processed(&event);
+
                 if let Err(err) = queue_msg.ack(AckKind::Ack).await {
                     self.metrics.record_error();
                     tracing::error!(?err, "could not ack message, skipping...");
@@ -155,6 +161,36 @@ where
             .await;
 
         Ok(())
+    }
+
+    /// Record metrics for received events based on event type
+    fn record_event_received(&self, event: &Event) {
+        match event {
+            Event::GasCredit(_) => self.metrics.record_gas_credit_received(),
+            Event::GasRefunded(_) => self.metrics.record_gas_refunded_received(),
+            Event::Call(_) => self.metrics.record_call_received(),
+            Event::MessageApproved(_) => self.metrics.record_message_approved_received(),
+            Event::MessageExecuted(_) => self.metrics.record_message_executed_received(),
+            Event::CannotExecuteMessageV2(_) => {
+                self.metrics.record_cannot_execute_message_received();
+            }
+            Event::SignersRotated(_) => self.metrics.record_signers_rotated_received(),
+        }
+    }
+
+    /// Record metrics for successfully processed events based on event type
+    fn record_event_processed(&self, event: &Event) {
+        match event {
+            Event::GasCredit(_) => self.metrics.record_gas_credit_processed(),
+            Event::GasRefunded(_) => self.metrics.record_gas_refunded_processed(),
+            Event::Call(_) => self.metrics.record_call_processed(),
+            Event::MessageApproved(_) => self.metrics.record_message_approved_processed(),
+            Event::MessageExecuted(_) => self.metrics.record_message_executed_processed(),
+            Event::CannotExecuteMessageV2(_) => {
+                self.metrics.record_cannot_execute_message_processed();
+            }
+            Event::SignersRotated(_) => self.metrics.record_signers_rotated_processed(),
+        }
     }
 }
 
