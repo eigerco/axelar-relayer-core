@@ -83,6 +83,10 @@ The relayer is designed as 4 components: 2 ingesters & 2 subscribers - 1 for eac
 
 ### Blockchain-Specific Configuration
 
+#### BigInt Precision for Token Amounts
+
+The `amplifier-api` crate provides compile-time configuration to optimize numeric precision for your specific blockchain. See the [amplifier-api README](./crates/amplifier-api/README.md#bigint-type-configuration) for details.
+
 #### TLS Certificate Configuration
 
 The relayer requires TLS certificates to authenticate with the Amplifier API. You have two options:

@@ -29,6 +29,8 @@ nats = ["infrastructure/nats"]
 gcp = ["infrastructure/gcp"]
 storage-interfaces = []
 supervisor = ["dep:supervisor"]
+bigint-u64 = ["amplifier-api/bigint-u64"]
+bigint-u128 = ["amplifier-api/bigint-u128"]
 
 [lints]
 workspace = true
