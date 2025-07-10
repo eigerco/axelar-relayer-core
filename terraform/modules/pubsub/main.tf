@@ -145,5 +145,5 @@ resource "google_pubsub_topic_iam_policy" "events_publish" {
 
 resource "google_pubsub_topic_iam_policy" "events_subscribe" {
   topic       = google_pubsub_topic.amplifier_events.name
-  policy_data = data.google_iam_policy.events_publisher.policy_data
+  policy_data = data.google_iam_policy.pubsub_publisher.policy_data
 }
