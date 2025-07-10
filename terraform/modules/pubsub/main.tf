@@ -110,58 +110,40 @@ resource "google_pubsub_subscription" "amplifier_tasks_sub" {
   labels = var.default_labels
 }
 
-data "google_iam_policy" "tasks_publish" {
+data "google_iam_policy" "pubsub_publisher" {
   binding {
     role = "roles/pubsub.publisher"
     members = [
-      "serviceAccount:${var.tasks_publisher_service_account_email}",
+      "serviceAccount:${var.publisher_service_account_email}",
     ]
   }
 }
 
-data "google_iam_policy" "tasks_subscribe" {
+data "google_iam_policy" "pubsub_subscriber" {
   binding {
-    role = "roles/pubsub.publisher"
+    role = "roles/pubsub.subscriber"
     members = [
-      "serviceAccount:${var.tasks_subscriber_service_account_email}",
-    ]
-  }
-}
-
-data "google_iam_policy" "events_publish" {
-  binding {
-    role = "roles/pubsub.publisher"
-    members = [
-      "serviceAccount:${var.events_publisher_service_account_email}",
-    ]
-  }
-}
-
-data "google_iam_policy" "events_subscribe" {
-  binding {
-    role = "roles/pubsub.publisher"
-    members = [
-      "serviceAccount:${var.events_subscriber_service_account_email}",
+      "serviceAccount:${var.subscriber_service_account_email}",
     ]
   }
 }
 
 resource "google_pubsub_topic_iam_policy" "tasks_publish" {
   topic       = google_pubsub_topic.amplifier_tasks.name
-  policy_data = data.google_iam_policy.tasks_publish.policy_data
+  policy_data = data.google_iam_policy.pubsub_publisher.policy_data
 }
 
 resource "google_pubsub_topic_iam_policy" "tasks_subscribe" {
   topic       = google_pubsub_topic.amplifier_tasks.name
-  policy_data = data.google_iam_policy.tasks_subscribe.policy_data
+  policy_data = data.google_iam_policy.pubsub_subscriber.policy_data
 }
 
 resource "google_pubsub_topic_iam_policy" "events_publish" {
   topic       = google_pubsub_topic.amplifier_events.name
-  policy_data = data.google_iam_policy.events_publish.policy_data
+  policy_data = data.google_iam_policy.pubsub_subscriber.policy_data
 }
 
 resource "google_pubsub_topic_iam_policy" "events_subscribe" {
   topic       = google_pubsub_topic.amplifier_events.name
-  policy_data = data.google_iam_policy.events_subscribe.policy_data
+  policy_data = data.google_iam_policy.pubsub_publisher.policy_data
 }
