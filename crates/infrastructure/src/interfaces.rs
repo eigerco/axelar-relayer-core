@@ -107,7 +107,7 @@ pub mod publisher {
         fn publish(
             &self,
             msg: PublishMessage<T>,
-        ) -> impl Future<Output = Result<Self::Return, impl Error + Send + Sync + 'static>>;
+        ) -> impl Future<Output = Result<Self::Return, impl Error + Send + Sync + 'static>> + Send;
 
         /// Publish batch to queue
         fn publish_batch(
