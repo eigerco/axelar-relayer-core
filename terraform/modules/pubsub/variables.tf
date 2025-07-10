@@ -51,12 +51,12 @@ variable "allowed_persistence_regions" {
   default     = ["europe-north2"]
 }
 
-variable "tasks_publisher_service_account_email" {
+variable "publisher_service_account_email" {
   type        = string
   description = "The email address of the tasks publisher service account"
 }
 
-variable "tasks_subscriber_service_account_email" {
+variable "subscriber_service_account_email" {
   type        = string
   description = "The email address of the tasks subscriber service account"
 }
