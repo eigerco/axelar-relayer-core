@@ -668,15 +668,17 @@ pub struct SignersRotatedEvent {
     /// Event base
     #[serde(flatten)]
     pub base: EventBase<SignersRotatedMetadata>,
-    /// the cost of the approval. (#of approvals in transaction / transaction cost)
-    pub cost: Token,
+
+    /// MessageID
+    #[serde(rename = "messageID")]
+    pub message_id: MessageId,
 }
 
 impl Display for SignersRotatedEvent {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         writeln!(f, "SignersRotatedEvent")?;
         writeln!(f, "base: {}", self.base)?;
-        writeln!(f, "cost: {}", self.cost)?;
+        writeln!(f, "messageID: {}", self.message_id)?;
         Ok(())
     }
 }
