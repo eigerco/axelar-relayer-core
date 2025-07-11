@@ -325,8 +325,10 @@ pub struct SignersRotatedEvent {
     /// Event base
     #[serde(flatten)]
     pub base: EventBase<SignersRotatedMetadata>,
-    /// the cost of the approval. (#of approvals in transaction / transaction cost)
-    pub cost: Token,
+
+    /// MessageID
+    #[serde(rename = "messageID")]
+    pub message_id: MessageId,
 }
 
 /// Represents extra metadata that can be added to the signers rotated event
