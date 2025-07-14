@@ -156,18 +156,21 @@ pub mod kv_store {
         /// Update value in kvstore
         fn update(
             &self,
+            key: &str,
             data: &WithRevision<T>,
         ) -> impl Future<Output = Result<u64, impl Error + Send + Sync + 'static>> + Send;
 
         /// Create value in kvstore
         fn put(
             &self,
+            key: &str,
             value: &T,
         ) -> impl Future<Output = Result<u64, impl Error + Send + Sync + 'static>> + Send;
 
         /// Get value from kvstore
         fn get(
             &self,
+            key: &str,
         ) -> impl Future<
             Output = Result<Option<WithRevision<T>>, impl Error + Send + Sync + 'static>,
         > + Send;

@@ -5,7 +5,7 @@ use url::Url;
 
 use super::consumer::NatsConsumer;
 use super::publisher::NatsPublisher;
-use super::{NatsError, kv_store};
+use super::{kv_store, NatsError};
 use crate::interfaces::publisher::QueueMsgId;
 use crate::nats::{Builder, StreamArgs};
 
@@ -286,6 +286,6 @@ pub async fn connect_kv_store<T>(
         })
         .await?;
 
-    let store = kv_store::NatsKvStore::new(bucket, store);
+    let store = kv_store::NatsKvStore::new(store);
     Ok(store)
 }
