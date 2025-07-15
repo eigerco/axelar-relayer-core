@@ -669,7 +669,7 @@ pub struct SignersRotatedEvent {
     #[serde(flatten)]
     pub base: EventBase<SignersRotatedMetadata>,
 
-    /// MessageID
+    /// `MessageID`
     #[serde(rename = "messageID")]
     pub message_id: MessageId,
 }
