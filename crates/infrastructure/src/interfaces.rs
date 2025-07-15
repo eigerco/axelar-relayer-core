@@ -23,8 +23,8 @@ pub mod consumer {
         ) -> impl Future<
             Output = Result<
                 impl futures::Stream<
-                    Item = Result<impl QueueMessage<T>, impl Error + Send + Sync + 'static>,
-                > + Send,
+                        Item = Result<impl QueueMessage<T>, impl Error + Send + Sync + 'static>,
+                    > + Send,
                 impl Error + Send + Sync + 'static,
             >,
         > + Send;
@@ -171,8 +171,13 @@ pub mod kv_store {
         fn get(
             &self,
             key: &str,
-        ) -> impl Future<
-            Output = Result<Option<WithRevision<T>>, impl Error + Send + Sync + 'static>,
-        > + Send;
+        ) -> impl Future<Output = Result<Option<WithRevision<T>>, impl Error + Send + Sync + 'static>>
+               + Send;
+
+        /// Remove a value from kvstore
+        fn remove(
+            &self,
+            key: &str,
+        ) -> impl Future<Output = Result<(), impl Error + Send + Sync + 'static>> + Send;
     }
 }

@@ -79,4 +79,10 @@ where
             })
             .transpose()
     }
+
+    #[allow(refining_impl_trait, reason = "simplification")]
+    #[tracing::instrument(skip(self))]
+    async fn remove(&self, key: &str) -> Result<(), NatsError> {
+        self.store.delete(key).await.map_err(NatsError::Update)
+    }
 }

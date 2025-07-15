@@ -10,11 +10,11 @@ use google_cloud_pubsub::publisher::{Publisher, PublisherConfig};
 use interfaces::kv_store::KvStore as _;
 use opentelemetry::metrics::{Counter, Histogram};
 use opentelemetry::propagation::Injector as _;
-use opentelemetry::{global, KeyValue};
+use opentelemetry::{KeyValue, global};
 
+use super::GcpError;
 use super::kv_store::RedisClient;
 use super::util::get_topic;
-use super::GcpError;
 use crate::gcp::util::MessageContent;
 use crate::interfaces;
 use crate::interfaces::publisher::{PublishMessage, QueueMsgId};

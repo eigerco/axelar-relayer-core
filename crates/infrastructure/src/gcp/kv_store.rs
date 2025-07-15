@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use opentelemetry::metrics::Counter;
-use opentelemetry::{global, KeyValue};
+use opentelemetry::{KeyValue, global};
 use redis::aio::MultiplexedConnection;
 use redis::{AsyncCommands as _, Client};
 
@@ -131,6 +131,17 @@ where
             .inspect_err(|_| {
                 self.metrics.record_error();
             })
+    }
+
+    #[allow(refining_impl_trait, reason = "simplification")]
+    #[tracing::instrument(skip(self))]
+    async fn remove(&self, key: &str) -> Result<(), GcpError> {
+        tracing::trace!("removing value");
+        let mut connection = self.connection.clone();
+        connection.unlink(key).await.map_err({
+            self.metrics.record_error();
+            GcpError::RedisDelete
+        })
     }
 }
 

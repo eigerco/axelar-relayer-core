@@ -5,7 +5,7 @@ use url::Url;
 
 use super::consumer::NatsConsumer;
 use super::publisher::NatsPublisher;
-use super::{kv_store, NatsError};
+use super::{NatsError, kv_store};
 use crate::interfaces::publisher::QueueMsgId;
 use crate::nats::{Builder, StreamArgs};
 
