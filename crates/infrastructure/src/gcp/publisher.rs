@@ -194,6 +194,8 @@ where
     T: QueueMsgId,
     T::MessageId: BorshSerialize + BorshDeserialize + Display,
 {
+    const LAST_MESSAGE_ID_STORE_KEY: &str = "last-message-id";
+
     pub(crate) async fn new(
         client: &Client,
         topic: &str,
@@ -232,7 +234,9 @@ where
         let res = {
             let published = self.publisher.publish(msg).await?;
             tracing::trace!("published, upading redis");
-            self.last_message_id_store.upsert(&msg_id).await?;
+            self.last_message_id_store
+                .upsert(Self::LAST_MESSAGE_ID_STORE_KEY, &msg_id)
+                .await?;
             tracing::info!("message published and ID stored in Redis");
             Ok(published)
         };
@@ -271,7 +275,9 @@ where
 
             let published = self.publisher.publish_batch(batch).await?;
             tracing::trace!("all published, updating last message ID in Redis");
-            self.last_message_id_store.upsert(&last_msg_id).await?;
+            self.last_message_id_store
+                .upsert(Self::LAST_MESSAGE_ID_STORE_KEY, &last_msg_id)
+                .await?;
 
             tracing::info!("batch successfully published and last ID stored");
 
@@ -313,7 +319,7 @@ where
     #[tracing::instrument(skip_all)]
     async fn peek_last(&mut self) -> Result<Option<T::MessageId>, GcpError> {
         self.last_message_id_store
-            .get()
+            .get(Self::LAST_MESSAGE_ID_STORE_KEY)
             .await
             .inspect_err(|_| self.publisher.metrics.record_error())?
             .map(|data| {

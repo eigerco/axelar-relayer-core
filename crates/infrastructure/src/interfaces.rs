@@ -107,7 +107,7 @@ pub mod publisher {
         fn publish(
             &self,
             msg: PublishMessage<T>,
-        ) -> impl Future<Output = Result<Self::Return, impl Error + Send + Sync + 'static>>;
+        ) -> impl Future<Output = Result<Self::Return, impl Error + Send + Sync + 'static>> + Send;
 
         /// Publish batch to queue
         fn publish_batch(
@@ -156,20 +156,29 @@ pub mod kv_store {
         /// Update value in kvstore
         fn update(
             &self,
+            key: &str,
             data: &WithRevision<T>,
         ) -> impl Future<Output = Result<u64, impl Error + Send + Sync + 'static>> + Send;
 
         /// Create value in kvstore
         fn put(
             &self,
+            key: &str,
             value: &T,
         ) -> impl Future<Output = Result<u64, impl Error + Send + Sync + 'static>> + Send;
 
         /// Get value from kvstore
         fn get(
             &self,
+            key: &str,
         ) -> impl Future<
             Output = Result<Option<WithRevision<T>>, impl Error + Send + Sync + 'static>,
         > + Send;
+
+        /// Remove a value from kvstore
+        fn remove(
+            &self,
+            key: &str,
+        ) -> impl Future<Output = Result<(), impl Error + Send + Sync + 'static>> + Send;
     }
 }

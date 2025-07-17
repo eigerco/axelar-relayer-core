@@ -67,6 +67,8 @@ pub enum GcpError {
     RedisSave(RedisError),
     #[error("error getting data from redis {0}")]
     RedisGet(RedisError),
+    #[error("error deleting data from redis {0}")]
+    RedisDelete(RedisError),
     #[error("error deserializing data (hex representation) `{value}` from redis {err}")]
     RedisDeserialize { value: String, err: std::io::Error },
     #[error("consumer read task join error {0}")]

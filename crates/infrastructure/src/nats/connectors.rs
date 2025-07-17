@@ -286,6 +286,6 @@ pub async fn connect_kv_store<T>(
         })
         .await?;
 
-    let store = kv_store::NatsKvStore::new(bucket, store);
+    let store = kv_store::NatsKvStore::new(store);
     Ok(store)
 }

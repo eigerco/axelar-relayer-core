@@ -13,7 +13,7 @@ use crate::interfaces::kv_store::WithRevision;
 
 /// Redis client
 pub struct RedisClient<T> {
-    key: String,
+    key_prefix: String,
     connection: MultiplexedConnection,
     metrics: Metrics,
     _phantom: PhantomData<T>,
@@ -26,17 +26,17 @@ where
     /// Connect to redis
     /// # Errors
     ///  on connection issues
-    pub async fn connect(key: String, connection: String) -> Result<Self, GcpError> {
+    pub async fn connect(key_prefix: String, connection: String) -> Result<Self, GcpError> {
         let connection = Client::open(connection)
             .map_err(GcpError::Connection)?
             .get_multiplexed_async_connection()
             .await
             .map_err(GcpError::Connection)?;
 
-        let metrics = Metrics::new(&key);
+        let metrics = Metrics::new(&key_prefix);
 
         Ok(Self {
-            key,
+            key_prefix,
             connection,
             metrics,
             _phantom: PhantomData,
@@ -58,7 +58,7 @@ where
             })
     }
 
-    pub(crate) async fn upsert(&self, value: &T) -> Result<(), GcpError> {
+    pub(crate) async fn upsert(&self, key: &str, value: &T) -> Result<(), GcpError> {
         tracing::trace!(%value, "upserting value");
         let bytes = borsh::to_vec(value).map_err(|err| GcpError::RedisSerialize {
             value: value.to_string(),
@@ -68,7 +68,7 @@ where
         let _: () = self
             .connection
             .clone()
-            .set(&self.key, bytes)
+            .set(format!("{}:{}", self.key_prefix, key), bytes)
             .await
             .map_err(GcpError::RedisSave)?;
 
@@ -85,9 +85,9 @@ where
 {
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip(self))]
-    async fn update(&self, data: &WithRevision<T>) -> Result<u64, GcpError> {
+    async fn update(&self, key: &str, data: &WithRevision<T>) -> Result<u64, GcpError> {
         tracing::trace!(?data, "updating");
-        self.upsert(&data.value)
+        self.upsert(key, &data.value)
             .await
             .inspect_err(|_| self.metrics.record_error())?;
         Ok(0)
@@ -95,9 +95,9 @@ where
 
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip(self))]
-    async fn put(&self, value: &T) -> Result<u64, GcpError> {
+    async fn put(&self, key: &str, value: &T) -> Result<u64, GcpError> {
         tracing::trace!(?value, "updating");
-        self.upsert(value)
+        self.upsert(key, value)
             .await
             .inspect_err(|_| self.metrics.record_error())?;
         Ok(0)
@@ -105,10 +105,10 @@ where
 
     #[allow(refining_impl_trait, reason = "simplification")]
     #[tracing::instrument(skip(self))]
-    async fn get(&self) -> Result<Option<WithRevision<T>>, GcpError> {
+    async fn get(&self, key: &str) -> Result<Option<WithRevision<T>>, GcpError> {
         tracing::trace!("getting value");
         let mut connection = self.connection.clone();
-        let value: Option<Vec<u8>> = connection.get(&self.key).await.map_err({
+        let value: Option<Vec<u8>> = connection.get(key).await.map_err({
             self.metrics.record_error();
             GcpError::RedisGet
         })?;
@@ -131,6 +131,17 @@ where
             .inspect_err(|_| {
                 self.metrics.record_error();
             })
+    }
+
+    #[allow(refining_impl_trait, reason = "simplification")]
+    #[tracing::instrument(skip(self))]
+    async fn remove(&self, key: &str) -> Result<(), GcpError> {
+        tracing::trace!("removing value");
+        let mut connection = self.connection.clone();
+        connection.unlink(key).await.map_err({
+            self.metrics.record_error();
+            GcpError::RedisDelete
+        })
     }
 }
 
