@@ -12,6 +12,7 @@ amplifier-api.workspace = true
 relayer-amplifier-state.workspace = true
 relayer-engine.workspace = true
 common-serde-utils.workspace = true
+reqwest.workspace = true
 
 typed-builder.workspace = true
 futures.workspace = true

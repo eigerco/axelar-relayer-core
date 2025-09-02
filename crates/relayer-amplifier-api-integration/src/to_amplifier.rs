@@ -1,7 +1,7 @@
 use core::task::Poll;
 
-use amplifier_api::AmplifierRequest;
-use amplifier_api::requests::{self, WithTrailingSlash};
+use amplifier_api::Client as AmplifierRequest;
+// use amplifier_api::requests::{self, WithTrailingSlash};
 use amplifier_api::types::{ErrorResponse, PublishEventsResult};
 use futures::StreamExt as _;
 use futures::stream::FusedStream as _;
@@ -19,14 +19,14 @@ pub(crate) async fn process(
     tracing::info!("spawned");
 
     let mut join_set = JoinSet::<eyre::Result<()>>::new();
-    let chain_with_trailing_slash = WithTrailingSlash::new(config.chain.clone());
+    // let chain_with_trailing_slash = WithTrailingSlash::new(config.chain.clone());
     let mut task_stream = futures::stream::poll_fn(move |cx| {
         // check if we have new requests to add to the join set
         match receiver.poll_next_unpin(cx) {
             Poll::Ready(Some(command)) => {
                 // spawn the command on the joinset, returning the error
                 tracing::info!(?command, "sending message to amplifier api");
-                let res = internal(command, &chain_with_trailing_slash, &client, &mut join_set);
+                let res = internal(command, &client, &config.chain, &mut join_set);
 
                 cx.waker().wake_by_ref();
                 return Poll::Ready(Some(Ok(res)));
@@ -68,45 +68,25 @@ pub(crate) async fn process(
 
 pub(crate) fn internal(
     command: AmplifierCommand,
-    chain_with_trailing_slash: &WithTrailingSlash,
     client: &amplifier_api::AmplifierApiClient,
+    chain: &str,
     join_set: &mut JoinSet<eyre::Result<()>>,
 ) -> Result<(), eyre::Error> {
     match command {
         AmplifierCommand::PublishEvents(events) => {
-            let request = requests::PostEvents::builder()
-                .payload(&events)
-                .chain(chain_with_trailing_slash)
-                .build();
-            let request = client.build_request(&request)?;
-            join_set.spawn(
-                process_publish_events_request(request)
-                    .instrument(info_span!("publish events"))
-                    .in_current_span(),
-            );
+            join_set.spawn({
+                let client = client.clone();
+                let chain = chain.to_string();
+                async move {
+                    client
+                        .publish_events(&chain, &events)
+                        .await
+                        .map(|_| ())
+                        .map_err(Into::into)
+                }
+            });
         }
     }
 
-    Ok(())
-}
-
-async fn process_publish_events_request(
-    request: AmplifierRequest<PublishEventsResult, ErrorResponse>,
-) -> eyre::Result<()> {
-    let res = request.execute().await?;
-    let res = res.json().await??;
-    for item in res.results {
-        use amplifier_api::types::PublishEventResultItem::{Accepted, Error};
-        match item {
-            Accepted(accepted) => {
-                tracing::info!(?accepted, "event registered");
-                // no op
-            }
-            Error(err) => {
-                tracing::warn!(?err, "could not publish event");
-                // todo handle with retries
-            }
-        }
-    }
     Ok(())
 }

@@ -10,12 +10,7 @@ pub(crate) async fn process_healthcheck(
     loop {
         interval.tick().await;
         let t1 = clock.recent();
-        let healthceck_succeeded = client
-            .build_request(&amplifier_api::requests::HealthCheck)?
-            .execute()
-            .await?
-            .ok()
-            .is_ok();
+        let healthceck_succeeded = client.health_check().await.is_ok();
         let t2 = clock.recent();
         let delta = t2.saturating_duration_since(t1);
         tracing::info!(execution_duration = ?delta, "healthcheck duration");

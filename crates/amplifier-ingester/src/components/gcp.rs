@@ -1,4 +1,4 @@
-use amplifier_api::AmplifierApiClient;
+use amplifier_api::{self, Client as AmplifierApiClient};
 use bin_util::ValidateConfig;
 use eyre::{Context as _, ensure, eyre};
 use infrastructure::gcp;
@@ -160,9 +160,7 @@ async fn amplifier_client(
     .await
     .wrap_err("kms connection failed")?;
 
-    AmplifierApiClient::new(
-        config.amplifier.url.clone(),
-        amplifier_api::TlsType::CustomProvider(client_config),
-    )
-    .wrap_err("amplifier api client failed to create")
+    // config.amplifier.url.clone(),
+    // amplifier_api::TlsType::CustomProvider(client_config),
+    Ok(AmplifierApiClient::new("TODO INITIALIZE CLIENT CORRECTLY"))
 }

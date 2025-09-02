@@ -1,4 +1,4 @@
-use amplifier_api::identity::Identity;
+// use amplifier_api::identity::Identity;
 use base64::Engine as _;
 use base64::prelude::BASE64_STANDARD;
 use clap::Parser;
@@ -7,7 +7,7 @@ use serde::Deserialize;
 use typed_builder::TypedBuilder;
 
 /// global Amplifier component configuration
-#[derive(Debug, Deserialize, Clone, PartialEq, TypedBuilder, Parser)]
+#[derive(Debug, Deserialize, Clone, TypedBuilder, Parser)]
 pub struct Config {
     /// Identity keys for the Amplifier API
     #[arg(
@@ -15,7 +15,8 @@ pub struct Config {
         env = "AMPLIFIER_API_IDENTITY",
         value_parser = parse_identity
     )]
-    pub identity: Option<Identity>,
+    #[serde(skip_deserializing)]
+    pub identity: Option<reqwest::Identity>,
     /// TLS public certificate for Amplifier API
     #[arg(value_name = "AMPLIFIER_API_TLS_CERT", env = "AMPLIFIER_API_TLS_CERT")]
     pub tls_public_certificate: Option<String>,
@@ -79,13 +80,14 @@ pub struct Config {
     pub invalid_healthchecks_before_shutdown: usize,
 }
 
-fn parse_identity(input: &str) -> Result<Option<Identity>> {
+fn parse_identity(input: &str) -> Result<Option<reqwest::Identity>> {
     if input.is_empty() {
         return Ok(None);
     }
 
-    let identity_bytes = BASE64_STANDARD.decode(input)?;
-    Ok(Some(Identity::new_from_pem_bytes(&identity_bytes)?))
+    todo!("parse identity to reqwest::Identity")
+    // let identity_bytes = BASE64_STANDARD.decode(input)?;
+    // Ok(Some(Identity::new_from_pem_bytes(&identity_bytes)?))
 }
 
 fn parse_chains_poll_interval(input: &str) -> Result<core::time::Duration> {

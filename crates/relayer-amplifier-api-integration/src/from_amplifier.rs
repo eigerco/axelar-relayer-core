@@ -1,7 +1,7 @@
 use core::task::Poll;
 
-use amplifier_api::AmplifierRequest;
-use amplifier_api::requests::{self, WithTrailingSlash};
+use amplifier_api::Client as AmplifierRequest;
+// use amplifier_api::requests::{self, WithTrailingSlash};
 use amplifier_api::types::{ErrorResponse, GetTasksResult};
 use futures::SinkExt as _;
 use futures::stream::StreamExt as _;
@@ -27,7 +27,7 @@ where
     tracing::info!(poll_interval =? config.get_chains_poll_interval, "spawned");
 
     // Trailing slash is significant when making the API calls!
-    let chain_with_trailing_slash = WithTrailingSlash::new(config.chain.clone());
+    // let chain_with_trailing_slash = WithTrailingSlash::new(config.chain.clone());
     let mut join_set = JoinSet::<eyre::Result<()>>::new();
 
     let mut interval_stream = IntervalStream::new({
@@ -48,7 +48,7 @@ where
             Poll::Ready(Some(_res)) => {
                 let res = internal(
                     &config,
-                    &chain_with_trailing_slash,
+                    // &chain_with_trailing_slash,
                     &client,
                     fan_out_sender.clone(),
                     &mut join_set,
@@ -91,7 +91,7 @@ where
 
 pub(crate) fn internal<S>(
     config: &Config,
-    chain_with_trailing_slash: &WithTrailingSlash,
+    // chain_with_trailing_slash: &WithTrailingSlash,
     client: &amplifier_api::AmplifierApiClient,
     fan_out_sender: AmplifierTaskSender,
     to_join_set: &mut JoinSet<eyre::Result<()>>,
@@ -111,24 +111,33 @@ where
         return Ok(());
     }
     tracing::trace!(?latest_processed_task, "latest task to query");
-    let request = requests::GetChains::builder()
-        .chain(chain_with_trailing_slash)
-        .limit(config.get_chains_limit)
-        .after(latest_processed_task)
-        .build();
-    let request = client.build_request(&request)?;
-    to_join_set.spawn(process_task_request(request, fan_out_sender, state));
+
+    to_join_set.spawn({
+        let client = client.clone();
+        let chain_name = config.chain.clone();
+        let chains_limit = config.get_chains_limit;
+
+        async move { process_task_request(&client, chain_name, chains_limit, fan_out_sender, state).await }
+    });
 
     Ok(())
 }
 
 async fn process_task_request<S: State>(
-    request: AmplifierRequest<GetTasksResult, ErrorResponse>,
+    client: &amplifier_api::AmplifierApiClient,
+    config_chain: String,
+    config_get_chains_limit: u8,
     mut fan_out_sender: AmplifierTaskSender,
     state: S,
 ) -> eyre::Result<()> {
-    let res = request.execute().await?;
-    let res = res.json().await??;
+    let res = client
+        .get_tasks(
+            &config_chain,
+            None,
+            std::num::NonZeroU64::new(config_get_chains_limit as u64),
+        )
+        .await?;
+
     let Some(last_task_item_id) = res.tasks.last().map(|x| x.id.clone()) else {
         return Ok(());
     };
@@ -137,7 +146,8 @@ async fn process_task_request<S: State>(
         latest_queried_task_id =? last_task_item_id,
         "received new tasks"
     );
-    let mut iter = futures::stream::iter(res.tasks.into_iter().map(Ok));
+    // let tasks = res.into_inner();
+    let mut iter = futures::stream::iter(res.into_inner().tasks.into_iter().map(Ok));
     fan_out_sender.send_all(&mut iter).await?;
     state.set_latest_queried_task_id(last_task_item_id)?;
     Ok(())

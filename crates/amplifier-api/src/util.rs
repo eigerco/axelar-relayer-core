@@ -70,6 +70,66 @@ pub fn deserialize_option_utc<R: Read>(reader: &mut R) -> Result<Option<DateTime
     }
 }
 
+/// TODO: implement deserialize for WasmRequestWithObjectBody
+pub fn deserialize_wasm_request_with_object_body<R: Read>(
+    _reader: &mut R,
+) -> Result<serde_json::Map<::std::string::String, ::serde_json::Value>> {
+    Err(borsh::io::Error::new(
+        ErrorKind::InvalidData,
+        "Not implemented",
+    ))
+}
+
+/// TODO implement serialize for WasmRequestWithObjectBody
+pub fn serialize_wasm_request_with_object_body<W: Write>(
+    _value: &serde_json::Map<::std::string::String, ::serde_json::Value>,
+    _writer: &mut W,
+) -> Result<()> {
+    Err(borsh::io::Error::new(
+        ErrorKind::InvalidData,
+        "Not implemented",
+    ))
+}
+
+/// Serialize serde_json::Value to borsh format
+pub fn serialize_json_value<W: Write>(value: &serde_json::Value, writer: &mut W) -> Result<()> {
+    let json_string = serde_json::to_string(value).map_err(|e| {
+        borsh::io::Error::new(ErrorKind::InvalidData, format!("JSON serialization error: {}", e))
+    })?;
+    json_string.serialize(writer)
+}
+
+/// Deserialize serde_json::Value from borsh format
+pub fn deserialize_json_value<R: Read>(reader: &mut R) -> Result<serde_json::Value> {
+    let json_string: String = BorshDeserialize::deserialize_reader(reader)?;
+    serde_json::from_str(&json_string).map_err(|e| {
+        borsh::io::Error::new(ErrorKind::InvalidData, format!("JSON deserialization error: {}", e))
+    })
+}
+
+/// Serialize serde_json::Map to borsh format
+pub fn serialize_json_map<W: Write>(
+    value: &serde_json::Map<String, serde_json::Value>,
+    writer: &mut W,
+) -> Result<()> {
+    let json_value = serde_json::Value::Object(value.clone());
+    serialize_json_value(&json_value, writer)
+}
+
+/// Deserialize serde_json::Map from borsh format
+pub fn deserialize_json_map<R: Read>(
+    reader: &mut R,
+) -> Result<serde_json::Map<String, serde_json::Value>> {
+    let json_value = deserialize_json_value(reader)?;
+    match json_value {
+        serde_json::Value::Object(map) => Ok(map),
+        _ => Err(borsh::io::Error::new(
+            ErrorKind::InvalidData,
+            "Expected JSON object but got different type",
+        )),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use borsh::{BorshDeserialize, BorshSerialize};
