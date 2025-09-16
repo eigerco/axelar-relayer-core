@@ -36,8 +36,8 @@ chrono = { workspace = true, features = ["serde"] }
 
 bnum = "0.13"
 simd-json = "0.15"
-reqwest-tracing = "0.5.7"
-reqwest-middleware = "0.4.2"
+# reqwest-tracing = "0.5.7"
+# reqwest-middleware = "0.4.2"
 opentelemetry = "0.30.0"
 tracing-opentelemetry = "0.31.0"
 
@@ -46,6 +46,8 @@ pretty_assertions.workspace = true
 rstest.workspace = true
 tokio.workspace = true
 serde_json.workspace = true
+eyre.workspace = true
+tracing-subscriber.workspace = true
 
 [build-dependencies]
 prettyplease = "0.2.37"

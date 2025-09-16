@@ -54,11 +54,14 @@ pub mod amplifier_open_api {
         }
     }
 }
+
 pub use self::amplifier_open_api::{Client as AmplifierApiClient, *};
 
 mod config;
 pub mod util;
 use std::str::FromStr;
+pub mod identity;
+pub mod error;
 
 pub use config::Config;
 use reqwest::Request;
