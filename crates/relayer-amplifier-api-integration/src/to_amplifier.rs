@@ -1,12 +1,8 @@
 use core::task::Poll;
 
-use amplifier_api::Client as AmplifierRequest;
-// use amplifier_api::requests::{self, WithTrailingSlash};
-use amplifier_api::types::{ErrorResponse, PublishEventsResult};
 use futures::StreamExt as _;
 use futures::stream::FusedStream as _;
 use tokio::task::JoinSet;
-use tracing::{Instrument as _, info_span};
 
 use super::component::{AmplifierCommand, CommandReceiver};
 use super::config::Config;
@@ -19,7 +15,6 @@ pub(crate) async fn process(
     tracing::info!("spawned");
 
     let mut join_set = JoinSet::<eyre::Result<()>>::new();
-    // let chain_with_trailing_slash = WithTrailingSlash::new(config.chain.clone());
     let mut task_stream = futures::stream::poll_fn(move |cx| {
         // check if we have new requests to add to the join set
         match receiver.poll_next_unpin(cx) {

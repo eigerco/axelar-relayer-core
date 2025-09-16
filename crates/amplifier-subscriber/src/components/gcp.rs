@@ -144,8 +144,10 @@ async fn amplifier_client(
     .await
     .wrap_err("kms connection failed")?;
 
-    Ok(AmplifierApiClient::new(
-        config.amplifier.url.as_str(),
-        // amplifier_api::TlsType::CustomProvider(client_config),
-    ))
+    let tls_type = amplifier_api::identity::TlsType::CustomProvider(client_config);
+    let authenticated_client = amplifier_api::identity::authenticated_client(tls_type)?;
+    let client =
+        AmplifierApiClient::new_with_client(config.amplifier.url.as_str(), authenticated_client);
+
+    Ok(client)
 }

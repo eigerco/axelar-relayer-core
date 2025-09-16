@@ -1,5 +1,4 @@
 //! Crate with amplifier subscriber component
-// use amplifier_api::requests::WithTrailingSlash;
 use amplifier_api::Client as AmplifierApiClient;
 use bin_util::health_check::CheckHealth;
 use eyre::Context as _;
@@ -68,8 +67,6 @@ where
     /// - Failed to publish tasks to the queue
     #[tracing::instrument(skip_all)]
     pub async fn subscribe(&self) -> eyre::Result<()> {
-        // let chain_with_trailing_slash = WithTrailingSlash::new(self.chain.clone());
-
         // Record that we're making a fetch request
         self.metrics.record_fetch_request();
 

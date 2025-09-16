@@ -1,7 +1,6 @@
 //! Crate with amplifier ingester component
 use std::sync::Arc;
 
-// use amplifier_api::requests::{self, WithTrailingSlash};
 use amplifier_api::types::{Event, PublishEventsRequest};
 use amplifier_api::{self, Client as AmplifierApiClient};
 use bin_util::health_check::CheckHealth;
@@ -62,11 +61,8 @@ where
         event = tracing::field::Empty,
     ))]
     pub async fn process_queue_msg<Msg: QueueMessage<Event>>(&self, mut queue_msg: Msg) {
-        // let chain_with_trailing_slash = WithTrailingSlash::new(self.chain.clone());
-
         let event = queue_msg.decoded().clone();
-        // tracing::Span::current().record("event", tracing::field::display(&event)); // TODO:
-        // enable this
+        tracing::Span::current().record("event", tracing::field::debug(&event));
 
         self.record_event_received(&event);
 
@@ -76,34 +72,11 @@ where
 
         let result: eyre::Result<()> = async {
             tracing::trace!("processing");
-            // NEW
             let response = self
                 .ampf_client
                 .publish_events(&self.chain, &payload)
                 .await
                 .wrap_err("Failed to publish events")?;
-
-            // OLD
-            // let request = requests::PostEvents::builder()
-            //     .payload(&payload)
-            //     .chain(&chain_with_trailing_slash)
-            //     .build();
-            //
-            // let request = self
-            //     .ampf_client
-            //     .build_request(&request)
-            //     .wrap_err("could not build amplifier request")?;
-            //
-            // let response = request
-            //     .execute()
-            //     .await
-            //     .wrap_err("could not send amplifier request")?;
-            //
-            // let response = response
-            //     .json()
-            //     .await
-            //     .map_err(|err| eyre::Report::new(err).wrap_err("amplifier api failed"))?
-            //     .map_err(|err| eyre::Report::new(err).wrap_err("failed to decode response"))?;
 
             tracing::trace!(?response, "response from amplifier api");
 

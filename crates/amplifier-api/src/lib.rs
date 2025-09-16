@@ -87,7 +87,7 @@ struct RequestCarrier<'a> {
 }
 
 impl<'a> RequestCarrier<'a> {
-    pub fn new(request: &'a mut Request) -> Self {
+    fn new(request: &'a mut Request) -> Self {
         RequestCarrier { request }
     }
 

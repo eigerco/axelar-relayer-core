@@ -1,3 +1,4 @@
+use amplifier_api::identity::identity::Identity;
 // use amplifier_api::identity::Identity;
 use base64::Engine as _;
 use base64::prelude::BASE64_STANDARD;
@@ -16,7 +17,7 @@ pub struct Config {
         value_parser = parse_identity
     )]
     #[serde(skip_deserializing)]
-    pub identity: Option<reqwest::Identity>,
+    pub identity: Option<Identity>,
     /// TLS public certificate for Amplifier API
     #[arg(value_name = "AMPLIFIER_API_TLS_CERT", env = "AMPLIFIER_API_TLS_CERT")]
     pub tls_public_certificate: Option<String>,
@@ -80,14 +81,13 @@ pub struct Config {
     pub invalid_healthchecks_before_shutdown: usize,
 }
 
-fn parse_identity(input: &str) -> Result<Option<reqwest::Identity>> {
+fn parse_identity(input: &str) -> Result<Option<Identity>> {
     if input.is_empty() {
         return Ok(None);
     }
 
-    todo!("parse identity to reqwest::Identity")
-    // let identity_bytes = BASE64_STANDARD.decode(input)?;
-    // Ok(Some(Identity::new_from_pem_bytes(&identity_bytes)?))
+    let identity_bytes = BASE64_STANDARD.decode(input)?;
+    Ok(Some(Identity::new_from_pem_bytes(&identity_bytes)?))
 }
 
 fn parse_chains_poll_interval(input: &str) -> Result<core::time::Duration> {

@@ -1,8 +1,5 @@
 use core::task::Poll;
 
-use amplifier_api::Client as AmplifierRequest;
-// use amplifier_api::requests::{self, WithTrailingSlash};
-use amplifier_api::types::{ErrorResponse, GetTasksResult};
 use futures::SinkExt as _;
 use futures::stream::StreamExt as _;
 use relayer_amplifier_state::State;
@@ -27,7 +24,6 @@ where
     tracing::info!(poll_interval =? config.get_chains_poll_interval, "spawned");
 
     // Trailing slash is significant when making the API calls!
-    // let chain_with_trailing_slash = WithTrailingSlash::new(config.chain.clone());
     let mut join_set = JoinSet::<eyre::Result<()>>::new();
 
     let mut interval_stream = IntervalStream::new({
@@ -48,7 +44,6 @@ where
             Poll::Ready(Some(_res)) => {
                 let res = internal(
                     &config,
-                    // &chain_with_trailing_slash,
                     &client,
                     fan_out_sender.clone(),
                     &mut join_set,
@@ -91,7 +86,6 @@ where
 
 pub(crate) fn internal<S>(
     config: &Config,
-    // chain_with_trailing_slash: &WithTrailingSlash,
     client: &amplifier_api::AmplifierApiClient,
     fan_out_sender: AmplifierTaskSender,
     to_join_set: &mut JoinSet<eyre::Result<()>>,
@@ -148,7 +142,6 @@ async fn process_task_request<S: State>(
         latest_queried_task_id =? last_task_item_id,
         "received new tasks"
     );
-    // let tasks = res.into_inner();
     let mut iter = futures::stream::iter(res.into_inner().tasks.into_iter().map(Ok));
     fan_out_sender.send_all(&mut iter).await?;
     state.set_latest_queried_task_id(last_task_item_id)?;
