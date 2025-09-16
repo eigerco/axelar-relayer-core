@@ -94,7 +94,10 @@ pub fn serialize_wasm_request_with_object_body<W: Write>(
 /// Serialize serde_json::Value to borsh format
 pub fn serialize_json_value<W: Write>(value: &serde_json::Value, writer: &mut W) -> Result<()> {
     let json_string = serde_json::to_string(value).map_err(|e| {
-        borsh::io::Error::new(ErrorKind::InvalidData, format!("JSON serialization error: {}", e))
+        borsh::io::Error::new(
+            ErrorKind::InvalidData,
+            format!("JSON serialization error: {}", e),
+        )
     })?;
     json_string.serialize(writer)
 }
@@ -103,7 +106,10 @@ pub fn serialize_json_value<W: Write>(value: &serde_json::Value, writer: &mut W)
 pub fn deserialize_json_value<R: Read>(reader: &mut R) -> Result<serde_json::Value> {
     let json_string: String = BorshDeserialize::deserialize_reader(reader)?;
     serde_json::from_str(&json_string).map_err(|e| {
-        borsh::io::Error::new(ErrorKind::InvalidData, format!("JSON deserialization error: {}", e))
+        borsh::io::Error::new(
+            ErrorKind::InvalidData,
+            format!("JSON deserialization error: {}", e),
+        )
     })
 }
 

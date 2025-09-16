@@ -334,8 +334,8 @@ where
 ///
 /// # Returns
 ///
-/// * `Result<Box<rustls::ClientConfig>, GcpError>` - A boxed rustls ClientConfig configured for TLS
-///   client authentication using KMS, or an error if setup fails
+/// * `Result<Box<rustls::ClientConfig>, GcpError>` - A boxed rustls `ClientConfig` configured for
+///   TLS client authentication using KMS, or an error if setup fails
 ///
 /// # Errors
 ///

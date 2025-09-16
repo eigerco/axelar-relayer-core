@@ -117,7 +117,9 @@ where
         let chain_name = config.chain.clone();
         let chains_limit = config.get_chains_limit;
 
-        async move { process_task_request(&client, chain_name, chains_limit, fan_out_sender, state).await }
+        async move {
+            process_task_request(&client, chain_name, chains_limit, fan_out_sender, state).await
+        }
     });
 
     Ok(())

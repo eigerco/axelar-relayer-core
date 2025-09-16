@@ -292,7 +292,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_health_check_success() {
+    async fn health_check_success() {
         let port = get_free_port();
         run_server(port, || async { Ok(()) }).await;
 
@@ -303,7 +303,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_health_check_failure() {
+    async fn health_check_failure() {
         let port = get_free_port();
         run_server(port, || async { Err(eyre::eyre!("Health check failed")) }).await;
 
@@ -314,7 +314,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_dynamic_health_status() {
+    async fn dynamic_health_status() {
         let port = get_free_port();
         let flag = Arc::new(AtomicBool::new(false));
         let cancel_token = CancellationToken::new();
@@ -355,7 +355,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_readyz_endpoint() {
+    async fn readyz_endpoint() {
         let port = get_free_port();
         let cancel_token = run_server(port, || async { Ok(()) }).await;
 
@@ -379,7 +379,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_not_found() {
+    async fn not_found() {
         let port = get_free_port();
         let cancel_token = run_server(port, || async { Ok(()) }).await;
 
@@ -391,7 +391,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_cancellation() {
+    async fn cancellation() {
         let port = get_free_port();
         let cancel_token = run_server(port, || async { Ok(()) }).await;
 

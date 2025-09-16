@@ -105,7 +105,7 @@ where
         let config = self.config.clone();
         let client = amplifier_api::AmplifierApiClient::new_with_client(
             &self.config.url.to_string(),
-            todo!("add reqwest client configuration here")
+            todo!("add reqwest client configuration here"),
         );
         let clock = get_clock()?;
 

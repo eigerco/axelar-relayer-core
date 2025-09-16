@@ -43,12 +43,12 @@ pub fn run(
     cancel_token: &CancellationToken,
     tickrate: Duration,
 ) -> eyre::Result<()> {
-    if cfg!(debug_assertions) {
-        if let Ok(pipe_path) = std::env::var(READY_PIPE_PATH_ENV) {
-            tracing::warn!("[Test mode] deleting pipe file: {pipe_path}");
-            if std::fs::exists(&pipe_path).expect("pipe existance checked") {
-                std::fs::remove_file(pipe_path).expect("pipe file deleted");
-            }
+    if cfg!(debug_assertions) &&
+        let Ok(pipe_path) = std::env::var(READY_PIPE_PATH_ENV)
+    {
+        tracing::warn!("[Test mode] deleting pipe file: {pipe_path}");
+        if std::fs::exists(&pipe_path)? {
+            std::fs::remove_file(pipe_path)?;
         }
     }
 
@@ -85,8 +85,7 @@ pub fn run(
                     active_workers.insert(worker_name.clone(), Some(worker_handle));
                 }
 
-                if cfg!(debug_assertions) {
-                    if let Ok(pipe_path) = std::env::var(READY_PIPE_PATH_ENV) {
+                if cfg!(debug_assertions) && let Ok(pipe_path) = std::env::var(READY_PIPE_PATH_ENV) {
                         tracing::warn!("[Test mode] signaling readiness");
                         // Owner: read(S_IRUSR) + write(S_IWUSR)
                         // Group: read(S_IRGRP)
@@ -102,7 +101,6 @@ pub fn run(
                             .expect("write READY to ready pipe");
 
                         tracing::warn!("Readiness signal sent");
-                    }
                 }
 
                 tracing::info!("all workers are running");
@@ -177,11 +175,11 @@ pub fn run(
 
         tracing::info!("Supervisor shutting down");
 
-        if cfg!(debug_assertions) {
-            if let Ok(pipe_path) = std::env::var(READY_PIPE_PATH_ENV) {
-                tracing::warn!("[Test mode] deleting ready pipe");
-                std::fs::remove_file(pipe_path).expect("pipe file deleted");
-            }
+        if cfg!(debug_assertions) &&
+            let Ok(pipe_path) = std::env::var(READY_PIPE_PATH_ENV)
+        {
+            tracing::warn!("[Test mode] deleting ready pipe");
+            std::fs::remove_file(pipe_path).expect("pipe file deleted");
         }
 
         eyre::Ok(())

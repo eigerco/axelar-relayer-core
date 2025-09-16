@@ -54,9 +54,7 @@ pub mod amplifier_open_api {
         }
     }
 }
-pub use self::amplifier_open_api::*;
-
-pub use self::amplifier_open_api::Client as AmplifierApiClient;
+pub use self::amplifier_open_api::{Client as AmplifierApiClient, *};
 
 mod config;
 pub mod util;
