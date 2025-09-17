@@ -49,7 +49,10 @@ pub trait Worker: Send {
 /// # Panics
 ///
 /// Panics if thread spawning or joining fails, or if named pipe operations fail in debug mode.
-#[allow(clippy::too_many_lines, reason = "Just hidding the error for now. Need to refactor")]
+#[allow(
+    clippy::too_many_lines,
+    reason = "Just hidding the error for now. Need to refactor"
+)]
 #[tracing::instrument(name = "supervisor", skip_all)]
 pub fn run(
     worker_builders: BTreeMap<WorkerName, WorkerBuildFn>,

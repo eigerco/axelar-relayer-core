@@ -14,7 +14,7 @@ pub(crate) struct AmplifierSubscriberMetrics {
     publish_batches: Counter<u64>,
 
     // Error counters
-    // fetch_errors: Counter<u64>,
+    fetch_errors: Counter<u64>,
     publish_errors: Counter<u64>,
     health_check_errors: Counter<u64>,
 
@@ -67,11 +67,11 @@ impl AmplifierSubscriberMetrics {
             .with_description("Total number of batches published to queue")
             .build();
 
-        // // Error counters
-        // let fetch_errors = meter
-        //     .u64_counter("subscriber.fetch_errors.count")
-        //     .with_description("Number of errors during task fetching")
-        //     .build();
+        // Error counters
+        let fetch_errors = meter
+            .u64_counter("subscriber.fetch_errors.count")
+            .with_description("Number of errors during task fetching")
+            .build();
 
         let publish_errors = meter
             .u64_counter("subscriber.publish_errors.count")
@@ -94,7 +94,7 @@ impl AmplifierSubscriberMetrics {
             empty_responses,
             fetch_requests,
             publish_batches,
-            // fetch_errors,
+            fetch_errors,
             publish_errors,
             health_check_errors,
             error_raised,
@@ -131,11 +131,11 @@ impl AmplifierSubscriberMetrics {
 
     // -- Error tracking methods
 
-    // /// Records an error during task fetching.
-    // pub(crate) fn record_fetch_error(&self) {
-    //     self.fetch_errors.add(1, &self.attributes);
-    //     self.error_raised.add(1, &self.attributes);
-    // }
+    /// Records an error during task fetching.
+    pub(crate) fn record_fetch_error(&self) {
+        self.fetch_errors.add(1, &self.attributes);
+        self.error_raised.add(1, &self.attributes);
+    }
 
     /// Records an error during task publishing.
     pub(crate) fn record_publish_error(&self) {

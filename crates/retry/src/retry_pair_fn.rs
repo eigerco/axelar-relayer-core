@@ -39,7 +39,10 @@ where
 
     // you can use a macro to reduce copy-paste
     // but this will reduce readability
-    #[allow(clippy::cognitive_complexity, reason = "complex retry logic. Needs refactor")]
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "complex retry logic. Needs refactor"
+    )]
     pub async fn retry(self) -> Result<T, RetryError<Err>> {
         let mut primary_fn_aborted = false;
         let mut primary_fn_rate_limitted = false;

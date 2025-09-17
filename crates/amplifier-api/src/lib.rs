@@ -33,9 +33,8 @@ pub mod amplifier_open_api {
         clippy::doc_markdown,
         clippy::missing_const_for_fn,
         clippy::unnecessary_wraps,
-        reason = "generated code"
+        reason = "Relax lints for generated code"
     )]
-    // Disable all compiler warnings and errors for generated code
     #![allow(
         dead_code,
         unused_imports,
@@ -48,7 +47,7 @@ pub mod amplifier_open_api {
         unused_allocation,
         trivial_casts,
         trivial_numeric_casts,
-        reason = "generated code"
+        reason = "Relax lints for generated code"
     )]
 
     //! This module contains the generated OpenAPI client code for the Amplifier API,
@@ -57,8 +56,6 @@ pub mod amplifier_open_api {
     // The generated code is using `elided_named_lifetimes` (#[allow(elided_named_lifetimes)])
     // which is renamed to `mismatched_lifetime_syntaxes` in newer Rust versions.
     // This should be removed once the generated code no longer uses this lint.
-
-    // #![allow(clippy::all, reason = "generated code")]
 
     include!(concat!(env!("OUT_DIR"), "/amplifier_api_client.rs"));
 

@@ -16,17 +16,16 @@ thiserror.workspace = true
 url.workspace = true
 rustls.workspace = true
 
+borsh = { workspace = true, features = ["derive", "indexmap" ]}
+chrono = { workspace = true, features = ["serde"] }
+opentelemetry.workspace = true
 progenitor-client.workspace = true
 regress = "0.10.4"
 reqwest = { workspace = true, features = ["json", "stream"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-borsh = { workspace = true, features = ["derive", "indexmap" ]}
-chrono = { workspace = true, features = ["serde"] }
-
 simd-json = "0.16"
-opentelemetry = "0.30.0"
-tracing-opentelemetry = "0.31.0"
+tracing-opentelemetry.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true
@@ -43,8 +42,6 @@ progenitor.workspace = true
 quote = "1.0"
 serde_yaml.workspace = true
 syn = "2.0.106"
-tracing.workspace = true
-tracing-opentelemetry = "0.31.0"
 
 [lints]
 workspace = true

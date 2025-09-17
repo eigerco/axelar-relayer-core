@@ -89,7 +89,10 @@ where
                     std::num::NonZeroU64::new(u64::from(self.limit_items)),
                 )
                 .await
-                .wrap_err("Failed to get tasks for chain")?;
+                .wrap_err("Failed to get tasks for chain")
+                .inspect_err(|_| {
+                    self.metrics.record_fetch_error();
+                })?;
 
             tracing::trace!(?response, "amplifier response");
 

@@ -6,7 +6,7 @@
 //!
 //! ## Generated Code
 //!
-//! The generated code is written to `$OUT_DIR/codegen.rs` and includes:
+//! The generated code is written to `$OUT_DIR/amplifier_api_client.rs` and includes:
 //! - API client structures and methods
 //! - Custom Borsh serialization attributes for JSON and `DateTime` types
 //! - `QueueMsgId` trait implementations for `TaskItem` structs
@@ -36,17 +36,15 @@ impl VisitMut for HandleBorsh {
         let has_borsh_derives = i.attrs.iter().any(|attr| {
             if attr.path().is_ident("derive") {
                 let mut has_borsh = false;
-                attr
-                    .parse_nested_meta(|meta| {
-                        let path_str = meta.path.to_token_stream().to_string();
-                        if path_str.contains("BorshSerialize")
-                            || path_str.contains("BorshDeserialize")
-                        {
-                            has_borsh = true;
-                        }
-                        Ok(())
-                    })
-                    .expect("Failed to parse derive attributes");
+                attr.parse_nested_meta(|meta| {
+                    let path_str = meta.path.to_token_stream().to_string();
+                    if path_str.contains("BorshSerialize") || path_str.contains("BorshDeserialize")
+                    {
+                        has_borsh = true;
+                    }
+                    Ok(())
+                })
+                .expect("Failed to parse derive attributes");
                 return has_borsh;
             }
             false
@@ -79,9 +77,9 @@ impl HandleBorsh {
             let path_str = quote!(#path).to_string();
 
             // Add borsh attributes for serde_json::Value
-            if path_str.contains("serde_json")
-                && path_str.contains("Value")
-                && !path_str.contains("Map")
+            if path_str.contains("serde_json") &&
+                path_str.contains("Value") &&
+                !path_str.contains("Map")
             {
                 let attr = syn::parse_quote! {
                     #[borsh(
@@ -102,9 +100,9 @@ impl HandleBorsh {
                 field.attrs.push(attr);
             }
             // Add borsh attributes for Option<DateTime<Utc>>
-            else if path_str.contains("Option")
-                && path_str.contains("chrono")
-                && path_str.contains("DateTime")
+            else if path_str.contains("Option") &&
+                path_str.contains("chrono") &&
+                path_str.contains("DateTime")
             {
                 let attr = syn::parse_quote! {
                     #[borsh(
@@ -115,9 +113,9 @@ impl HandleBorsh {
                 field.attrs.push(attr);
             }
             // Add borsh attributes for DateTime<Utc> (non-optional)
-            else if path_str.contains("chrono")
-                && path_str.contains("DateTime")
-                && !path_str.contains("Option")
+            else if path_str.contains("chrono") &&
+                path_str.contains("DateTime") &&
+                !path_str.contains("Option")
             {
                 let attr = syn::parse_quote! {
                     #[borsh(
@@ -155,8 +153,8 @@ impl VisitMut for AddQueueMsgId {
             for item in items.iter() {
                 new_items.push(item.clone());
 
-                if let syn::Item::Struct(item_struct) = item
-                    && item_struct.ident == "TaskItem"
+                if let syn::Item::Struct(item_struct) = item &&
+                    item_struct.ident == "TaskItem"
                 {
                     let impl_item: syn::Item = syn::parse_quote! {
                         impl  ::infrastructure::interfaces::publisher::QueueMsgId for TaskItem {
