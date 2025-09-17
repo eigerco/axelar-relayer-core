@@ -16,7 +16,7 @@ runs:
         components: "rustfmt,clippy,cargo,llvm-tools-preview"
     - name: Ensure rustfmt is available
       shell: bash
-      run: rustup component add --toolchain ${{ inputs.toolchain }} rustfmt
+      run: rustup component add --toolchain nightly rustfmt
     - uses: Swatinem/rust-cache@v2
       with:
         cache-on-failure: true
