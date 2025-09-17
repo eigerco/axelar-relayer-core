@@ -16,7 +16,7 @@ thiserror.workspace = true
 url.workspace = true
 rustls.workspace = true
 
-borsh = { workspace = true, features = ["derive", "indexmap" ]}
+borsh = { workspace = true, features = ["derive", "indexmap"] }
 chrono = { workspace = true, features = ["serde"] }
 opentelemetry.workspace = true
 progenitor-client.workspace = true
@@ -50,3 +50,6 @@ workspace = true
 name = "healthcheck"
 path = "examples/healthcheck.rs"
 doc-scrape-examples = true
+
+[package.metadata.cargo-machete]
+ignored = ["infrastructure", "progenitor-client", "regress"]
