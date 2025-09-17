@@ -10,30 +10,21 @@ edition.workspace = true
 [dependencies]
 infrastructure = { workspace = true, features = ["publisher-interfaces"] }
 
-base64.workspace = true
 tracing.workspace = true
 redact.workspace = true
 thiserror.workspace = true
 url.workspace = true
-uuid.workspace = true
-typed-builder.workspace = true
 rustls.workspace = true
-hex.workspace = true
 
-futures.workspace = true
-progenitor-client = "0.11.0"
+progenitor-client.workspace = true
 regress = "0.10.4"
 reqwest = { workspace = true, features = ["json", "stream"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-indexmap = { version = "2.11", features = ["serde"] }
 borsh = { workspace = true, features = ["derive", "indexmap" ]}
 chrono = { workspace = true, features = ["serde"] }
 
-bnum = "0.13"
-simd-json = "0.15"
-# reqwest-tracing = "0.5.7"
-# reqwest-middleware = "0.4.2"
+simd-json = "0.16"
 opentelemetry = "0.30.0"
 tracing-opentelemetry = "0.31.0"
 
@@ -46,19 +37,14 @@ eyre.workspace = true
 tracing-subscriber.workspace = true
 
 [build-dependencies]
-prettyplease = "0.2.37"
-progenitor = "0.11.0"
-serde = "1.0.219"
-serde_yaml = "0.9.34"
-syn = "2.0.106"
 eyre.workspace = true
-# reqwest-middleware = "0.4.2"
-reqwest = { version = "0.12", features = ["json" ] }
+prettyplease = "0.2.37"
+progenitor.workspace = true
 quote = "1.0"
-opentelemetry = "0.30.0"
+serde_yaml.workspace = true
+syn = "2.0.106"
+tracing.workspace = true
 tracing-opentelemetry = "0.31.0"
-tracing = { version = "0.1" }
-
 
 [lints]
 workspace = true

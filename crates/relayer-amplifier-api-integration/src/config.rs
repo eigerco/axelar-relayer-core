@@ -1,4 +1,4 @@
-use amplifier_api::identity::identity::Identity;
+use amplifier_api::identity::Identity;
 // use amplifier_api::identity::Identity;
 use base64::Engine as _;
 use base64::prelude::BASE64_STANDARD;

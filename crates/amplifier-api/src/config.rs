@@ -1,13 +1,11 @@
-use reqwest::Identity;
 use serde::Deserialize;
 
-// use crate::identity::Identity;
+use crate::identity::Identity;
 
 /// Amplifier config
 #[derive(Debug, Deserialize)]
 pub struct Config {
     /// Identity keys for the Amplifier API
-    #[serde(skip)]
     pub identity: Option<Identity>,
     /// TLS public certificate for Amplifier API
     pub tls_public_certificate: Option<String>,
