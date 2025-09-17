@@ -39,7 +39,10 @@ pub(crate) fn deserialize_utc<R: Read>(reader: &mut R) -> Result<DateTime<Utc>> 
 /// # Errors
 /// Infallible
 #[allow(clippy::ref_option, reason = "serde requires otherwise")]
-pub(crate) fn serialize_option_utc<W: Write>(value: &Option<DateTime<Utc>>, writer: &mut W) -> Result<()> {
+pub(crate) fn serialize_option_utc<W: Write>(
+    value: &Option<DateTime<Utc>>,
+    writer: &mut W,
+) -> Result<()> {
     match *value {
         Some(dt) => {
             1_u8.serialize(writer)?;
@@ -70,29 +73,32 @@ pub(crate) fn deserialize_option_utc<R: Read>(reader: &mut R) -> Result<Option<D
     }
 }
 
-/// Serialize serde_json::Value to borsh format
-pub(crate) fn serialize_json_value<W: Write>(value: &serde_json::Value, writer: &mut W) -> Result<()> {
+/// Serialize `serde_json::Value` to borsh format
+pub(crate) fn serialize_json_value<W: Write>(
+    value: &serde_json::Value,
+    writer: &mut W,
+) -> Result<()> {
     let json_string = serde_json::to_string(value).map_err(|e| {
         borsh::io::Error::new(
             ErrorKind::InvalidData,
-            format!("JSON serialization error: {}", e),
+            format!("JSON serialization error: {e}"),
         )
     })?;
     json_string.serialize(writer)
 }
 
-/// Deserialize serde_json::Value from borsh format
-pub(crate)fn deserialize_json_value<R: Read>(reader: &mut R) -> Result<serde_json::Value> {
+/// Deserialize `serde_json::Value` from borsh format
+pub(crate) fn deserialize_json_value<R: Read>(reader: &mut R) -> Result<serde_json::Value> {
     let json_string: String = BorshDeserialize::deserialize_reader(reader)?;
     serde_json::from_str(&json_string).map_err(|e| {
         borsh::io::Error::new(
             ErrorKind::InvalidData,
-            format!("JSON deserialization error: {}", e),
+            format!("JSON deserialization error: {e}"),
         )
     })
 }
 
-/// Serialize serde_json::Map to borsh format
+/// Serialize `serde_json::Map` to borsh format
 pub(crate) fn serialize_json_map<W: Write>(
     value: &serde_json::Map<String, serde_json::Value>,
     writer: &mut W,
@@ -101,18 +107,19 @@ pub(crate) fn serialize_json_map<W: Write>(
     serialize_json_value(&json_value, writer)
 }
 
-/// Deserialize serde_json::Map from borsh format
+/// Deserialize `serde_json::Map` from borsh format
 pub(crate) fn deserialize_json_map<R: Read>(
     reader: &mut R,
 ) -> Result<serde_json::Map<String, serde_json::Value>> {
     let json_value = deserialize_json_value(reader)?;
-    match json_value {
-        serde_json::Value::Object(map) => Ok(map),
-        _ => Err(borsh::io::Error::new(
+    let serde_json::Value::Object(map) = json_value else {
+        return Err(borsh::io::Error::new(
             ErrorKind::InvalidData,
             "Expected JSON object but got different type",
-        )),
-    }
+        ));
+    };
+
+    Ok(map)
 }
 
 #[cfg(test)]
@@ -139,7 +146,7 @@ mod tests {
     }
 
     #[test]
-    fn test_datetime_utc_borsh_serialize_and_deserialize() {
+    fn datetime_utc_borsh_serialize_and_deserialize() {
         let now = Utc::now();
         let container = DateTimeContainer { timestamp: now };
         let serialized = borsh::to_vec(&container).expect("serialize utc succeeds");
@@ -150,7 +157,7 @@ mod tests {
     }
 
     #[test]
-    fn test_datetime_option_utc_borsh_serialize_and_deserialize() {
+    fn datetime_option_utc_borsh_serialize_and_deserialize() {
         let now = Some(Utc::now());
         let container = DateTimeOptionContainer { timestamp: now };
         let serialized = borsh::to_vec(&container).expect("serialize utc succeeds");

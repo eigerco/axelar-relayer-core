@@ -1,29 +1,66 @@
 //! Crate for interacting with the Amplifier API.
 //! Intended to be used by Relayers supporting the Axelar infrastructure
 
-
 pub use self::amplifier_open_api::{Client as AmplifierApiClient, *};
 
 mod config;
-mod util;
-pub mod identity;
 pub mod error;
+pub mod identity;
+mod util;
 
 mod opentelemetry;
 
 pub use config::Config;
 
 pub mod amplifier_open_api {
+    #![allow(
+        clippy::all,
+        clippy::pedantic,
+        clippy::nursery,
+        clippy::restriction,
+        clippy::cargo,
+        warnings,
+        missing_docs,
+        rustdoc::all,
+        clippy::multiple_inherent_impl,
+        clippy::std_instead_of_core,
+        unused_unsafe,
+        clippy::too_many_arguments,
+        clippy::missing_safety_doc,
+        clippy::missing_errors_doc,
+        clippy::missing_panics_doc,
+        clippy::must_use_candidate,
+        clippy::doc_markdown,
+        clippy::missing_const_for_fn,
+        clippy::unnecessary_wraps,
+        reason = "generated code"
+    )]
+    // Disable all compiler warnings and errors for generated code
+    #![allow(
+        dead_code,
+        unused_imports,
+        unused_variables,
+        unused_mut,
+        non_camel_case_types,
+        non_snake_case,
+        non_upper_case_globals,
+        unreachable_code,
+        unused_allocation,
+        trivial_casts,
+        trivial_numeric_casts,
+        reason = "generated code"
+    )]
+
     //! This module contains the generated OpenAPI client code for the Amplifier API,
     //! along with custom client hooks for tracing and OpenTelemetry context injection.
-    #![allow(missing_docs)]
 
     // The generated code is using `elided_named_lifetimes` (#[allow(elided_named_lifetimes)])
-    // which is renamed to ``mismatched_lifetime_syntaxes` in newer Rust versions.
+    // which is renamed to `mismatched_lifetime_syntaxes` in newer Rust versions.
     // This should be removed once the generated code no longer uses this lint.
-    #![allow(renamed_and_removed_lints)]
 
-    include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
+    // #![allow(clippy::all, reason = "generated code")]
+
+    include!(concat!(env!("OUT_DIR"), "/amplifier_api_client.rs"));
 
     impl ClientHooks<()> for Client {
         async fn pre<E>(

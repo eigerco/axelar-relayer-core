@@ -71,7 +71,7 @@ pub(crate) fn internal(
         AmplifierCommand::PublishEvents(events) => {
             join_set.spawn({
                 let client = client.clone();
-                let chain = chain.to_string();
+                let chain = chain.to_owned();
                 async move {
                     client
                         .publish_events(&chain, &events)

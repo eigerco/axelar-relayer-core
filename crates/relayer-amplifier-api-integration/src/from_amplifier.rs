@@ -130,7 +130,7 @@ async fn process_task_request<S: State>(
         .get_tasks(
             &config_chain,
             None,
-            std::num::NonZeroU64::new(config_get_chains_limit as u64),
+            std::num::NonZeroU64::new(u64::from(config_get_chains_limit)),
         )
         .await?;
 

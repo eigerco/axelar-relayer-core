@@ -86,7 +86,7 @@ where
                 .get_tasks(
                     &self.chain,
                     last_task_id.as_deref(),
-                    std::num::NonZeroU64::new(self.limit_items as u64),
+                    std::num::NonZeroU64::new(u64::from(self.limit_items)),
                 )
                 .await
                 .wrap_err("Failed to get tasks for chain")?;
@@ -161,7 +161,7 @@ where
         {
             self.metrics.record_health_check_error();
             tracing::error!(?err, "amplifier client health check failed");
-            return Err(err.into());
+            return Err(err);
         }
 
         Ok(())

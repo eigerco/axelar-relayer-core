@@ -1,5 +1,4 @@
 use amplifier_api::identity::Identity;
-// use amplifier_api::identity::Identity;
 use base64::Engine as _;
 use base64::prelude::BASE64_STANDARD;
 use clap::Parser;
@@ -8,7 +7,7 @@ use serde::Deserialize;
 use typed_builder::TypedBuilder;
 
 /// global Amplifier component configuration
-#[derive(Debug, Deserialize, Clone, TypedBuilder, Parser)]
+#[derive(Debug, Deserialize, Clone, PartialEq, TypedBuilder, Parser)]
 pub struct Config {
     /// Identity keys for the Amplifier API
     #[arg(
@@ -16,7 +15,6 @@ pub struct Config {
         env = "AMPLIFIER_API_IDENTITY",
         value_parser = parse_identity
     )]
-    #[serde(skip_deserializing)]
     pub identity: Option<Identity>,
     /// TLS public certificate for Amplifier API
     #[arg(value_name = "AMPLIFIER_API_TLS_CERT", env = "AMPLIFIER_API_TLS_CERT")]

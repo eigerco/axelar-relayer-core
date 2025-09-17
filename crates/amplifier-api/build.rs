@@ -17,7 +17,7 @@
 //!    - `serde_json::Value` and `serde_json::Map` types
 //!    - `chrono::DateTime<Utc>` types (both optional and non-optional)
 //!
-//! 2. **Queue Message IDs**: Automatically implements the `QueueMsgId` trait for `TaskItem` structs
+//! 2. **Queue Message IDs**: Automatically implements the `QueueMsgId` trait for `TaskItem` struct
 
 use progenitor::InterfaceStyle;
 use quote::{ToTokens as _, quote};
@@ -36,14 +36,17 @@ impl VisitMut for HandleBorsh {
         let has_borsh_derives = i.attrs.iter().any(|attr| {
             if attr.path().is_ident("derive") {
                 let mut has_borsh = false;
-                let _ = attr.parse_nested_meta(|meta| {
-                    let path_str = meta.path.to_token_stream().to_string();
-                    if path_str.contains("BorshSerialize") || path_str.contains("BorshDeserialize")
-                    {
-                        has_borsh = true;
-                    }
-                    Ok(())
-                });
+                attr
+                    .parse_nested_meta(|meta| {
+                        let path_str = meta.path.to_token_stream().to_string();
+                        if path_str.contains("BorshSerialize")
+                            || path_str.contains("BorshDeserialize")
+                        {
+                            has_borsh = true;
+                        }
+                        Ok(())
+                    })
+                    .expect("Failed to parse derive attributes");
                 return has_borsh;
             }
             false
@@ -76,9 +79,9 @@ impl HandleBorsh {
             let path_str = quote!(#path).to_string();
 
             // Add borsh attributes for serde_json::Value
-            if path_str.contains("serde_json") &&
-                path_str.contains("Value") &&
-                !path_str.contains("Map")
+            if path_str.contains("serde_json")
+                && path_str.contains("Value")
+                && !path_str.contains("Map")
             {
                 let attr = syn::parse_quote! {
                     #[borsh(
@@ -99,9 +102,9 @@ impl HandleBorsh {
                 field.attrs.push(attr);
             }
             // Add borsh attributes for Option<DateTime<Utc>>
-            else if path_str.contains("Option") &&
-                path_str.contains("chrono") &&
-                path_str.contains("DateTime")
+            else if path_str.contains("Option")
+                && path_str.contains("chrono")
+                && path_str.contains("DateTime")
             {
                 let attr = syn::parse_quote! {
                     #[borsh(
@@ -112,9 +115,9 @@ impl HandleBorsh {
                 field.attrs.push(attr);
             }
             // Add borsh attributes for DateTime<Utc> (non-optional)
-            else if path_str.contains("chrono") &&
-                path_str.contains("DateTime") &&
-                !path_str.contains("Option")
+            else if path_str.contains("chrono")
+                && path_str.contains("DateTime")
+                && !path_str.contains("Option")
             {
                 let attr = syn::parse_quote! {
                     #[borsh(
@@ -152,8 +155,8 @@ impl VisitMut for AddQueueMsgId {
             for item in items.iter() {
                 new_items.push(item.clone());
 
-                if let syn::Item::Struct(item_struct) = item &&
-                    item_struct.ident == "TaskItem"
+                if let syn::Item::Struct(item_struct) = item
+                    && item_struct.ident == "TaskItem"
                 {
                     let impl_item: syn::Item = syn::parse_quote! {
                         impl  ::infrastructure::interfaces::publisher::QueueMsgId for TaskItem {
@@ -183,7 +186,7 @@ impl VisitMut for AddQueueMsgId {
 /// 2. Configures the progenitor generator with Borsh serialization derives
 /// 3. Generates the initial AST from the schema
 /// 4. Applies custom transformations using the visitor patterns
-/// 5. Writes the final generated code to `$OUT_DIR/codegen.rs`
+/// 5. Writes the final generated code to `$OUT_DIR/amplifier_api_client.rs`
 ///
 /// The generated code includes proper Borsh serialization support and queue message
 /// ID implementations as needed by the application infrastructure.
@@ -221,7 +224,7 @@ fn main() -> eyre::Result<()> {
 
     let out_file = std::path::Path::new(&std::env::var("OUT_DIR")?)
         .to_path_buf()
-        .join("codegen.rs");
+        .join("amplifier_api_client.rs");
 
     std::fs::write(out_file, content)?;
 

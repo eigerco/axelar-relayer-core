@@ -157,7 +157,16 @@ where
                 self.metrics.record_cannot_execute_message_received();
             }
             Event::SignersRotatedEvent(_) => self.metrics.record_signers_rotated_received(),
-            _ => {} // not supported yet
+            Event::MessageExecutedEventV2(_)
+            | Event::CannotExecuteMessageEvent(_)
+            | Event::CannotRouteMessageEvent(_)
+            | Event::CannotExecuteTaskEvent(_)
+            | Event::ItsLinkTokenStartedEvent(_)
+            | Event::ItsTokenMetadataRegisteredEvent(_)
+            | Event::ItsInterchainTokenDeploymentStartedEvent(_)
+            | Event::ItsInterchainTransferEvent(_)
+            | Event::AppInterchainTransferSentEvent(_)
+            | Event::AppInterchainTransferReceivedEvent(_) => {} // not supported
         }
     }
 
@@ -173,7 +182,16 @@ where
                 self.metrics.record_cannot_execute_message_processed();
             }
             Event::SignersRotatedEvent(_) => self.metrics.record_signers_rotated_processed(),
-            _ => {} // not supported yet
+            Event::MessageExecutedEventV2(_)
+            | Event::CannotExecuteMessageEvent(_)
+            | Event::CannotRouteMessageEvent(_)
+            | Event::CannotExecuteTaskEvent(_)
+            | Event::ItsLinkTokenStartedEvent(_)
+            | Event::ItsTokenMetadataRegisteredEvent(_)
+            | Event::ItsInterchainTokenDeploymentStartedEvent(_)
+            | Event::ItsInterchainTransferEvent(_)
+            | Event::AppInterchainTransferSentEvent(_)
+            | Event::AppInterchainTransferReceivedEvent(_) => {} // not supported yet
         }
     }
 }

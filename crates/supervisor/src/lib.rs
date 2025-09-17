@@ -37,6 +37,19 @@ pub trait Worker: Send {
 }
 
 /// Run supervisor
+///
+/// # Errors
+///
+/// This function may fail if
+/// - any worker builder function fails during initial worker creation,
+/// - thread spawning or joining fails,
+/// - if named pipe operations fail in debug mode.
+///
+///
+/// # Panics
+///
+/// Panics if thread spawning or joining fails, or if named pipe operations fail in debug mode.
+#[allow(clippy::too_many_lines, reason = "Just hidding the error for now. Need to refactor")]
 #[tracing::instrument(name = "supervisor", skip_all)]
 pub fn run(
     worker_builders: BTreeMap<WorkerName, WorkerBuildFn>,
