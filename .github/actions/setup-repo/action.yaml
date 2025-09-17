@@ -4,7 +4,7 @@ inputs:
   toolchain:
     description: "An example input parameter"
     required: false
-    default: "nightly-2025-03-20"
+    default: "nightly-2025-09-10"
 
 runs:
   using: "composite"
