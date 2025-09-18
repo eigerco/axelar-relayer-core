@@ -1,5 +1,4 @@
 use core::task::Poll;
-use std::sync::Arc;
 
 use futures::SinkExt as _;
 use futures::stream::StreamExt as _;
@@ -38,8 +37,6 @@ where
         state.set_latest_queried_task_id(task_item_id)?;
     }
 
-    let client = Arc::new(client);
-
     let mut task_stream = futures::stream::poll_fn(move |cx| {
         // periodically query the API for new tasks but only if the downstream processor is ready to
         // accept
@@ -47,7 +44,7 @@ where
             Poll::Ready(Some(_res)) => {
                 internal(
                     &config,
-                    Arc::clone(&client),
+                    &client,
                     fan_out_sender.clone(),
                     &mut join_set,
                     state.clone(),
@@ -89,7 +86,7 @@ where
 
 pub(crate) fn internal<S>(
     config: &Config,
-    client: Arc<amplifier_api::AmplifierApiClient>,
+    client: &amplifier_api::AmplifierApiClient,
     fan_out_sender: AmplifierTaskSender,
     to_join_set: &mut JoinSet<eyre::Result<()>>,
     state: S,
@@ -108,20 +105,17 @@ pub(crate) fn internal<S>(
     }
     tracing::trace!(?latest_processed_task, "latest task to query");
 
-    let chain_name = config.chain.clone();
-    let chains_limit = config.get_chains_limit;
-
     to_join_set.spawn(process_task_request(
-        client,
-        chain_name,
-        chains_limit,
+        client.clone(),
+        config.chain.clone(),
+        config.get_chains_limit,
         fan_out_sender,
         state,
     ));
 }
 
 async fn process_task_request<S: State>(
-    client: Arc<amplifier_api::AmplifierApiClient>,
+    client: amplifier_api::AmplifierApiClient,
     config_chain: String,
     config_get_chains_limit: u8,
     mut fan_out_sender: AmplifierTaskSender,
