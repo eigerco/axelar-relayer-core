@@ -21,10 +21,10 @@ pub(crate) async fn process(
             Poll::Ready(Some(command)) => {
                 // spawn the command on the joinset, returning the error
                 tracing::info!(?command, "sending message to amplifier api");
-                let res = internal(command, &client, &config.chain, &mut join_set);
+                internal(command, &client, &config.chain, &mut join_set);
 
                 cx.waker().wake_by_ref();
-                return Poll::Ready(Some(Ok(res)));
+                return Poll::Ready(Some(Ok(Ok(()))));
             }
             Poll::Pending => (),
             Poll::Ready(None) => {
@@ -66,7 +66,7 @@ pub(crate) fn internal(
     client: &amplifier_api::AmplifierApiClient,
     chain: &str,
     join_set: &mut JoinSet<eyre::Result<()>>,
-) -> Result<(), eyre::Error> {
+) {
     match command {
         AmplifierCommand::PublishEvents(events) => {
             join_set.spawn({
@@ -82,6 +82,4 @@ pub(crate) fn internal(
             });
         }
     }
-
-    Ok(())
 }

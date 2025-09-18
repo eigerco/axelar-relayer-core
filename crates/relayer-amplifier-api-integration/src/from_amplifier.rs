@@ -45,7 +45,7 @@ where
         // accept
         match interval_stream.poll_next_unpin(cx) {
             Poll::Ready(Some(_res)) => {
-                let res = internal(
+                internal(
                     &config,
                     Arc::clone(&client),
                     fan_out_sender.clone(),
@@ -55,7 +55,7 @@ where
                 // in case we were awoken by join_set being ready, let's re-run this function,
                 // while returning the result of `internal`.
                 cx.waker().wake_by_ref();
-                return Poll::Ready(Some(Ok(res)));
+                return Poll::Ready(Some(Ok(Ok(()))));
             }
             Poll::Pending => (),
             Poll::Ready(None) => {
@@ -93,19 +93,18 @@ pub(crate) fn internal<S>(
     fan_out_sender: AmplifierTaskSender,
     to_join_set: &mut JoinSet<eyre::Result<()>>,
     state: S,
-) -> eyre::Result<()>
-where
+) where
     S: State,
 {
     if !fan_out_sender.is_empty() {
         // the downstream client is still processing the events, don't send any new ones
-        return Ok(());
+        return;
     }
     let latest_processed_task = state.latest_processed_task_id();
     let latest_queried_task = state.latest_queried_task_id();
     if latest_processed_task != latest_queried_task {
         tracing::trace!("downstream processor still processing the last batch");
-        return Ok(());
+        return;
     }
     tracing::trace!(?latest_processed_task, "latest task to query");
 
@@ -119,8 +118,6 @@ where
         fan_out_sender,
         state,
     ));
-
-    Ok(())
 }
 
 async fn process_task_request<S: State>(
