@@ -150,7 +150,7 @@ fn main() -> eyre::Result<()> {
             .run()?;
             cmd!(sh, "cargo clippy -p amplifier-subscriber --no-default-features --features=nats --locked -- -D warnings").run()?;
 
-            cmd!(sh, "cargo fmt --all --check").run()?;
+            cmd!(sh, "cargo +nightly fmt --all --check").run()?;
         }
         Commands::Fmt => {
             println!("cargo fix");
