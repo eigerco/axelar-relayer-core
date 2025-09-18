@@ -1,4 +1,4 @@
-//! TODO: add documentation
+//! Helpers for creating an authenticated `reqwest::Client` for amplifier-api.
 
 use reqwest::header;
 

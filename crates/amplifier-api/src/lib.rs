@@ -14,39 +14,10 @@ pub use config::Config;
 
 pub mod amplifier_open_api {
     #![allow(
-        clippy::all,
         clippy::pedantic,
         clippy::nursery,
         clippy::restriction,
-        clippy::cargo,
-        warnings,
         missing_docs,
-        rustdoc::all,
-        clippy::multiple_inherent_impl,
-        clippy::std_instead_of_core,
-        unused_unsafe,
-        clippy::too_many_arguments,
-        clippy::missing_safety_doc,
-        clippy::missing_errors_doc,
-        clippy::missing_panics_doc,
-        clippy::must_use_candidate,
-        clippy::doc_markdown,
-        clippy::missing_const_for_fn,
-        clippy::unnecessary_wraps,
-        reason = "Relax lints for generated code"
-    )]
-    #![allow(
-        dead_code,
-        unused_imports,
-        unused_variables,
-        unused_mut,
-        non_camel_case_types,
-        non_snake_case,
-        non_upper_case_globals,
-        unreachable_code,
-        unused_allocation,
-        trivial_casts,
-        trivial_numeric_casts,
         reason = "Relax lints for generated code"
     )]
 

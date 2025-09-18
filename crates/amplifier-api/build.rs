@@ -131,7 +131,7 @@ impl HandleBorsh {
     }
 }
 
-/// A visitor that adds `QueueMsgId` trait implementations to `TaskItem` structs.
+/// A visitor that adds `QueueMsgId` trait implementations to `TaskItem` struct.
 ///
 /// This visitor searches for `TaskItem` structs in the generated code and automatically
 /// adds an implementation of the `QueueMsgId` trait, which is required for queue message
