@@ -194,6 +194,9 @@ impl VisitMut for AddQueueMsgId {
                     };
                     new_items.push(impl_item);
                 }
+                else {
+                    // Not a `TaskItem` struct or `Event` enum, do nothing
+                }
             }
 
             *items = new_items;
