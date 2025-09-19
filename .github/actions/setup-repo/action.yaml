@@ -4,7 +4,7 @@ inputs:
   toolchain:
     description: "An example input parameter"
     required: false
-    default: "1.89.0"
+    default: "1.90.0"
 
 runs:
   using: "composite"
