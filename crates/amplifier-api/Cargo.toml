@@ -37,11 +37,11 @@ tracing-subscriber.workspace = true
 
 [build-dependencies]
 eyre.workspace = true
-prettyplease = "0.2.37"
+prettyplease = "0.2"
 progenitor.workspace = true
-quote = "1.0"
+quote = "1"
 serde_yaml.workspace = true
-syn = "2.0.106"
+syn = "2"
 
 [lints]
 workspace = true
