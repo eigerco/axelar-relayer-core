@@ -158,12 +158,37 @@ impl VisitMut for AddQueueMsgId {
                 if let syn::Item::Struct(item_struct) = item &&
                     item_struct.ident == "TaskItem"
                 {
+                    let ident = &item_struct.ident;
                     let impl_item: syn::Item = syn::parse_quote! {
-                        impl  ::infrastructure::interfaces::publisher::QueueMsgId for TaskItem {
+                        impl  ::infrastructure::interfaces::publisher::QueueMsgId for #ident {
                             type MessageId = ::std::string::String;
 
                             fn id(&self) -> Self::MessageId {
                                 self.id.0.clone()
+                            }
+                        }
+                    };
+                    new_items.push(impl_item);
+                } else if let syn::Item::Enum(item_enum) = item &&
+                    item_enum.ident == "Event"
+                {
+                    let ident = &item_enum.ident;
+
+                    let match_arms = item_enum.variants.iter().map(|variant| {
+                        let variant_ident = &variant.ident;
+                        quote! {
+                            Self::#variant_ident(event) => event.event_id.to_string(),
+                        }
+                    });
+
+                    let impl_item: syn::Item = syn::parse_quote! {
+                        impl  ::infrastructure::interfaces::publisher::QueueMsgId for #ident {
+                            type MessageId = ::std::string::String;
+
+                            fn id(&self) -> Self::MessageId {
+                                match self {
+                                    #(#match_arms)*
+                                }
                             }
                         }
                     };
