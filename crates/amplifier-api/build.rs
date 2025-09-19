@@ -33,7 +33,9 @@ struct HandleBorsh;
 
 impl VisitMut for HandleBorsh {
     fn visit_item_struct_mut(&mut self, i: &mut syn::ItemStruct) {
-        let has_borsh_derives = i.attrs.iter().any(|attr| {
+        let r#struct = i;
+
+        let has_borsh_derives = r#struct.attrs.iter().any(|attr| {
             if attr.path().is_ident("derive") {
                 let mut has_borsh = false;
                 attr.parse_nested_meta(|meta| {
@@ -52,12 +54,12 @@ impl VisitMut for HandleBorsh {
 
         // Only process fields if the struct has borsh derives
         if has_borsh_derives {
-            for field in &mut i.fields {
+            for field in &mut r#struct.fields {
                 Self::process_field(field);
             }
         }
 
-        syn::visit_mut::visit_item_struct_mut(self, i);
+        syn::visit_mut::visit_item_struct_mut(self, r#struct);
     }
 }
 
@@ -133,21 +135,21 @@ impl HandleBorsh {
 
 /// A visitor that adds `QueueMsgId` trait implementations to `TaskItem` struct.
 ///
-/// This visitor searches for `TaskItem` structs in the generated code and automatically
+/// This visitor searches for `types::TaskItem` struct in the generated code and automatically
 /// adds an implementation of the `QueueMsgId` trait, which is required for queue message
 /// handling in the infrastructure layer.
-///
-/// TODO: try to have exact match `types::TaskItem`
 struct AddQueueMsgId;
 
 impl VisitMut for AddQueueMsgId {
-    /// Visits module items and adds `QueueMsgId` implementations for `TaskItem` structs.
-    ///
-    /// When a `TaskItem` struct is found, this method generates an implementation of the
-    /// `QueueMsgId` trait that uses the struct's `id` field (wrapped in a tuple struct)
-    /// as the message identifier.
     fn visit_item_mod_mut(&mut self, i: &mut syn::ItemMod) {
-        if let Some((_, ref mut items)) = i.content {
+        let module = i;
+
+        if module.ident != "types" {
+            // We only care about the `models` module
+            return;
+        }
+
+        if let Some((_, ref mut items)) = module.content {
             let mut new_items = Vec::new();
 
             for item in items.iter() {
@@ -173,7 +175,7 @@ impl VisitMut for AddQueueMsgId {
         }
 
         // Continue visiting nested modules
-        syn::visit_mut::visit_item_mod_mut(self, i);
+        syn::visit_mut::visit_item_mod_mut(self, module);
     }
 }
 
