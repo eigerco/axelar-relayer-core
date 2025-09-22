@@ -90,7 +90,7 @@ pub trait Worker: Send {
     fn do_work<'s>(&'s mut self) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 's>>;
 }
 
-Supervisor **SHOULD USED ONLY** in development env as it simplifies start of all relayer components.
+Supervisor **SHOULD BE USED ONLY** in development env as it simplifies start of all relayer components.
 ```
 
 ### Blockchain-Specific Configuration
