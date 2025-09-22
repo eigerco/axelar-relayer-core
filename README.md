@@ -333,7 +333,9 @@ docker build -t axelar-amplifier-subscriber -f crates/amplifier-subscriber/Docke
 
 ### Using NATS Instead of GCP
 
-Since GCP is the default backend, you can build with NATS support instead by using build arguments:
+GCP is default backend as it is fully implemented and expected to be used in production. Nats is used as simplified way to support easy development.
+
+You can build with NATS support by using build arguments:
 
 ```bash
 # Build with NATS backend
@@ -402,10 +404,6 @@ The project includes dedicated Docker Compose files for both GCP and NATS backen
 - `docker-compose.nats.yaml` - For running with NATS backend
 
 #### Using the GCP Backend
-
-GCP is the way to go to production.
-
-Please note usage KMS for tls auth on amplifier api side.
 
 To run the components with GCP as the backend:
 
