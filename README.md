@@ -333,7 +333,7 @@ docker build -t axelar-amplifier-subscriber -f crates/amplifier-subscriber/Docke
 
 ### Using NATS Instead of GCP
 
-GCP is default backend as it is fully implemented and expected to be used in production. Nats is used as simplified way to support easy development.
+GCP is default backend as it is fully implemented and **SHOULD BE** in production. Nats is used as simplified way to support easy development.
 
 You can build with NATS support by using build arguments:
 
