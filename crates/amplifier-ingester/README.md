@@ -79,6 +79,8 @@ cargo run --bin amplifier-ingester -- --config config.toml
 cargo run --bin amplifier-ingester --no-default-features --features nats -- --config config.toml
 ```
 
+*supervisor* feature should be enabled if you want add it to development [supervisor](../supervisor) binary to start all relayer components as a single binary
+
 ## Features
 
 - **Concurrent Processing**: Configurable number of concurrent amplifier api clients pushing data
