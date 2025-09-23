@@ -102,6 +102,7 @@ pub fn run(
                 tracing::info!("all workers are running");
 
                 let mut interval = tokio::time::interval(Duration::from_millis(SHUTDOWN_SIGNAL_CHECK_INTERVAL_MS));
+                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
                 loop {
                     tokio::select! {
                         _ = interval.tick() => {
@@ -213,6 +214,8 @@ fn spawn_worker<'scope>(
                 cancel_token
                     .run_until_cancelled(async {
                         let mut interval = tokio::time::interval(tickrate);
+                        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
                         let result: Result<(), _> = loop {
                             interval.tick().await;
                             if let Err(err) = worker.do_work().await {
