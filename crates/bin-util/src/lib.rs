@@ -117,6 +117,7 @@ pub fn init_logging(
 /// this function will also panic in that case.
 #[allow(
     clippy::print_stdout,
+    clippy::print_stderr,
     reason = "not a tracing msg, should always display"
 )]
 #[must_use]
