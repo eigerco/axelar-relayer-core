@@ -129,7 +129,8 @@ pub fn register_cancel() -> CancellationToken {
             tokio::select! {
                 res = tokio::signal::ctrl_c() => {
                     if let Err(e) = res {
-                        error!("Failed to register ctrl+c handler: {e}");
+                        eprintln!("Failed to listen for Ctrl+c event: {e}");
+                        error!("Failed to listen for Ctrl+c event: {e}");
                     }
                     trace!("Graceful shutdown initiated.");
                     cancel_token.cancel();
