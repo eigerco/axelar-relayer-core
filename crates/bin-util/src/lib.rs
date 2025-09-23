@@ -111,6 +111,10 @@ pub fn init_logging(
 }
 
 /// Register cancel token and ctrl+c handler
+///
+/// Panics:
+/// Since `tokio::task::spawn` panics when called outside of a Tokio runtime,
+/// this function will also panic in that case.
 #[allow(
     clippy::print_stdout,
     reason = "not a tracing msg, should always display"
@@ -130,7 +134,7 @@ pub fn register_cancel() -> CancellationToken {
                     trace!("Graceful shutdown initiated.");
                     cancel_token.cancel();
                 }
-                // This branch is to ensure that if the token is cancelled from elsewhere,
+                // This branch is to ensure that if the token is canceled from elsewhere,
                 // we don't leave the ctrl+c handler dangling.
                 () = cancel_token.cancelled() => {}
             }
