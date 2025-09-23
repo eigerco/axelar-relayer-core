@@ -1,7 +1,9 @@
 #![expect(missing_docs, reason = "the error macro already is descriptive enough")]
 use core::fmt::Debug;
 
-/// google cloud platform implementation
+/// Google Cloud Platform implementation for production environments.
+///
+/// Provides production-ready connectors for Pub/Sub messaging and Redis KV store.
 use google_cloud_pubsub::client::google_cloud_auth;
 use redis::RedisError;
 use rustls_gcp_kms::KmsError;
