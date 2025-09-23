@@ -454,11 +454,13 @@ impl BlockChainIngesterMetrics {
 /// * If the configuration format is invalid or corrupted
 /// * If environment variables with the specified prefix cannot be parsed
 /// * If the deserialization to type `T` fails due to missing or type-mismatched fields
-pub fn try_deserialize<T: serde::de::DeserializeOwned + ValidateConfig>(
-    config_path: &str,
-) -> eyre::Result<T> {
+pub fn try_deserialize<P, T>(config_path: P) -> eyre::Result<T>
+where
+    P: AsRef<std::path::Path>,
+    T: serde::de::DeserializeOwned + ValidateConfig,
+{
     let cfg_deserializer = Config::builder()
-        .add_source(File::with_name(config_path).required(false))
+        .add_source(File::from(config_path.as_ref()).required(false))
         .add_source(Environment::with_prefix(ENV_APP_PREFIX).separator(SEPARATOR))
         .build()
         .wrap_err("could not load config")?;
