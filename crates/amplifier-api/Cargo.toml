@@ -7,37 +7,41 @@ homepage.workspace = true
 license.workspace = true
 edition.workspace = true
 
-[features]
-bigint-u64 = []
-bigint-u128 = []
-
 [dependencies]
 infrastructure = { workspace = true, features = ["publisher-interfaces"] }
 
-serde.workspace = true
-reqwest.workspace = true
-base64.workspace = true
 tracing.workspace = true
 redact.workspace = true
 thiserror.workspace = true
 url.workspace = true
-uuid.workspace = true
-chrono.workspace = true
-typed-builder.workspace = true
-borsh.workspace = true
 rustls.workspace = true
-hex.workspace = true
 
-bnum = "0.13"
-simd-json = "0.15"
-reqwest-tracing = "0.5.7"
-reqwest-middleware = "0.4.2"
+borsh = { workspace = true, features = ["derive", "indexmap"] }
+chrono = { workspace = true, features = ["serde"] }
+opentelemetry.workspace = true
+progenitor-client.workspace = true
+regress = "0.10.4"
+reqwest = { workspace = true, features = ["json", "stream"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+simd-json = "0.16"
+tracing-opentelemetry.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true
 rstest.workspace = true
 tokio.workspace = true
 serde_json.workspace = true
+eyre.workspace = true
+tracing-subscriber.workspace = true
+
+[build-dependencies]
+eyre.workspace = true
+prettyplease = "0.2"
+progenitor.workspace = true
+quote = "1"
+serde_yaml.workspace = true
+syn = "2"
 
 [lints]
 workspace = true
@@ -46,3 +50,6 @@ workspace = true
 name = "healthcheck"
 path = "examples/healthcheck.rs"
 doc-scrape-examples = true
+
+[package.metadata.cargo-machete]
+ignored = ["infrastructure", "progenitor-client", "regress"]

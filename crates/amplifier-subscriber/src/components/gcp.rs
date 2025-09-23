@@ -1,4 +1,4 @@
-use amplifier_api::{self, AmplifierApiClient};
+use amplifier_api::{self, Client as AmplifierApiClient};
 use bin_util::ValidateConfig;
 use bin_util::config_defaults::{default_max_bundle_size, default_worker_count};
 use eyre::{Context as _, ensure, eyre};
@@ -144,9 +144,10 @@ async fn amplifier_client(
     .await
     .wrap_err("kms connection failed")?;
 
-    AmplifierApiClient::new(
-        config.amplifier.url.clone(),
-        amplifier_api::TlsType::CustomProvider(client_config),
-    )
-    .wrap_err("amplifier api client failed to create")
+    let tls_type = amplifier_api::identity::TlsType::CustomProvider(client_config);
+    let authenticated_client = amplifier_api::identity::authenticated_client(tls_type)?;
+    let client =
+        AmplifierApiClient::new_with_client(config.amplifier.url.as_str(), authenticated_client);
+
+    Ok(client)
 }

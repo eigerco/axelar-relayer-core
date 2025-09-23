@@ -1,5 +1,7 @@
-{ self, ... }: {
-  perSystem = { system, pkgs, ... }:
+{ ... }:
+{
+  perSystem =
+    { pkgs, ... }:
     let
       rust = pkgs.fenix.stable;
       rustToolchain = pkgs.fenix.combine [
@@ -7,10 +9,40 @@
           "cargo"
           "clippy"
           "rustc"
+          "rustfmt"
+          "rust-src"
+          "rust-analyzer"
         ])
-        pkgs.fenix.latest.rustfmt
-        pkgs.fenix.latest.rust-analyzer
       ];
+
+      envs = {
+        rust = {
+          RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc; # Required for rust-analyzer
+
+          # Force system OpenSSL instead of vendored version
+          # Reference: https://docs.rs/openssl/latest/openssl/#manual
+          OPENSSL_NO_VENDOR = 1;
+          OPENSSL_LIB_DIR = "${pkgs.lib.getLib pkgs.openssl}/lib";
+          OPENSSL_DIR = "${pkgs.lib.getDev pkgs.openssl}";
+        };
+
+        clang = {
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+        };
+      };
+
+      # PATH extensions for package managers
+      pathExtensions = {
+        cargo = ''export PATH="$PATH:~/.cargo/bin"'';
+      };
+
+      # Diagnostic information shown when shell starts
+      devInfo = ''
+        echo "RUSTC version: $(rustc --version)"
+        echo "CARGO version: $(cargo --version)"
+        echo "Build directory: $PWD"
+        echo "Source directory: $src"
+      '';
     in
     {
       devShells = {
@@ -26,9 +58,13 @@
             rustToolchain
             vscode-extensions.vadimcn.vscode-lldb
           ];
+
+          inherit (envs.rust)
+            RUST_SRC_PATH OPENSSL_NO_VENDOR OPENSSL_LIB_DIR OPENSSL_DIR;
+          inherit (envs.clang) LIBCLANG_PATH;
           shellHook = ''
-            export RUST_SRC_PATH="${rust.rust-src}/lib/rustlib/src/rust/library";
-            export PATH=$HOME/.cargo/bin:$PATH
+            ${pathExtensions.cargo}
+            ${devInfo}
           '';
         };
       };

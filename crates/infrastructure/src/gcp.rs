@@ -30,7 +30,7 @@ pub enum GcpError {
     #[error("kms client error: {0}")]
     KmsClient(google_cloud_gax::conn::Error),
     #[error("kms error: {0}")]
-    Kms(#[from] KmsError),
+    Kms(#[from] Box<KmsError>),
     #[error("topic exists error {0}")]
     TopicExistsCheck(Box<tonic::Status>),
     #[error("topic not found: {topic}")]
@@ -83,4 +83,10 @@ pub enum GcpError {
     GenericRedis(#[from] RedisError),
     #[error("message has no Msg-Id set")]
     MsgIdNotSet,
+}
+
+impl From<KmsError> for GcpError {
+    fn from(err: KmsError) -> Self {
+        Self::Kms(Box::new(err))
+    }
 }

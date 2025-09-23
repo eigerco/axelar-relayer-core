@@ -4,16 +4,21 @@ inputs:
   toolchain:
     description: "An example input parameter"
     required: false
-    default: "nightly-2025-03-20"
+    default: "1.90.0"
 
 runs:
   using: "composite"
   steps:
-    - name: Install nightly
+    - name: Install rust (stable)
       uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ inputs.toolchain }}
         components: "rustfmt,clippy,cargo,llvm-tools-preview"
+    - name: Install rust (nightly - fmt)
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: nightly
+        components: "rustfmt"
     - uses: Swatinem/rust-cache@v2
       with:
         cache-on-failure: true

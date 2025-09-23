@@ -1,9 +1,8 @@
 //! Crate with amplifier ingester component
 use std::sync::Arc;
 
-use amplifier_api::requests::{self, WithTrailingSlash};
 use amplifier_api::types::{Event, PublishEventsRequest};
-use amplifier_api::{self, AmplifierApiClient};
+use amplifier_api::{self, Client as AmplifierApiClient};
 use bin_util::health_check::CheckHealth;
 use eyre::Context as _;
 use futures::StreamExt as _;
@@ -62,10 +61,8 @@ where
         event = tracing::field::Empty,
     ))]
     pub async fn process_queue_msg<Msg: QueueMessage<Event>>(&self, mut queue_msg: Msg) {
-        let chain_with_trailing_slash = WithTrailingSlash::new(self.chain.clone());
-
         let event = queue_msg.decoded().clone();
-        tracing::Span::current().record("event", tracing::field::display(&event));
+        tracing::Span::current().record("event", tracing::field::debug(&event));
 
         self.record_event_received(&event);
 
@@ -75,26 +72,11 @@ where
 
         let result: eyre::Result<()> = async {
             tracing::trace!("processing");
-            let request = requests::PostEvents::builder()
-                .payload(&payload)
-                .chain(&chain_with_trailing_slash)
-                .build();
-
-            let request = self
+            let response = self
                 .ampf_client
-                .build_request(&request)
-                .wrap_err("could not build amplifier request")?;
-
-            let response = request
-                .execute()
+                .publish_events(&self.chain, &payload)
                 .await
-                .wrap_err("could not send amplifier request")?;
-
-            let response = response
-                .json()
-                .await
-                .map_err(|err| eyre::Report::new(err).wrap_err("amplifier api failed"))?
-                .map_err(|err| eyre::Report::new(err).wrap_err("failed to decode response"))?;
+                .wrap_err("Failed to publish events")?;
 
             tracing::trace!(?response, "response from amplifier api");
 
@@ -166,30 +148,50 @@ where
     /// Record metrics for received events based on event type
     fn record_event_received(&self, event: &Event) {
         match event {
-            Event::GasCredit(_) => self.metrics.record_gas_credit_received(),
-            Event::GasRefunded(_) => self.metrics.record_gas_refunded_received(),
-            Event::Call(_) => self.metrics.record_call_received(),
-            Event::MessageApproved(_) => self.metrics.record_message_approved_received(),
-            Event::MessageExecuted(_) => self.metrics.record_message_executed_received(),
-            Event::CannotExecuteMessageV2(_) => {
+            Event::GasCreditEvent(_) => self.metrics.record_gas_credit_received(),
+            Event::GasRefundedEvent(_) => self.metrics.record_gas_refunded_received(),
+            Event::CallEvent(_) => self.metrics.record_call_received(),
+            Event::MessageApprovedEvent(_) => self.metrics.record_message_approved_received(),
+            Event::MessageExecutedEvent(_) => self.metrics.record_message_executed_received(),
+            Event::CannotExecuteMessageEventV2(_) => {
                 self.metrics.record_cannot_execute_message_received();
             }
-            Event::SignersRotated(_) => self.metrics.record_signers_rotated_received(),
+            Event::SignersRotatedEvent(_) => self.metrics.record_signers_rotated_received(),
+            Event::MessageExecutedEventV2(_) |
+            Event::CannotExecuteMessageEvent(_) |
+            Event::CannotRouteMessageEvent(_) |
+            Event::CannotExecuteTaskEvent(_) |
+            Event::ItsLinkTokenStartedEvent(_) |
+            Event::ItsTokenMetadataRegisteredEvent(_) |
+            Event::ItsInterchainTokenDeploymentStartedEvent(_) |
+            Event::ItsInterchainTransferEvent(_) |
+            Event::AppInterchainTransferSentEvent(_) |
+            Event::AppInterchainTransferReceivedEvent(_) => {} // not supported
         }
     }
 
     /// Record metrics for successfully processed events based on event type
     fn record_event_processed(&self, event: &Event) {
         match event {
-            Event::GasCredit(_) => self.metrics.record_gas_credit_processed(),
-            Event::GasRefunded(_) => self.metrics.record_gas_refunded_processed(),
-            Event::Call(_) => self.metrics.record_call_processed(),
-            Event::MessageApproved(_) => self.metrics.record_message_approved_processed(),
-            Event::MessageExecuted(_) => self.metrics.record_message_executed_processed(),
-            Event::CannotExecuteMessageV2(_) => {
+            Event::GasCreditEvent(_) => self.metrics.record_gas_credit_processed(),
+            Event::GasRefundedEvent(_) => self.metrics.record_gas_refunded_processed(),
+            Event::CallEvent(_) => self.metrics.record_call_processed(),
+            Event::MessageApprovedEvent(_) => self.metrics.record_message_approved_processed(),
+            Event::MessageExecutedEvent(_) => self.metrics.record_message_executed_processed(),
+            Event::CannotExecuteMessageEventV2(_) => {
                 self.metrics.record_cannot_execute_message_processed();
             }
-            Event::SignersRotated(_) => self.metrics.record_signers_rotated_processed(),
+            Event::SignersRotatedEvent(_) => self.metrics.record_signers_rotated_processed(),
+            Event::MessageExecutedEventV2(_) |
+            Event::CannotExecuteMessageEvent(_) |
+            Event::CannotRouteMessageEvent(_) |
+            Event::CannotExecuteTaskEvent(_) |
+            Event::ItsLinkTokenStartedEvent(_) |
+            Event::ItsTokenMetadataRegisteredEvent(_) |
+            Event::ItsInterchainTokenDeploymentStartedEvent(_) |
+            Event::ItsInterchainTransferEvent(_) |
+            Event::AppInterchainTransferSentEvent(_) |
+            Event::AppInterchainTransferReceivedEvent(_) => {} // not supported yet
         }
     }
 }
@@ -204,13 +206,7 @@ where
             return Err(err.into());
         }
 
-        if let Err(err) = self
-            .ampf_client
-            .build_request(&requests::HealthCheck)
-            .wrap_err("could not build health check request")?
-            .execute()
-            .await
-        {
+        if let Err(err) = self.ampf_client.health_check().await {
             tracing::error!(?err, "amplifier client health check failed");
             return Err(err.into());
         }

@@ -93,15 +93,16 @@ pub async fn new_amplifier_subscriber(
 }
 
 fn amplifier_client(config: &Config) -> eyre::Result<AmplifierApiClient> {
-    AmplifierApiClient::new(
-        config.amplifier.url.clone(),
-        amplifier_api::TlsType::Certificate(Box::new(
-            config
-                .amplifier
-                .identity
-                .clone()
-                .ok_or_else(|| eyre::Report::msg("identity not set"))?,
-        )),
-    )
-    .wrap_err("amplifier api client failed to create")
+    let tls_type = amplifier_api::identity::TlsType::Certificate(Box::new(
+        config
+            .amplifier
+            .identity
+            .clone()
+            .ok_or_else(|| eyre::Report::msg("identity not set"))?,
+    ));
+    let authenticated_client = amplifier_api::identity::authenticated_client(tls_type)?;
+    let client =
+        AmplifierApiClient::new_with_client(config.amplifier.url.as_str(), authenticated_client);
+
+    Ok(client)
 }

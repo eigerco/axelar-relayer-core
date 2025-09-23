@@ -1,6 +1,5 @@
 //! Crate with amplifier subscriber component
-use amplifier_api::requests::WithTrailingSlash;
-use amplifier_api::{AmplifierApiClient, requests};
+use amplifier_api::Client as AmplifierApiClient;
 use bin_util::health_check::CheckHealth;
 use eyre::Context as _;
 use infrastructure::interfaces::publisher::{PeekMessage, PublishMessage, Publisher};
@@ -68,8 +67,6 @@ where
     /// - Failed to publish tasks to the queue
     #[tracing::instrument(skip_all)]
     pub async fn subscribe(&self) -> eyre::Result<()> {
-        let chain_with_trailing_slash = WithTrailingSlash::new(self.chain.clone());
-
         // Record that we're making a fetch request
         self.metrics.record_fetch_request();
 
@@ -84,43 +81,22 @@ where
 
             tracing::trace!(?last_task_id, "last retrieved task");
 
-            let request = requests::GetChains::builder()
-                .chain(&chain_with_trailing_slash)
-                .limit(self.limit_items)
-                .after(last_task_id)
-                .build();
-
-            tracing::trace!(?request, "request for amplifier api created");
-
-            let request = self
+            let response = self
                 .amplifier_client
-                .build_request(&request)
-                .wrap_err("could not build amplifier request")?;
-
-            tracing::trace!(?request, "sending");
-
-            let response = request
-                .execute()
+                .get_tasks(
+                    &self.chain,
+                    last_task_id.as_deref(),
+                    std::num::NonZeroU64::new(u64::from(self.limit_items)),
+                )
                 .await
-                .wrap_err("could not sent amplifier api request")
-                .inspect_err(|_| {
-                    self.metrics.record_fetch_error();
-                })?;
-
-            let response = response
-                .json()
-                .await
-                .map_err(|err| eyre::Report::new(err).wrap_err("amplifier api failed"))
-                .and_then(|r| {
-                    r.map_err(|err| eyre::Report::new(err).wrap_err("failed to decode response"))
-                })
+                .wrap_err("Failed to get tasks for chain")
                 .inspect_err(|_| {
                     self.metrics.record_fetch_error();
                 })?;
 
             tracing::trace!(?response, "amplifier response");
 
-            let mut tasks = response.tasks;
+            let mut tasks = response.into_inner().tasks;
             tasks.sort_unstable_by_key(|task| task.timestamp);
 
             let task_count = u64::try_from(tasks.len()).unwrap_or(0);
@@ -182,14 +158,13 @@ where
 
         if let Err(err) = self
             .amplifier_client
-            .build_request(&requests::HealthCheck)
-            .wrap_err("could not build health check request")?
-            .execute()
+            .health_check()
             .await
+            .wrap_err("could not build health check request")
         {
             self.metrics.record_health_check_error();
             tracing::error!(?err, "amplifier client health check failed");
-            return Err(err.into());
+            return Err(err);
         }
 
         Ok(())

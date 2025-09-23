@@ -40,7 +40,7 @@ impl core::fmt::Display for AmplifierCommand {
             Self::PublishEvents(request) => {
                 writeln!(f, "AmplifierCommand::PublishEvents:")?;
                 writeln!(f, "  request:")?;
-                for line in request.to_string().lines() {
+                for line in format!("{request:?}").lines() {
                     writeln!(f, "    {line}")?;
                 }
             }
@@ -103,14 +103,18 @@ where
     #[tracing::instrument(skip_all, name = "Amplifier")]
     pub(crate) async fn process_internal(self) -> eyre::Result<()> {
         let config = self.config.clone();
-        let client = amplifier_api::AmplifierApiClient::new(
-            self.config.url.clone(),
-            amplifier_api::TlsType::Certificate(Box::new(
-                self.config
-                    .identity
-                    .ok_or_else(|| eyre::Report::msg("identity cert+key not set"))?,
-            )),
-        )?;
+        let identity = config
+            .identity
+            .clone()
+            .ok_or_else(|| eyre::eyre!("missing Amplifier API identity"))?;
+
+        let reqwest_client = reqwest::Client::builder()
+            .identity(identity.0.expose_secret().clone())
+            .build()?;
+        let client = amplifier_api::AmplifierApiClient::new_with_client(
+            self.config.url.as_str(),
+            reqwest_client,
+        );
         let clock = get_clock()?;
 
         // spawn tasks
