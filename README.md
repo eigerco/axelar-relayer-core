@@ -81,6 +81,18 @@ The relayer is designed as 4 components: 2 ingesters & 2 subscribers - 1 for eac
 
 **Implementation Reference**: When implementing blockchain-specific ingester and subscriber components, refer to the [amplifier-ingester](./crates/amplifier-ingester/) and [amplifier-subscriber](./crates/amplifier-subscriber/) implementations as examples of how to structure your components, handle message queues, implement health checks, and integrate with the infrastructure layer.
 
+
+**Supervisor**: There's a [supervisor](./crates/supervisor) crate allowing start of all relayer components that implement `Worker` trait inside single binary
+
+```rust
+pub trait Worker: Send {
+    /// do work
+    fn do_work<'s>(&'s mut self) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 's>>;
+}
+
+Supervisor **SHOULD BE USED ONLY** in development env as it simplifies start of all relayer components.
+```
+
 ### Blockchain-Specific Configuration
 
 #### BigInt Precision for Token Amounts
@@ -161,7 +173,7 @@ export RELAYER_GCP_KMS_CRYPTOKEY="amplifier_api_signing_key"
 
 #### Components
 
-1. **Supervisor**(optional):
+1. **Supervisor**(optional development optimized setup):
 
    - Runs on its own dedicated thread with a Tokio runtime
    - Spawns and monitors worker threads only for the components selected via CLI
@@ -321,7 +333,9 @@ docker build -t axelar-amplifier-subscriber -f crates/amplifier-subscriber/Docke
 
 ### Using NATS Instead of GCP
 
-Since GCP is the default backend, you can build with NATS support instead by using build arguments:
+GCP is default backend as it is fully implemented and **SHOULD BE** in production. Nats is used as simplified way to support easy development.
+
+You can build with NATS support by using build arguments:
 
 ```bash
 # Build with NATS backend
@@ -414,6 +428,8 @@ For GCP, you may need to provide authentication credentials by uncommenting the 
 
 #### Using the NATS Backend
 
+**IMPORTANT**: Nats is used only for development and **SHOULD NOT** be used in production as the implementation is not robust enough and wasn't finished fully
+
 To run the components with NATS as the backend:
 
 ```bash
@@ -449,3 +465,8 @@ docker compose -f docker-compose.<backend>.yaml down
 ```
 
 Where `<backend>` is either `gcp` or `nats`.
+
+
+#### Telemetry
+
+Opentelemetry is added to all components and could be tested via prometheus/grafana bundled in docker-compose files in this repo

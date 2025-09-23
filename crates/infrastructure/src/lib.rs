@@ -6,8 +6,8 @@
 //!
 //! # Features
 //!
-//! - `gcp`: Google Cloud Platform implementation
-//! - `nats`: NATS messaging system implementation
+//! - `gcp`: Google Cloud Platform implementation (production environment)
+//! - `nats`: NATS messaging system implementation (development/testing environment)
 //! - Can be enabled via feature flags
 
 #[cfg(feature = "gcp")]

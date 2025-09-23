@@ -1,5 +1,7 @@
 #![expect(missing_docs, reason = "the error macro already is descriptive enough")]
-/// nats implementation
+/// NATS implementation for development and testing environments.
+///
+/// Provides lightweight messaging and KV store for local development.
 use core::time::Duration;
 
 use async_nats::jetstream::consumer::StreamError;

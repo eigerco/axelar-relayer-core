@@ -123,6 +123,8 @@ export RELAYER_AMPLIFIER_CHAIN="polygon"  # overrides chain in config
 cargo run --bin amplifier-subscriber --no-default-features --features nats -- --config config.toml
 ```
 
+*supervisor* feature should be enabled if you want add it to development [supervisor](../supervisor) binary to start all relayer components as a single binary
+
 ## Features
 
 - **Batch Processing**: Configurable batch size for task fetching

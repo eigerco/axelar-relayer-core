@@ -141,6 +141,7 @@ pub mod kv_store {
     pub struct WithRevision<T> {
         /// value
         pub value: T,
+        /// NOTE: Used in nats only as it requires revision in kvstore
         /// revision
         pub revision: u64,
     }
