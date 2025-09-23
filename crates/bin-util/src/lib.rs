@@ -17,6 +17,7 @@ use opentelemetry::metrics::Counter;
 use opentelemetry::{KeyValue, global};
 use serde::{Deserialize as _, Deserializer};
 use tokio_util::sync::CancellationToken;
+use tracing::{error, trace};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_error::ErrorLayer;
 use tracing_opentelemetry::OpenTelemetryLayer;
@@ -111,27 +112,36 @@ pub fn init_logging(
 
 /// Register cancel token and ctrl+c handler
 ///
-/// # Panics
-///   on failure to register ctr+c handler
+/// Panics:
+/// Since `tokio::task::spawn` panics when called outside of a Tokio runtime,
+/// this function will also panic in that case.
 #[allow(
-    clippy::print_stdout,
+    clippy::print_stderr,
     reason = "not a tracing msg, should always display"
 )]
-#[allow(dead_code, reason = "temporary")]
 #[must_use]
 pub fn register_cancel() -> CancellationToken {
     let cancel_token = CancellationToken::new();
-    let ctrlc_token = cancel_token.clone();
-    ctrlc::set_handler(move || {
-        if ctrlc_token.is_cancelled() {
-            #[expect(clippy::restriction, reason = "immediate exit")]
-            std::process::exit(1);
-        } else {
-            println!("\nGraceful shutdown initiated. Press Ctrl+C again for immediate exit...");
-            ctrlc_token.cancel();
+
+    tokio::task::spawn({
+        let cancel_token = cancel_token.clone();
+        async move {
+            tokio::select! {
+                res = tokio::signal::ctrl_c() => {
+                    if let Err(e) = res {
+                        eprintln!("Failed to listen for Ctrl+c event: {e}");
+                        error!("Failed to listen for Ctrl+c event: {e}");
+                    }
+                    trace!("Graceful shutdown initiated.");
+                    cancel_token.cancel();
+                }
+                // This branch is to ensure that if the token is canceled from elsewhere,
+                // we don't leave the ctrl+c handler dangling.
+                () = cancel_token.cancelled() => {}
+            }
         }
-    })
-    .expect("Failed to register ctrl+c handler");
+    });
+
     cancel_token
 }
 
@@ -449,11 +459,13 @@ impl BlockChainIngesterMetrics {
 /// * If the configuration format is invalid or corrupted
 /// * If environment variables with the specified prefix cannot be parsed
 /// * If the deserialization to type `T` fails due to missing or type-mismatched fields
-pub fn try_deserialize<T: serde::de::DeserializeOwned + ValidateConfig>(
-    config_path: &str,
-) -> eyre::Result<T> {
+pub fn try_deserialize<P, T>(config_path: P) -> eyre::Result<T>
+where
+    P: AsRef<std::path::Path>,
+    T: serde::de::DeserializeOwned + ValidateConfig,
+{
     let cfg_deserializer = Config::builder()
-        .add_source(File::with_name(config_path).required(false))
+        .add_source(File::from(config_path.as_ref()).required(false))
         .add_source(Environment::with_prefix(ENV_APP_PREFIX).separator(SEPARATOR))
         .build()
         .wrap_err("could not load config")?;
