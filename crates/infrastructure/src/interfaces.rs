@@ -136,11 +136,12 @@ pub mod kv_store {
     use core::error::Error;
     use core::fmt::{Debug, Display};
 
-    /// Value with revision (used in nats only)
+    /// Value with revision
     #[derive(Debug)]
     pub struct WithRevision<T> {
         /// value
         pub value: T,
+        /// NOTE: Used in nats only as it requires revision in kvstore
         /// revision
         pub revision: u64,
     }

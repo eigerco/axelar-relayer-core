@@ -1,4 +1,7 @@
-//! Crate with supervisor and worker trait
+//! Crate for managing worker tasks in the Axelar Relayer architecture.
+//!
+//! Implements the supervisor pattern to run all relayer components (ingesters/subscribers)
+//! in a single process. Optional component intended for local development and testing scenarios.
 use core::panic::AssertUnwindSafe;
 use core::pin::Pin;
 use core::time::Duration;
@@ -24,7 +27,10 @@ type WorkerName = String;
 pub type WorkerBuildFn =
     Box<dyn Fn() -> Pin<Box<dyn Future<Output = eyre::Result<Box<dyn Worker>>>>> + Send>;
 
-/// i.e. ingester/subscriber
+/// Worker trait for implementing ingester/subscriber components.
+///
+/// Workers handle data flow between Amplifier and blockchains as part of the
+/// relayer architecture. Should be implementend/used only in dev/testing scenarios.
 pub trait Worker: Send {
     /// do work
     fn do_work<'s>(&'s mut self) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + 's>>;
