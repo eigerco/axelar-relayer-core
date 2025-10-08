@@ -388,12 +388,76 @@ pub struct Token {
     #[serde(rename = "tokenID", skip_serializing_if = "Option::is_none")]
     #[builder(default)]
     pub token_id: Option<TokenId>,
-    /// the amount in token’s denominator
+    /// the amount in token's denominator
     #[borsh(
         serialize_with = "crate::big_int::serialize",
         deserialize_with = "crate::big_int::deserialize"
     )]
     pub amount: BigInt,
+}
+
+/// Represents an interchain transfer token with a token ID.
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TypedBuilder,
+    BorshSerialize,
+    BorshDeserialize,
+)]
+pub struct InterchainTransferTokenWithId {
+    /// token ID
+    #[serde(rename = "tokenID")]
+    pub token_id: TokenId,
+    /// the amount in token's denominator
+    #[borsh(
+        serialize_with = "crate::big_int::serialize",
+        deserialize_with = "crate::big_int::deserialize"
+    )]
+    pub amount: BigInt,
+}
+
+/// Represents an interchain token definition.
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TypedBuilder,
+    BorshSerialize,
+    BorshDeserialize,
+)]
+pub struct InterchainTokenDefinition {
+    /// token ID
+    #[serde(rename = "id")]
+    pub id: TokenId,
+    /// token name
+    pub name: String,
+    /// token symbol
+    pub symbol: String,
+    /// token decimals
+    pub decimals: u8,
+}
+
+/// Enumeration of token manager types.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TokenManagerType {
+    /// Native interchain token
+    NativeInterchainToken,
+    /// Mint/burn from token manager
+    MintBurnFrom,
+    /// Lock/unlock token manager
+    LockUnlock,
+    /// Lock/unlock with fee token manager
+    LockUnlockFee,
+    /// Mint/burn token manager
+    MintBurn,
 }
 
 impl Display for Token {
@@ -706,6 +770,184 @@ pub struct SignersRotatedMetadata {
     pub epoch: u64,
 }
 
+/// Represents an ITS Token Metadata Registered Event.
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TypedBuilder,
+    BorshSerialize,
+    BorshDeserialize,
+)]
+pub struct ItsTokenMetadataRegisteredEvent {
+    /// Event base
+    #[serde(flatten)]
+    pub base: EventBase,
+    /// Message ID
+    #[serde(rename = "messageID")]
+    pub message_id: MessageId,
+    /// Token address
+    pub address: Address,
+    /// Token decimals
+    pub decimals: u8,
+}
+
+impl Display for ItsTokenMetadataRegisteredEvent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        writeln!(f, "ITSTokenMetadataRegisteredEvent")?;
+        writeln!(f, "base: {}", self.base)?;
+        writeln!(f, "messageID: {}", self.message_id)?;
+        writeln!(f, "address: {}", self.address)?;
+        writeln!(f, "decimals: {}", self.decimals)?;
+        Ok(())
+    }
+}
+
+/// Represents an ITS Link Token Started Event.
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TypedBuilder,
+    BorshSerialize,
+    BorshDeserialize,
+)]
+pub struct ItsLinkTokenStartedEvent {
+    /// Event base
+    #[serde(flatten)]
+    pub base: EventBase,
+    /// Message ID
+    #[serde(rename = "messageID")]
+    pub message_id: MessageId,
+    /// Token ID
+    #[serde(rename = "tokenID")]
+    pub token_id: TokenId,
+    /// Destination chain
+    #[serde(rename = "destinationChain")]
+    pub destination_chain: String,
+    /// Source token address
+    #[serde(rename = "sourceTokenAddress")]
+    pub source_token_address: String,
+    /// Destination token address
+    #[serde(rename = "destinationTokenAddress")]
+    pub destination_token_address: String,
+    /// Token manager type
+    #[serde(rename = "tokenManagerType")]
+    pub token_manager_type: TokenManagerType,
+}
+
+impl Display for ItsLinkTokenStartedEvent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        writeln!(f, "ITSLinkTokenStartedEvent")?;
+        writeln!(f, "base: {}", self.base)?;
+        writeln!(f, "messageID: {}", self.message_id)?;
+        writeln!(f, "tokenID: {}", self.token_id.0)?;
+        writeln!(f, "destinationChain: {}", self.destination_chain)?;
+        writeln!(f, "sourceTokenAddress: {}", self.source_token_address)?;
+        writeln!(
+            f,
+            "destinationTokenAddress: {}",
+            self.destination_token_address
+        )?;
+        writeln!(f, "tokenManagerType: {:?}", self.token_manager_type)?;
+        Ok(())
+    }
+}
+
+/// Represents an ITS Interchain Token Deployment Started Event.
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TypedBuilder,
+    BorshSerialize,
+    BorshDeserialize,
+)]
+pub struct ItsInterchainTokenDeploymentStartedEvent {
+    /// Event base
+    #[serde(flatten)]
+    pub base: EventBase,
+    /// Message ID
+    #[serde(rename = "messageID")]
+    pub message_id: MessageId,
+    /// Destination chain
+    #[serde(rename = "destinationChain")]
+    pub destination_chain: String,
+    /// Token definition
+    pub token: InterchainTokenDefinition,
+}
+
+impl Display for ItsInterchainTokenDeploymentStartedEvent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        writeln!(f, "ITSInterchainTokenDeploymentStartedEvent")?;
+        writeln!(f, "base: {}", self.base)?;
+        writeln!(f, "messageID: {}", self.message_id)?;
+        writeln!(f, "destinationChain: {}", self.destination_chain)?;
+        writeln!(
+            f,
+            "token: {} ({}) - {} decimals",
+            self.token.name, self.token.symbol, self.token.decimals
+        )?;
+        Ok(())
+    }
+}
+
+/// Represents an ITS Interchain Transfer Event.
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TypedBuilder,
+    BorshSerialize,
+    BorshDeserialize,
+)]
+pub struct ItsInterchainTransferEvent {
+    /// Event base
+    #[serde(flatten)]
+    pub base: EventBase,
+    /// Message ID
+    #[serde(rename = "messageID")]
+    pub message_id: MessageId,
+    /// Destination chain
+    #[serde(rename = "destinationChain")]
+    pub destination_chain: String,
+    /// Token spent
+    #[serde(rename = "tokenSpent")]
+    pub token_spent: InterchainTransferTokenWithId,
+    /// Source address
+    #[serde(rename = "sourceAddress")]
+    pub source_address: Address,
+    /// Destination address
+    pub destination_address: Address,
+    /// Data hash
+    #[serde(rename = "dataHash")]
+    pub data_hash: String,
+}
+
+impl Display for ItsInterchainTransferEvent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        writeln!(f, "ITSInterchainTransferEvent")?;
+        writeln!(f, "base: {}", self.base)?;
+        writeln!(f, "messageID: {}", self.message_id)?;
+        writeln!(f, "destinationChain: {}", self.destination_chain)?;
+        writeln!(f, "sourceAddress: {}", self.source_address)?;
+        writeln!(f, "destinationAddress: {}", self.destination_address)?;
+        Ok(())
+    }
+}
+
 /// Represents a Message Executed Event.
 #[derive(
     Clone,
@@ -803,6 +1045,14 @@ pub enum Event {
     CannotExecuteMessageV2(CannotExecuteMessageEventV2),
     /// Signers have been rotated
     SignersRotated(SignersRotatedEvent),
+    /// ITS link token started event
+    ItsLinkTokenStarted(ItsLinkTokenStartedEvent),
+    /// ITS token metadata registered event
+    ItsTokenMetadataRegistered(ItsTokenMetadataRegisteredEvent),
+    /// ITS interchain token deployment started event
+    ItsInterchainTokenDeploymentStarted(ItsInterchainTokenDeploymentStartedEvent),
+    /// ITS interchain transfer event
+    ItsInterchainTransfer(ItsInterchainTransferEvent),
 }
 
 impl QueueMsgId for Event {
@@ -817,6 +1067,10 @@ impl QueueMsgId for Event {
             Self::MessageExecuted(event) => event.base.event_id.clone(),
             Self::CannotExecuteMessageV2(evens) => evens.base.event_id.clone(),
             Self::SignersRotated(event) => event.base.event_id.clone(),
+            Self::ItsLinkTokenStarted(event) => event.base.event_id.clone(),
+            Self::ItsTokenMetadataRegistered(event) => event.base.event_id.clone(),
+            Self::ItsInterchainTokenDeploymentStarted(event) => event.base.event_id.clone(),
+            Self::ItsInterchainTransfer(event) => event.base.event_id.clone(),
         }
     }
 }
@@ -855,6 +1109,26 @@ impl Display for Event {
                 }
             }
             Self::SignersRotated(event) => {
+                for line in event.to_string().lines() {
+                    writeln!(f, "{line}")?;
+                }
+            }
+            Self::ItsLinkTokenStarted(event) => {
+                for line in event.to_string().lines() {
+                    writeln!(f, "{line}")?;
+                }
+            }
+            Self::ItsTokenMetadataRegistered(event) => {
+                for line in event.to_string().lines() {
+                    writeln!(f, "{line}")?;
+                }
+            }
+            Self::ItsInterchainTokenDeploymentStarted(event) => {
+                for line in event.to_string().lines() {
+                    writeln!(f, "{line}")?;
+                }
+            }
+            Self::ItsInterchainTransfer(event) => {
                 for line in event.to_string().lines() {
                     writeln!(f, "{line}")?;
                 }

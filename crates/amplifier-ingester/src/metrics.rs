@@ -14,6 +14,10 @@ pub(crate) struct AmplifierIngesterMetrics {
     message_executed_received: Counter<u64>,
     cannot_execute_message_received: Counter<u64>,
     signers_rotated_received: Counter<u64>,
+    its_link_token_started_received: Counter<u64>,
+    its_token_metadata_registered_received: Counter<u64>,
+    its_interchain_token_deployment_started_received: Counter<u64>,
+    its_interchain_transfer_received: Counter<u64>,
 
     // Amplifier API specific event counters - processed
     gas_credit_processed: Counter<u64>,
@@ -23,6 +27,10 @@ pub(crate) struct AmplifierIngesterMetrics {
     message_executed_processed: Counter<u64>,
     cannot_execute_message_processed: Counter<u64>,
     signers_rotated_processed: Counter<u64>,
+    its_link_token_started_processed: Counter<u64>,
+    its_token_metadata_registered_processed: Counter<u64>,
+    its_interchain_token_deployment_started_processed: Counter<u64>,
+    its_interchain_transfer_processed: Counter<u64>,
 
     // Error counter
     error_raised: Counter<u64>,
@@ -44,6 +52,7 @@ impl AmplifierIngesterMetrics {
     ///
     /// A new `AmplifierIngesterMetrics` instance with all counters initialized.
     #[must_use]
+    #[allow(clippy::too_many_lines, reason = "simple logic")]
     pub(crate) fn new(name: &'static str, attributes: Vec<KeyValue>) -> Self {
         let meter = global::meter(name);
 
@@ -83,6 +92,26 @@ impl AmplifierIngesterMetrics {
             .with_description("Number of received SignersRotated events")
             .build();
 
+        let its_link_token_started_received = meter
+            .u64_counter("amplifier.received.its_link_token_started.count")
+            .with_description("Number of received ItsLinkTokenStarted events")
+            .build();
+
+        let its_token_metadata_registered_received = meter
+            .u64_counter("amplifier.received.its_token_metadata_registered.count")
+            .with_description("Number of received ItsTokenMetadataRegistered events")
+            .build();
+
+        let its_interchain_token_deployment_started_received = meter
+            .u64_counter("amplifier.received.its_interchain_token_deployment_started.count")
+            .with_description("Number of received ItsInterchainTokenDeploymentStarted events")
+            .build();
+
+        let its_interchain_transfer_received = meter
+            .u64_counter("amplifier.received.its_interchain_transfer.count")
+            .with_description("Number of received ItsInterchainTransfer events")
+            .build();
+
         // Amplifier API specific event counters - processed
         let gas_credit_processed = meter
             .u64_counter("amplifier.processed.gas_credit.count")
@@ -119,6 +148,26 @@ impl AmplifierIngesterMetrics {
             .with_description("Number of processed SignersRotated events")
             .build();
 
+        let its_link_token_started_processed = meter
+            .u64_counter("amplifier.processed.its_link_token_started.count")
+            .with_description("Number of processed ItsLinkTokenStarted events")
+            .build();
+
+        let its_token_metadata_registered_processed = meter
+            .u64_counter("amplifier.processed.its_token_metadata_registered.count")
+            .with_description("Number of processed ItsTokenMetadataRegistered events")
+            .build();
+
+        let its_interchain_token_deployment_started_processed = meter
+            .u64_counter("amplifier.processed.its_interchain_token_deployment_started.count")
+            .with_description("Number of processed ItsInterchainTokenDeploymentStarted events")
+            .build();
+
+        let its_interchain_transfer_processed = meter
+            .u64_counter("amplifier.processed.its_interchain_transfer.count")
+            .with_description("Number of processed ItsInterchainTransfer events")
+            .build();
+
         let error_raised = meter
             .u64_counter("errors.count")
             .with_description("Total number of errors encountered during operation")
@@ -133,6 +182,10 @@ impl AmplifierIngesterMetrics {
             message_executed_received,
             cannot_execute_message_received,
             signers_rotated_received,
+            its_link_token_started_received,
+            its_token_metadata_registered_received,
+            its_interchain_token_deployment_started_received,
+            its_interchain_transfer_received,
 
             // Processed events
             gas_credit_processed,
@@ -142,6 +195,10 @@ impl AmplifierIngesterMetrics {
             message_executed_processed,
             cannot_execute_message_processed,
             signers_rotated_processed,
+            its_link_token_started_processed,
+            its_token_metadata_registered_processed,
+            its_interchain_token_deployment_started_processed,
+            its_interchain_transfer_processed,
 
             error_raised,
             attributes,
@@ -186,6 +243,30 @@ impl AmplifierIngesterMetrics {
         self.signers_rotated_received.add(1, &self.attributes);
     }
 
+    /// Records the receipt of an `ItsLinkTokenStarted` event.
+    pub(crate) fn record_its_link_token_started_received(&self) {
+        self.its_link_token_started_received
+            .add(1, &self.attributes);
+    }
+
+    /// Records the receipt of an `ItsTokenMetadataRegistered` event.
+    pub(crate) fn record_its_token_metadata_registered_received(&self) {
+        self.its_token_metadata_registered_received
+            .add(1, &self.attributes);
+    }
+
+    /// Records the receipt of an `ItsInterchainTokenDeploymentStarted` event.
+    pub(crate) fn record_its_interchain_token_deployment_started_received(&self) {
+        self.its_interchain_token_deployment_started_received
+            .add(1, &self.attributes);
+    }
+
+    /// Records the receipt of an `ItsInterchainTransfer` event.
+    pub(crate) fn record_its_interchain_transfer_received(&self) {
+        self.its_interchain_transfer_received
+            .add(1, &self.attributes);
+    }
+
     // -- Amplifier API event processed methods
 
     /// Records the successful processing of a `GasCredit` event.
@@ -222,6 +303,30 @@ impl AmplifierIngesterMetrics {
     /// Records the successful processing of a `SignersRotated` event.
     pub(crate) fn record_signers_rotated_processed(&self) {
         self.signers_rotated_processed.add(1, &self.attributes);
+    }
+
+    /// Records the successful processing of an `ItsLinkTokenStarted` event.
+    pub(crate) fn record_its_link_token_started_processed(&self) {
+        self.its_link_token_started_processed
+            .add(1, &self.attributes);
+    }
+
+    /// Records the successful processing of an `ItsTokenMetadataRegistered` event.
+    pub(crate) fn record_its_token_metadata_registered_processed(&self) {
+        self.its_token_metadata_registered_processed
+            .add(1, &self.attributes);
+    }
+
+    /// Records the successful processing of an `ItsInterchainTokenDeploymentStarted` event.
+    pub(crate) fn record_its_interchain_token_deployment_started_processed(&self) {
+        self.its_interchain_token_deployment_started_processed
+            .add(1, &self.attributes);
+    }
+
+    /// Records the successful processing of an `ItsInterchainTransfer` event.
+    pub(crate) fn record_its_interchain_transfer_processed(&self) {
+        self.its_interchain_transfer_processed
+            .add(1, &self.attributes);
     }
 
     // -- Error and skip tracking
