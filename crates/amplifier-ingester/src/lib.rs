@@ -175,6 +175,19 @@ where
                 self.metrics.record_cannot_execute_message_received();
             }
             Event::SignersRotated(_) => self.metrics.record_signers_rotated_received(),
+            Event::ItsLinkTokenStarted(_) => {
+                self.metrics.record_its_link_token_started_received();
+            }
+            Event::ItsTokenMetadataRegistered(_) => {
+                self.metrics.record_its_token_metadata_registered_received();
+            }
+            Event::ItsInterchainTokenDeploymentStarted(_) => {
+                self.metrics
+                    .record_its_interchain_token_deployment_started_received();
+            }
+            Event::ItsInterchainTransfer(_) => {
+                self.metrics.record_its_interchain_transfer_received();
+            }
         }
     }
 
@@ -190,6 +203,20 @@ where
                 self.metrics.record_cannot_execute_message_processed();
             }
             Event::SignersRotated(_) => self.metrics.record_signers_rotated_processed(),
+            Event::ItsLinkTokenStarted(_) => {
+                self.metrics.record_its_link_token_started_processed();
+            }
+            Event::ItsTokenMetadataRegistered(_) => {
+                self.metrics
+                    .record_its_token_metadata_registered_processed();
+            }
+            Event::ItsInterchainTokenDeploymentStarted(_) => {
+                self.metrics
+                    .record_its_interchain_token_deployment_started_processed();
+            }
+            Event::ItsInterchainTransfer(_) => {
+                self.metrics.record_its_interchain_transfer_processed();
+            }
         }
     }
 }
