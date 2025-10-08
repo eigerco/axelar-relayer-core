@@ -213,8 +213,57 @@ pub struct Token {
     #[serde(rename = "tokenID", skip_serializing_if = "Option::is_none")]
     #[builder(default)]
     pub token_id: Option<TokenId>,
-    /// the amount in token’s denominator
+    /// the amount in token's denominator
     pub amount: BigInt,
+}
+
+impl core::fmt::Display for Token {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match &self.token_id {
+            Some(token_id) => write!(f, "{:?} {}", self.amount, token_id.0),
+            None => write!(f, "{:?} NativeToken", self.amount),
+        }
+    }
+}
+
+/// Represents an interchain transfer token with a token ID.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+pub struct InterchainTransferTokenWithId {
+    /// token ID
+    #[serde(rename = "tokenID")]
+    pub token_id: TokenId,
+    /// the amount in token's denominator
+    pub amount: BigInt,
+}
+
+/// Represents an interchain token definition.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+pub struct InterchainTokenDefinition {
+    /// token ID
+    #[serde(rename = "id")]
+    pub id: TokenId,
+    /// token name
+    pub name: String,
+    /// token symbol
+    pub symbol: String,
+    /// token decimals
+    pub decimals: u8,
+}
+
+/// Enumeration of token manager types.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TokenManagerType {
+    /// Native interchain token
+    NativeInterchainToken,
+    /// Mint/burn from token manager
+    MintBurnFrom,
+    /// Lock/unlock token manager
+    LockUnlock,
+    /// Lock/unlock with fee token manager
+    LockUnlockFee,
+    /// Mint/burn token manager
+    MintBurn,
 }
 
 /// Represents a cross-chain message.
@@ -345,6 +394,88 @@ pub struct SignersRotatedMetadata {
     pub epoch: u64,
 }
 
+/// Represents an ITS Token Metadata Registered Event.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+pub struct ItsTokenMetadataRegisteredEvent {
+    /// Event base
+    #[serde(flatten)]
+    pub base: EventBase,
+    /// Message ID
+    #[serde(rename = "messageID")]
+    pub message_id: MessageId,
+    /// Token address
+    pub address: Address,
+    /// Token decimals
+    pub decimals: u8,
+}
+
+/// Represents an ITS Link Token Started Event.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+pub struct ItsLinkTokenStartedEvent {
+    /// Event base
+    #[serde(flatten)]
+    pub base: EventBase,
+    /// Message ID
+    #[serde(rename = "messageID")]
+    pub message_id: MessageId,
+    /// Token ID
+    #[serde(rename = "tokenID")]
+    pub token_id: TokenId,
+    /// Destination chain
+    #[serde(rename = "destinationChain")]
+    pub destination_chain: String,
+    /// Source token address
+    #[serde(rename = "sourceTokenAddress")]
+    pub source_token_address: String,
+    /// Destination token address
+    #[serde(rename = "destinationTokenAddress")]
+    pub destination_token_address: String,
+    /// Token manager type
+    #[serde(rename = "tokenManagerType")]
+    pub token_manager_type: TokenManagerType,
+}
+
+/// Represents an ITS Interchain Token Deployment Started Event.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+pub struct ItsInterchainTokenDeploymentStartedEvent {
+    /// Event base
+    #[serde(flatten)]
+    pub base: EventBase,
+    /// Message ID
+    #[serde(rename = "messageID")]
+    pub message_id: MessageId,
+    /// Destination chain
+    #[serde(rename = "destinationChain")]
+    pub destination_chain: String,
+    /// Token definition
+    pub token: InterchainTokenDefinition,
+}
+
+/// Represents an ITS Interchain Transfer Event.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
+pub struct ItsInterchainTransferEvent {
+    /// Event base
+    #[serde(flatten)]
+    pub base: EventBase,
+    /// Message ID
+    #[serde(rename = "messageID")]
+    pub message_id: MessageId,
+    /// Destination chain
+    #[serde(rename = "destinationChain")]
+    pub destination_chain: String,
+    /// Token spent
+    #[serde(rename = "tokenSpent")]
+    pub token_spent: InterchainTransferTokenWithId,
+    /// Source address
+    #[serde(rename = "sourceAddress")]
+    pub source_address: Address,
+    /// Destination address
+    pub destination_address: Address,
+    /// Data hash
+    #[serde(rename = "dataHash")]
+    pub data_hash: String,
+}
+
 /// Represents a Message Executed Event.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TypedBuilder)]
 pub struct MessageExecutedEvent {
@@ -399,6 +530,14 @@ pub enum Event {
     CannotExecuteMessageV2(CannotExecuteMessageEventV2),
     /// Signers have been rotated
     SignersRotated(SignersRotatedEvent),
+    /// ITS link token started event
+    ItsLinkTokenStarted(ItsLinkTokenStartedEvent),
+    /// ITS token metadata registered event
+    ItsTokenMetadataRegistered(ItsTokenMetadataRegisteredEvent),
+    /// ITS interchain token deployment started event
+    ItsInterchainTokenDeploymentStarted(ItsInterchainTokenDeploymentStartedEvent),
+    /// ITS interchain transfer event
+    ItsInterchainTransfer(ItsInterchainTransferEvent),
 }
 
 /// Represents the request payload for posting events.
