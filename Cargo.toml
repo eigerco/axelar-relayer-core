@@ -95,7 +95,7 @@ bs58 = "0.5"
 redact = { version = "0.1", features = ["serde"] }
 thiserror = "2"
 uuid = { version = "1.2", features = ["v4", "serde", "borsh"] }
-typed-builder = "0.21"
+typed-builder = "0.23"
 derive_builder = "0.20"
 hex = "0.4"
 backoff = { version = "0.4", features = ["tokio"] }
