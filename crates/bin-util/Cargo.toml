@@ -29,7 +29,7 @@ opentelemetry-system-metrics = "0.4.1"
 opentelemetry-semantic-conventions = { version = "0.29", features = [
   "semconv_experimental",
 ] }
-opentelemetry-resource-detectors = "0.8"
+opentelemetry-resource-detectors = "0.10"
 tracing-subscriber = { version = "0.3", features = [
   "env-filter",
   "fmt",
